@@ -17,6 +17,17 @@ fn get_node_as_number(gml_node: &GmlNode) -> Option<String> {
         .cloned()
 }
 
+/// The /24 (as "a.b.c") that AS-aware allocation hands out on GML node
+/// `node_id`. `None` when the node is unknown, has no AS number, or carries a
+/// pre-allocated `ip` (the allocator then uses that address instead).
+pub(crate) fn node_subnet_base(gml: &GmlGraph, node_id: u32) -> Option<String> {
+    let node = gml.nodes.iter().find(|n| n.id == node_id)?;
+    if node.get_ip().is_some() {
+        return None;
+    }
+    AsSubnetManager::get_subnet_base(&get_node_as_number(node)?)
+}
+
 /// Get IP address for an agent using the centralized Global IP Registry
 /// Priority order:
 /// 0) Pre-registered IP (e.g., Monero fallback seed pinning) — honored unconditionally

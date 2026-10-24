@@ -206,6 +206,17 @@ plus a per-node `daemon_options: {hide-my-port: false}` exemption on every other
 relay leaves exactly one host — the target — firewalled by Shadow
 (`blocked_inbound_ports: [18080]`). Seeds and miners are always reachable.
 
+**Packing the attacker fleet into shared /24s:** by default every fake peer
+gets its own GML node, so its own AS and /24 (and in practice its own /16), the
+worst case for a defence that groups peers by subnet. To model an attacker that
+rents addresses in bulk, pin fake peers in groups with `topology_node`: every
+agent pinned to one node shares that node's AS and /24. For 10 per /24 with
+1,000 fake peers, pin them 10 at a time onto 100 nodes. A node's /24 holds at
+most 245 hosts. Pick nodes no honest host uses; the generator log warns when
+another host lands on a pinned node. Stock monerod already avoids taking two
+outbound candidates from one /24 while it has others, so packing weakens the
+attack even without a defence.
+
 ## Agents (`agents/`)
 
 - **`eclipse_monitor.py`** — script-only measurement agent. Each poll it reads

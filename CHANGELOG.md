@@ -238,6 +238,17 @@
 
 ### Fixed
 
+- **`topology_node` was silently ignored on script-only agents** (e.g.
+  `agents.eclipse_fakepeer`): each one was still spread onto its own GML node,
+  so a fake-peer fleet could not be packed into shared /24s. Script agents now
+  honour the pin, validated like a daemon pin (the node must exist; pinning needs
+  a GML topology). Agents pinned to one node share its AS and so its /24. A
+  node's /24 has 245 addresses (`.10`-`.254`); pinning more script agents onto
+  one node is now an error instead of quietly giving the overflow an unrelated
+  address. The generator logs how many pinned script agents went onto how many
+  nodes, and warns when another host shares a pinned node. **Behaviour change:**
+  a config that already pins script agents now places them as written.
+
 - **`scripts/smoke_test.sh` graded the wrong run whenever another run from the
   same checkout was live.** It picked the most recently modified directory
   under `archived_runs/`, so two smoke tests running at once graded the same run

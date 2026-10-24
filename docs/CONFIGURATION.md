@@ -445,8 +445,8 @@ agents:
 | `daemon_env` | map | Environment variables for daemon |
 | `wallet_env` | map | Environment variables for wallet |
 | `attributes` | map | Custom key-value pairs passed to agent scripts |
-| `subnet_group` | string | Group agents into same /24 subnet |
-| `topology_node` | u32 | Pin this agent to a specific GML topology node id, overriding index-based distribution |
+| `subnet_group` | string | Group agents into same /24 subnet (daemon agents only; ignored for script-only agents) |
+| `topology_node` | u32 | Pin this agent to a specific GML topology node id, overriding index-based distribution. Works for daemon and script-only agents. Agents pinned to one node share its AS and so its /24; a node's /24 holds 245 hosts, and pinning more script-only agents onto one node is an error |
 | `turnover` | bool | Override this agent's `general.turnover` membership: `true` forces the daemon into the offline/online turnover cycle regardless of `fraction` — including a node that pins `hide-my-port: false` (normally exempt as an always-reachable hub); `false` always excludes it. Unset keeps the default (pinned-reachable excluded, others sampled at `fraction`). Miners and seed nodes are always excluded regardless. |
 
 ## Complete Example

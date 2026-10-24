@@ -7,11 +7,13 @@
 
 use crate::config::AgentDefinitions;
 use crate::gml_parser::GmlGraph;
+use crate::ip::allocator::node_subnet_base;
 use crate::ip::{get_agent_ip, AgentType, AsSubnetManager, GlobalIpRegistry};
 use crate::shadow::ShadowHost;
+use crate::topology::placement::apply_topology_pins;
 use crate::utils::duration::parse_duration_to_seconds;
 use crate::utils::script::write_wrapper_script;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::path::Path;
 
 /// Process pure script agents
@@ -50,23 +52,41 @@ pub fn process_pure_script_agents(
         })
         .collect();
 
-    for (i, (agent_id, pure_script_config)) in pure_scripts.iter().enumerate() {
-        let script_id = agent_id.as_str();
-        // Spread script agents across DISTINCT GML nodes so each gets a distinct
-        // AS -> distinct /24. The old code pinned EVERY script agent to node 0,
-        // i.e. one /24 (AS 0 -> 3.0.0.0/24); Monero's /24 outbound-diversity
-        // filter then caps the entire fleet at a SINGLE outbound connection, so a
-        // multi-IP attacker fleet (e.g. the eclipse fake peers) could never be
-        // held as outbound. `agent_offset` is already past every daemon/user
-        // agent and node ids are contiguous 0..N-1, so this yields distinct
-        // nodes -> distinct subnets. Host bandwidth is set explicitly below, so
-        // we no longer need node 0 just for its GML bandwidth attribute.
-        let network_node_id: u32 = match gml_graph {
+    // Spread script agents across DISTINCT GML nodes so each gets a distinct
+    // AS -> distinct /24. The old code pinned EVERY script agent to node 0,
+    // i.e. one /24 (AS 0 -> 3.0.0.0/24); Monero's /24 outbound-diversity
+    // filter then caps the entire fleet at a SINGLE outbound connection, so a
+    // multi-IP attacker fleet (e.g. the eclipse fake peers) could never be
+    // held as outbound. `agent_offset` is already past every daemon/user
+    // agent and node ids are contiguous 0..N-1, so this yields distinct
+    // nodes -> distinct subnets. Host bandwidth is set explicitly below, so
+    // we no longer need node 0 just for its GML bandwidth attribute.
+    let mut network_node_ids: Vec<u32> = (0..pure_scripts.len())
+        .map(|i| match gml_graph {
             Some(g) if using_gml_topology && !g.nodes.is_empty() => {
                 ((agent_offset + i) % g.nodes.len()) as u32
             }
             _ => 0,
-        };
+        })
+        .collect();
+    // A `topology_node` pin overrides the spread and is validated exactly like
+    // a daemon pin (the node must exist; pinning needs a GML topology). Agents
+    // pinned to one node share its AS, hence its /24, which is how an attacker
+    // fleet is packed k per /24. Script agents' pins used to be ignored.
+    let valid_node_ids: HashSet<u32> = gml_graph
+        .map(|g| g.nodes.iter().map(|n| n.id).collect())
+        .unwrap_or_default();
+    apply_topology_pins(
+        &mut network_node_ids,
+        &pure_scripts,
+        &valid_node_ids,
+        using_gml_topology,
+    )
+    .map_err(|e| color_eyre::eyre::eyre!(e))?;
+
+    for (i, (agent_id, pure_script_config)) in pure_scripts.iter().enumerate() {
+        let script_id = agent_id.as_str();
+        let network_node_id = network_node_ids[i];
         let script_ip = get_agent_ip(
             AgentType::PureScriptAgent,
             script_id,
@@ -78,6 +98,20 @@ pub fn process_pure_script_agents(
             ip_registry,
             None,
         )?;
+        // Once a node's /24 is used up the allocator silently falls back to an
+        // unrelated address, which would quietly break k-per-/24 packing.
+        if pure_script_config.topology_node.is_some() {
+            if let Some(base) = gml_graph.and_then(|g| node_subnet_base(g, network_node_id)) {
+                if !script_ip.starts_with(&format!("{base}.")) {
+                    return Err(color_eyre::eyre::eyre!(
+                        "agent '{script_id}' pins topology_node={network_node_id}, but that \
+                         node's /24 ({base}.0/24) is full: a node's /24 holds 245 hosts \
+                         (.10-.254), so this agent would get {script_ip} instead. Spread the \
+                         pinned agents over more nodes."
+                    ));
+                }
+            }
+        }
 
         let mut script_args = vec![
             format!("--id {}", script_id),
@@ -157,7 +191,7 @@ echo "Starting pure script agent {}..."
         hosts.insert(
             script_id.to_string(),
             ShadowHost {
-                network_node_id, // distinct GML node per script agent (distinct AS/subnet)
+                network_node_id, // spread (distinct AS/subnet) unless pinned via topology_node
                 ip_addr: Some(script_ip),
                 blocked_inbound_ports: None,
                 processes: vec![process],
@@ -165,6 +199,39 @@ echo "Starting pure script agent {}..."
                 bandwidth_up: Some("1000000000".to_string()),   // 1 Gbit/s
             },
         );
+    }
+
+    // Report where pinned script agents went, so a mis-packed fleet shows up in
+    // the generator log before a long run, and flag any other host that shares
+    // a pinned node (and so its /24) with them.
+    let mut pinned_per_node: BTreeMap<u32, usize> = BTreeMap::new();
+    let mut pinned_ids: HashSet<&str> = HashSet::new();
+    for (i, (agent_id, cfg)) in pure_scripts.iter().enumerate() {
+        if cfg.topology_node.is_some() {
+            *pinned_per_node.entry(network_node_ids[i]).or_default() += 1;
+            pinned_ids.insert(agent_id.as_str());
+        }
+    }
+    if !pinned_per_node.is_empty() {
+        log::info!(
+            "topology_node: {} script agents pinned onto {} nodes (up to {} per node, i.e. per /24)",
+            pinned_ids.len(),
+            pinned_per_node.len(),
+            pinned_per_node.values().max().copied().unwrap_or(0)
+        );
+        for (host_id, host) in hosts.iter() {
+            if let Some(n) = pinned_per_node.get(&host.network_node_id) {
+                if !pinned_ids.contains(host_id.as_str()) {
+                    log::warn!(
+                        "topology_node={}: host '{}' also sits on this node, so it shares \
+                         the /24 of the {} script agents pinned there",
+                        host.network_node_id,
+                        host_id,
+                        n
+                    );
+                }
+            }
+        }
     }
 
     Ok(())
