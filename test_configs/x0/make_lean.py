@@ -147,6 +147,8 @@ def scenario_text(a, ban):
     head = re.sub(r"(?m)^(    sim-subnet-dedup:).*", rf'\1 "{a.dedup}"', head)
     if a.fixed_rx_seed:
         head = re.sub(r"(?m)^(    sim-subnet-dedup:)", r"    sim-fixed-randomx-seed: true\n\1", head)
+    if a.uniform_pick:
+        head = re.sub(r"(?m)^(    sim-subnet-dedup:)", r"    sim-uniform-whitelist-pick: true\n\1", head)
     head = re.sub(r"(?m)^(  stop_time:).*", rf"\1 {stop}s", head)
     head = re.sub(r"(?m)^(  bootstrap_end_time:).*", rf"\1 {bootstrap}s", head)
     n_spy = a.spies
@@ -201,6 +203,10 @@ def main():
                     help="with --list half: fraction of the spy /24s the list names, densest first "
                          "(scripts/spy_ban_list.py --coverage); the real list misses part of a diversified tail")
     ap.add_argument("--seed", type=int, default=12345)
+    ap.add_argument("--uniform-pick", action="store_true",
+                    help="every daemon gets --sim-uniform-whitelist-pick (needs a monerod-sim built with "
+                         "patches/monero-sim-uniform-whitelist-pick.patch): the white-list peer pick is uniform instead of the "
+                         "stock recency-biased draw. Open question 10's probe; cell names get _up.")
     ap.add_argument("--fixed-rx-seed", action="store_true",
                     help="every daemon gets --sim-fixed-randomx-seed (needs a monerod-sim built with "
                          "patches/monero-sim-fixed-randomx-seed.patch). Without it a cell that runs past chain height "
@@ -226,7 +232,7 @@ def main():
             + (f"_m{a.spies_per_subnet}" if a.spies_per_subnet is not None else "")
             + (f"_n{a.spy_node0}" if a.spy_node0 != SPY_NODE0 else "")
             + (f"_c{round(100 * a.ban_coverage)}" if a.list == "half" and a.ban_coverage != 1.0 else "")
-            + ("_fx" if a.fixed_rx_seed else ""))
+            + ("_fx" if a.fixed_rx_seed else "") + ("_up" if a.uniform_pick else ""))
     stem = f"lean_{a.dedup}_{a.list}_h{a.reachable}_k{a.spy_subnets}{wtag}_s{a.seed}"
     out = OUT / f"{stem}.yaml"
     ban = ""

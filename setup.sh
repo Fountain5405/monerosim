@@ -1237,6 +1237,7 @@ install_sim_monerod() {
     #   patches/monero-sim-txrelay-log.patch      --sim-log-txrelay (measurement only)
     #   patches/monero-sim-subnet-dedup.patch     --sim-subnet-dedup (outbound peer grouping; stock = 24)
     #   patches/monero-sim-fixed-randomx-seed.patch --sim-fixed-randomx-seed (no RandomX epoch change at block 2113)
+    #   patches/monero-sim-uniform-whitelist-pick.patch --sim-uniform-whitelist-pick (white-list pick uniform, not recency-biased)
     # One build serves the fork-schedule, native-mining and eclipse-measurement
     # features; monerod-hf is kept as a symlink alias so the hard fork and
     # eclipse configs that name it keep working.
@@ -1250,6 +1251,7 @@ install_sim_monerod() {
         "$SCRIPT_DIR/patches/monero-sim-txrelay-log.patch"
         "$SCRIPT_DIR/patches/monero-sim-subnet-dedup.patch"
         "$SCRIPT_DIR/patches/monero-sim-fixed-randomx-seed.patch"
+        "$SCRIPT_DIR/patches/monero-sim-uniform-whitelist-pick.patch"
     )
     local p
     for p in "${patches[@]}"; do

@@ -1802,6 +1802,24 @@ light; users 0.09-0.15; 20-30 of 40 users exposed (wider than P21's 22-30: E27b'
 Wall under 2.5 h (phantom's P21 takes ~4 h on 16 workers; this box runs 32). Both inside 0.31-0.35 but outside 0.95-1.05x of each other means
 the 24 h steady state is seed-sensitive at the few-percent level; either outside the range means the spread fleet has no seed-stable steady state.
 
+**P24, filed 2026-10-24 06:24, before the cell is queued (open question 10's probe: the white-list pick made uniform).**
+`lean_24_none_h300_k42_w13h_m1_n600_up_s12345` on `zenith2alpha` after P23 (md5 `33ca7b5b`; E27's cell plus `--sim-uniform-whitelist-pick`
+on every daemon, the only differing line): the spread fleet (42 spies in 42 /24s, 384 daemons) at a 13 h warmup, window 15-19 h, seed 12345.
+E27 read **0.3369**, 2.20x the subnet model's 0.1531, with a start-order gradient (earliest-started relays ~1.5x the ceiling, latest ~3.5x)
+that E21 traced to monero's recency-biased white-list pick (`get_random_index_with_fixed_probability`, a cubic draw). The patch replaces that
+draw with a uniform one over the same candidates. If E21's reading is right: (a) light-node share **0.13-0.19** (0.85-1.25x the ceiling);
+(b) the gradient is gone: in `spy_share_vs_time` the latest-started quarter of relays reads at most 1.3x the earliest-started one over
+hours 15-19; (c) every daemon's log has the `--sim-uniform-whitelist-pick` line; (d) at most 20 of 40 users exposed (E27: 27). Prior 60%.
+At or above 0.28 (1.8x) the recency pick is not the cause and open question 10 goes back to the lists' age structure and the cap of 20;
+0.19-0.28 means it is part of the cause. Wall under 1.5 h there (E27 took ~2.5 h on phantom).
+
+**P25, filed 2026-10-24 06:24, before the cell is queued (the rebuilt binary's flag-off check).** `lean_legacy_none_h71_k1_s12345` on `phantom`
+after P21, with `monerod-sim` rebuilt from all ten patches and the new flag **off** (as every cell without `_up` has it): light-node share
+**0.055-0.066** (phantom read 0.0610 on the nine-patch binary; the four boxes' same-seed reads span 0.061-0.064, so bit-equality is not a
+test Shadow offers), all five checks, wall under 50 min, the run's `binary_provenance.txt` lists ten patches, and no daemon logs the
+uniform-pick line. Prior 90%: the flag-off path is unchanged by inspection; this is the platform-range check every binary change has had
+(P9/E20, P22/E31). Outside the range means the build, not the flag, changed something, and no `_up` cell is read until that is understood.
+
 ## 6. Open questions
 
 1. **The 1.5x in the dedup plateau** (E5). Needs a probe cell at long warmup with
