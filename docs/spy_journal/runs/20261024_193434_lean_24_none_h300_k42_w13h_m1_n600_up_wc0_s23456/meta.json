@@ -1,0 +1,30 @@
+{
+ "run_id": "20261024_193434_lean_24_none_h300_k42_w13h_m1_n600_up_wc0_s23456",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_m1_n600_up_wc0_s23456",
+ "archived_at": "2026-10-24T19:35:11Z",
+ "monerod_sim_sha": "8d8255edb4ea",
+ "wall": "2h 15m",
+ "exit_code": 0,
+ "min_avail_mb": 160181,
+ "txs_created": 1097,
+ "txs_in_blocks": 1097,
+ "note": "P28 (E38): P26 at seed 23456 (cap lifted, uniform draw); light 0.1557 = 1.01x the ceiling 0.1539 (P26 0.1577); eleven-patch binary",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 240,
+ "light_out": 0.1557,
+ "light_out_quarters": [
+  0.1545,
+  0.1566,
+  0.1556,
+  0.1558
+ ],
+ "model_out": 0.1539,
+ "fluff_per_hop": 0.2,
+ "stem_txs": 1097,
+ "stem_hops_implied": 5.0,
+ "embargo_rate": 0.0
+}
