@@ -27,6 +27,11 @@ Through it, at alpha 0.45, 2000 d, 5 seeds:
 | the SIM's stubborn rule (`sim_stubborn`) | 0.2569 0.2565 0.2553 0.2560 0.2546 | 0.2558 | 53,871 | 2.69 | 17 |
 | 12-daemon sims, window_stubborn noown (n=4) | 0.288 0.279 0.269 0.253 | 0.272 | 119-138 per 72 h | - | - |
 
+At alpha 0.50 (same procedure): `sim_stubborn` 0.5721 0.5705 0.5716 0.5730
+0.5703, mean 0.5715, 124,250 reveals/run, mean reorg 2.69, max 19; the sims
+measured 0.604 (n=4: 0.591 0.582 0.614 0.628). The race model under-predicts
+the sim's rule by 0.016 at 0.45 and 0.033 at 0.50.
+
 Finding: the two hand-written rules differ by 0.025 in the race model. The
 sim's rule holds while there is no honest block whatever the objects
 deficit, and gives up as soon as an honest block appears while it holds
@@ -40,20 +45,44 @@ policy is compared with `sim_stubborn`, the rule the sims actually run.
 Test suite (`scripts/test_sop_rl.py -m slow`, 2026-10-25): on
 Caps(3,3,32,16,16), where reveals are possible, the greedy policy after
 40 M steps at the exact rho lands within 0.01 of the Compact solver's
-optimum. Mid-caps check (3/3/48/20/20, 7,981,414 states, noown): exact
-solve running on lithium since 17:05Z; MdpEnv training to follow. Result:
-(pending).
+optimum. Mid-caps reference (3/3/48/20/20, 7,981,414 states, noown, alpha 0.45):
+exact optimum 0.4500 = honest mining, and the optimal policy never reveals
+(action counts over decision pairs: hold 5.69 M, publish 0.34 M, reveal 0,
+give_up 10.8 M; 3601 s on lithium). The race-env training at 0.45 found
+0.449 / 0.446 on its first two bisection steps, i.e. honest mining too, so
+a learner-vs-exact comparison at 0.45 only shows that it learns to mine
+honestly. The check is therefore repeated at alpha 0.50, where the
+hand-written attacker is profitable (sims 0.604): exact 3/3/48/20/20 solve
+at 0.50 launched 18:10Z, MdpEnv training at the same caps to follow.
+Result: (pending).
 
-For reference, the 4/4/64/24/24 exact solve (85.1 M states, lithium,
-07:07Z to ~18:00Z): optimum converging to 0.4499, i.e. honest mining: within a
+For reference, the 4/4/64/24/24 exact solve (85,108,639 states, lithium,
+07:07Z to 19:50Z, 12.7 h): optimum 0.4500, i.e. honest mining: within a
 4-block truncation no policy beats publishing every block, while the
-stubborn rule under the same cap scores 0.098 (race model).
+stubborn rule under the same cap scores 0.098 (race model). The optimal
+policy's action counts (hold 151 M, give up 97 M, publish 0.9 M, reveal
+0.37 M over decision pairs) are mostly value ties at rho = alpha resolved
+toward hold; the share is honest's. The policy table (2.2 GB JSON) stays
+on lithium.
 
 ### 3. Beat the stubborn rule in the race model
 
-Training alpha 0.45 on lithium from 17:08Z (`train --env race --budget
-200000000`, bisection on the share, 2000 d x 3 seeds per step). Result:
-(pending). Pass: mean over 5 seeds >= 0.2558 + 0.01.
+First attempt (17:08Z-19:20Z, pure eps-greedy, 2000 d x 3 seeds per
+bisection step): every alpha converged to honest mining within 2-4 steps
+(0.400 at 0.40, 0.449 at 0.45, 0.478 at 0.48, 0.498 at 0.50), including
+alpha 0.50 where `sim_stubborn` earns 0.5715. Random exploration never
+holds a branch long enough to see a deep reveal pay; the exact solves
+show why: at 3 blocks per side the optimum is honest with zero reveals at
+both 0.45 and 0.50, so the profitable reveals live in branches deeper than
+any solvable truncation, and a learner has to be led there. Second attempt
+(from 19:45Z): the design's optional warm start, as an off-policy
+behaviour policy: the training step follows `sim_stubborn` with weight
+beta decaying from 1 to 0 over the budget, so the table's values along
+stubborn's trajectories are grounded before the greedy policy takes over.
+Pass bar: the greedy policy's mean over 5 seeds exceeds `sim_stubborn`'s
+(0.2558 at 0.45, 0.5715 at 0.50) by 0.01; reported next to honest mining
+(alpha) as well, since honest beats stubborn below ~0.48. Result:
+(pending).
 
 ### 4. Smoke cell (6 h)
 
