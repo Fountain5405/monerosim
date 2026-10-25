@@ -99,6 +99,42 @@ def test_train_finds_publish_at_cap_when_window_is_unreachable():
     assert r["share"] > 0.43
 
 
+def test_greedy_needs_n_min_updates_before_an_action_can_win():
+    # 2026-10-25: the greedy policies were patchworks of actions whose values rested on one
+    # sample (one-step: honest drift; race returns: a collapse to 0.129). With n_min, an action
+    # competes only after n_min updates; elsewhere the policy and the bootstrap fall back.
+    q = RL.QTable(n_min=3)
+    k = (1, 2, 0, 0, 1, 0, 0)
+    legal = (True, False, False, True)
+    q.seed_row(k, [0.1, 0.0, 0.0, 0.9], legal=legal, tried=legal, n=[5, 0, 0, 1])
+    assert q.greedy_tried(k, legal) == M.HOLD                     # give_up's 0.9 rests on one update
+    assert q.value_tried(k, legal, default=-7.0) == pytest.approx(0.1)
+    q.n[k][M.GIVE_UP] = 3
+    assert q.greedy_tried(k, legal) == M.GIVE_UP
+    k2 = (2, 3, 0, 0, 1, 0, 0)
+    q.seed_row(k2, [0.4, 0.0, 0.0, 0.0], legal=legal, tried=(True, False, False, False), n=[2, 0, 0, 0])
+    assert q.greedy_tried(k2, legal) == -1                         # nothing confident: the policy falls back
+    assert q.value_tried(k2, legal, default=-7.0) == -7.0          # and so does the bootstrap ...
+    assert q.value_tried(k2, legal, default=-7.0, fallback=M.HOLD) == pytest.approx(0.4)   # ... unless the fallback action was updated
+    assert RL.QTable().greedy_tried(k, legal) == -1 and RL._copy_table(q).n[k] == [5, 0, 0, 3]
+
+
+def test_train_follows_the_behaviour_policy_where_nothing_is_confident():
+    # beta 0: every non-random step takes the greedy branch; with an unreachable n_min nothing is
+    # ever confident, so those steps play sim_stubborn, and the random steps (eps 0.2) give other
+    # actions updates without ever making them greedy
+    caps = M.Caps(3, 3, 40, 12, 12)
+    env = RL.MdpEnv(0.45, caps)
+    env.reset(1)
+    q = RL.train(env, 0.45, rho=0.3, budget=200_000, seed=1, behaviour=RL.sim_stubborn, beta_start=0.0,
+                 beta_end=0.0, eps_start=0.2, eps_end=0.2, n_min=10**9)
+    assert len(q) > 100 and q.n_min == 10**9
+    assert all(q.greedy_tried(k, q.legal_of(k)) == -1 for k in q.q)
+    assert sum(sum(1 for c in q.n[k] if c > 0) > 1 for k in q.q) > 50       # alternatives were tried ...
+    stub = sum(q.n[k][RL.legal_fallback(RL.sim_stubborn(k), q.legal_of(k))] for k in q.q)
+    assert stub > 0.7 * sum(sum(q.n[k]) for k in q.q)                     # ... but stubborn's action dominates
+
+
 def test_table_policy_falls_back_and_respects_legality():
     q = RL.QTable()
     pol = RL.TablePolicy(q)
@@ -183,6 +219,9 @@ def test_export_only_stores_differences_from_sim_stubborn_and_round_trips(tmp_pa
     fp = RL.FilePolicy(str(tmp_path / "p.json.gz"))
     assert fp(s_diff, (True, False, True, True)) == (M.HOLD, True)
     assert fp(s_same, (True, False, False, True)) == (M.GIVE_UP, False)
+    q3 = RL.QTable(n_min=2)        # hold's 1.0 at s_diff rests on one update: not a deviation yet
+    q3.seed_row(q3.key(s_diff), [1.0, 0, 0, 0], legal=legal, tried=legal, n=[1, 0, 3, 3])
+    assert RL.export_policy(q3, str(tmp_path / "p3.json.gz"), {"alpha": 0.45, "env": "race", "share": 0.3}) == 0
 
 
 def test_export_records_bins_and_file_policy_keys_through_them(tmp_path):
@@ -207,9 +246,9 @@ def test_cli_train_and_eval_smoke(tmp_path):
     subprocess.run([sys.executable, "scripts/sop_rl.py", "train", "--alpha", "0.45", "--env", "mdp",
                     "--a-max", "3", "--h-max", "3", "--d-max", "40", "--p-max", "12", "--deficit", "12",
                     "--budget", "200000", "--days-eval", "2", "--d-bin", "2", "--p-bin", "2",
-                    "--returns", "race", "--out", str(out)], check=True)
+                    "--returns", "race", "--n-min", "4", "--lr", "0.1", "--out", str(out)], check=True)
     _, meta = RL.load_policy(str(out))
-    assert meta["key_clip"]["p_bin"] == 2 and meta["returns"] == "race"
+    assert meta["key_clip"]["p_bin"] == 2 and meta["returns"] == "race" and meta["n_min"] == 4 and meta["lr"] == 0.1
     r = subprocess.run([sys.executable, "scripts/sop_rl.py", "eval", "--policy", str(out), "--alpha", "0.45",
                         "--env", "mdp", "--a-max", "3", "--h-max", "3", "--d-max", "40", "--p-max", "12",
                         "--deficit", "12", "--days", "2", "--seeds", "1"], check=True, capture_output=True, text=True)

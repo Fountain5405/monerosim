@@ -143,9 +143,11 @@ class QTable:
     """Q rows (4 floats, Python lists: the inner loop is per object) keyed by
     key_of(obs), created on first visit; `visits` counts updates per key."""
 
-    def __init__(self, d_clip: int = 128, p_clip: int = 48, d_bin: int = 1, p_bin: int = 1):
+    def __init__(self, d_clip: int = 128, p_clip: int = 48, d_bin: int = 1, p_bin: int = 1, n_min: int = 1):
         self.d_clip, self.p_clip, self.d_bin, self.p_bin = d_clip, p_clip, d_bin, p_bin
+        self.n_min = n_min                   # updates an action needs at a key before it can be the greedy one
         self.q: Dict[Obs, List[float]] = {}
+        self.n: Dict[Obs, List[int]] = {}    # updates per action
         self.visits: Dict[Obs, int] = {}
         self.legal: Dict[Obs, int] = {}      # bits 0-3: legal actions as first seen; bits 4-7: actions tried
 
@@ -157,14 +159,17 @@ class QTable:
         if r is None:
             r = [0.0, 0.0, 0.0, 0.0]
             self.q[k] = r
+            self.n[k] = [0, 0, 0, 0]
             self.visits[k] = 0
             if legal is not None:
                 self.legal[k] = sum(1 << i for i in range(4) if legal[i])
         return r
 
-    def seed_row(self, k: Obs, row: List[float], legal, tried) -> None:
-        """Install a row with its legal and tried masks (tests, warm starts)."""
+    def seed_row(self, k: Obs, row: List[float], legal, tried, n=None) -> None:
+        """Install a row with its legal and tried masks and per-action update
+        counts (tests, warm starts); tried actions count as updated once."""
         self.q[k] = list(row)
+        self.n[k] = list(n) if n is not None else [1 if t else 0 for t in tried]
         self.visits[k] = max(self.visits.get(k, 0), 1)
         self.legal[k] = sum(1 << i for i in range(4) if legal[i]) | sum(1 << (4 + i) for i in range(4) if tried[i])
 
@@ -182,23 +187,35 @@ class QTable:
         return self.q[k][a] if a >= 0 else 0.0
 
     def greedy_tried(self, k: Obs, legal) -> int:
-        """Greedy among the legal actions that were actually updated; -1 if none
-        (an untried action's 0.0 must not outrank a tried action's value)."""
+        """Greedy among the legal actions updated at least n_min times; -1 if
+        none. An untried action's 0.0 must not outrank a tried action's value,
+        and (n_min > 1, 2026-10-25) one lucky sample must not outrank a
+        well-estimated one: the greedy policies were patchworks of such
+        samples (one-step targets drifted to honest, race returns collapsed
+        to 0.129 at alpha 0.50)."""
         r = self.q.get(k)
         if r is None:
             return -1
-        t = self.legal.get(k, 0) >> 4
-        mask = tuple(legal[i] and bool(t >> i & 1) for i in range(4))
+        cnt, m = self.n[k], self.n_min
+        mask = tuple(legal[i] and cnt[i] >= m for i in range(4))
         return self.argmax(r, mask) if any(mask) else -1
 
-    def value_tried(self, k: Obs, legal, default: float) -> float:
-        """Bootstrap value of a successor: max over its tried legal actions,
-        or `default` (the reference value) when nothing was tried there yet.
-        Maximising over untried zeros instead made every hold chain look
-        like 0 at its frontier (2026-10-25: Q(hold) -0.17 where the Monte
-        Carlo return was -0.76)."""
+    def value_tried(self, k: Obs, legal, default: float, fallback: int = -1) -> float:
+        """Bootstrap value of a successor: max over its confident legal
+        actions; else the `fallback` action's value if that was updated at
+        least once (the behaviour policy's action there, which is what the
+        greedy policy plays where nothing is confident); else `default` (the
+        reference value). Maximising over untried zeros instead made every
+        hold chain look like 0 at its frontier (2026-10-25: Q(hold) -0.17
+        where the Monte Carlo return was -0.76)."""
         a = self.greedy_tried(k, legal)
-        return self.q[k][a] if a >= 0 else default
+        if a >= 0:
+            return self.q[k][a]
+        if fallback >= 0 and legal[fallback]:
+            cnt = self.n.get(k)
+            if cnt is not None and cnt[fallback] > 0:
+                return self.q[k][fallback]
+        return default
 
     @staticmethod
     def argmax(row: List[float], legal) -> int:
@@ -232,7 +249,8 @@ MAX_RACE = 4096        # race_returns: a race longer than this (objects) is flus
 def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None,
           lr: float = 0.02, eps_start: float = 0.3, eps_end: float = 0.02, seed: int = 1,
           lr_min: float = 0.002, behaviour: Optional[Callable[[Obs], int]] = None,
-          beta_start: float = 1.0, beta_end: float = 0.0, race_returns: bool = False) -> QTable:
+          beta_start: float = 1.0, beta_end: float = 0.0, race_returns: bool = False,
+          n_min: int = 1) -> QTable:
     """Relative-value (RVI) Q-learning for the average reward
     r = fa - rho * (fa + fh):  Q(s,a) += a_n * (r - V(ref) + max_legal Q(s') - Q(s,a)),
     V(ref) = max_legal Q(ref). The step size decays per key with its visit
@@ -263,8 +281,14 @@ def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None
     value, so a reveal's payoff reached the race's first hold only after as
     many revisits as the race is long; over millions of keys seen a few
     times each, the first warm-started trainings (20:45Z) still ended at
-    honest mining at every alpha. Settled steps flush at once (one-step)."""
-    q = q if q is not None else QTable()
+    honest mining at every alpha. Settled steps flush at once (one-step).
+
+    `n_min` (2026-10-25, the table's confidence gate): an action is greedy
+    at a key only after n_min updates there; where nothing is confident the
+    training step and the bootstrap use the behaviour policy's action, so
+    the learned policy is the behaviour policy plus the deviations the data
+    supports (with n_min 1 this is the plain tried-only rule)."""
+    q = q if q is not None else QTable(n_min=n_min)
     rng = random.Random(seed)
     o = env.obs()
     legal = env.legal()
@@ -275,15 +299,15 @@ def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None
     eps = eps_start
     dbeta = (beta_end - beta_start) / max(budget, 1)
     beta = beta_start if behaviour is not None else 0.0
-    buf: List[tuple] = []   # race_returns: (row, k, a, r, k2, legal2, exploratory) since the last settled state
+    buf: List[tuple] = []   # race_returns: (row, k, a, r, k2, legal2, exploratory, fb2) since the last settled state
 
     def flush() -> None:
         vref = q.value(kref)
         G = 0.0
         cut = True            # the race's last step bootstraps from its settled successor
-        for row_t, k_t, a_t, r_t, k2_t, legal2_t, expl_t in reversed(buf):
+        for row_t, k_t, a_t, r_t, k2_t, legal2_t, expl_t, fb_t in reversed(buf):
             if cut:
-                G = q.value_tried(k2_t, legal2_t, vref)
+                G = q.value_tried(k2_t, legal2_t, vref, fb_t)
             G = r_t - vref + G
             n = q.visits[k_t]
             st = 1.0 / (1.0 + lr * n)
@@ -291,6 +315,7 @@ def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None
                 st = lr_min
             row_t[a_t] += st * (G - row_t[a_t])
             q.visits[k_t] = n + 1
+            q.n[k_t][a_t] += 1
             q.legal[k_t] |= 1 << (4 + a_t)
             cut = expl_t
         buf.clear()
@@ -307,28 +332,33 @@ def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None
         else:
             g = a = q.greedy_tried(k, legal)
             if a < 0:
-                choices = [i for i in range(4) if legal[i]]
-                a = choices[int(rng.random() * len(choices))]
+                if behaviour is not None:    # nothing confident here: play the behaviour policy
+                    a = legal_fallback(behaviour(o), legal)
+                else:
+                    choices = [i for i in range(4) if legal[i]]
+                    a = choices[int(rng.random() * len(choices))]
         o2, fa, fh = env.step(a)
         r = fa - rho * (fa + fh)
         legal2 = env.legal()
         k2 = q.key(o2)
         row2 = q.row(k2, legal2)
+        fb2 = legal_fallback(behaviour(o2), legal2) if behaviour is not None else -1
         if race_returns:
             if g == -2:
                 g = q.greedy_tried(k, legal)
-            buf.append((row, k, a, r, k2, legal2, g >= 0 and a != g))
+            buf.append((row, k, a, r, k2, legal2, g >= 0 and a != g, fb2))
             if (o2[0] == 0 and o2[4] == 0) or len(buf) >= MAX_RACE:
                 flush()
         else:
             vref = q.value(kref)
-            m2 = q.value_tried(k2, legal2, vref)
+            m2 = q.value_tried(k2, legal2, vref, fb2)
             n = q.visits[k]
             step = 1.0 / (1.0 + lr * n)
             if step < lr_min:
                 step = lr_min
             row[a] += step * (r - vref + m2 - row[a])
             q.visits[k] = n + 1
+            q.n[k][a] += 1
             q.legal[k] |= 1 << (4 + a)
         o, legal, k, row = o2, legal2, k2, row2
         eps += de
@@ -365,8 +395,9 @@ class TablePolicy:
 # ---------------------------------------------------------------------------
 
 def _copy_table(q: QTable) -> QTable:
-    c = QTable(q.d_clip, q.p_clip, q.d_bin, q.p_bin)
+    c = QTable(q.d_clip, q.p_clip, q.d_bin, q.p_bin, q.n_min)
     c.q = {k: list(v) for k, v in q.q.items()}
+    c.n = {k: list(v) for k, v in q.n.items()}
     c.visits = dict(q.visits)
     c.legal = dict(q.legal)
     return c
@@ -377,7 +408,8 @@ def share_search(make_env: Callable[[int], object], alpha: float, budget: int, l
                  seeds: Tuple[int, ...] = (11, 12, 13), log=None,
                  make_train_env: Optional[Callable[[int], object]] = None, max_steps: int = 12,
                  behaviour: Optional[Callable[[Obs], int]] = None, beta_start: float = 1.0,
-                 beta_end: float = 0.0, race_returns: bool = False, d_bin: int = 1, p_bin: int = 1) -> dict:
+                 beta_end: float = 0.0, race_returns: bool = False, d_bin: int = 1, p_bin: int = 1,
+                 n_min: int = 1, lr: float = 0.02) -> dict:
     """Bisection on rho (Sapirshtein-Sompolinsky-Zohar): train at mid
     (warm-started from the BEST table so far), roll the greedy policy out on
     `eval_objects` objects per seed with fresh envs from make_env(seed), and
@@ -388,7 +420,7 @@ def share_search(make_env: Callable[[int], object], alpha: float, budget: int, l
     holding scores 0, so the greedy policy holds until forced: 0.311 at rho
     0.575, alpha 0.50, 2026-10-25); its table is dropped, not carried."""
     make_train_env = make_train_env or make_env
-    q: Optional[QTable] = QTable(d_bin=d_bin, p_bin=p_bin)
+    q: Optional[QTable] = QTable(d_bin=d_bin, p_bin=p_bin, n_min=n_min)
     best_share, best_q = -1.0, None
     history: List[Tuple[float, float, int]] = []
     step = 0
@@ -398,7 +430,7 @@ def share_search(make_env: Callable[[int], object], alpha: float, budget: int, l
         env = make_train_env(1000 + step)
         env.reset(1000 + step)
         q = train(env, alpha, mid, budget, q=q, seed=1000 + step, behaviour=behaviour,
-                  beta_start=beta_start, beta_end=beta_end, race_returns=race_returns)
+                  beta_start=beta_start, beta_end=beta_end, race_returns=race_returns, n_min=n_min, lr=lr)
         rows = []
         for sd in seeds:
             e = make_env(sd)
@@ -520,6 +552,9 @@ def main(argv=None) -> int:
                    help="one-step targets, or each race's full return applied backward when it settles")
     p.add_argument("--d-bin", type=int, default=1, help="bin D (objects) in the table key")
     p.add_argument("--p-bin", type=int, default=1, help="bin the pending counts in the table key")
+    p.add_argument("--n-min", type=int, default=1,
+                   help="updates an action needs at a key before it can be the greedy one (else sim_stubborn)")
+    p.add_argument("--lr", type=float, default=0.02, help="step size 1/(1 + lr * n) per key, floor 0.002")
     p = sub.add_parser("eval", help="score a policy file (or 'none' for sim_stubborn alone)")
     _add_env_args(p)
     p.add_argument("--policy", required=True)
@@ -536,11 +571,12 @@ def main(argv=None) -> int:
                            log=sys.stderr, make_train_env=make_train,
                            behaviour=sim_stubborn if args.behaviour == "stubborn" else None,
                            beta_start=args.beta_start, beta_end=args.beta_end,
-                           race_returns=args.returns == "race", d_bin=args.d_bin, p_bin=args.p_bin)
+                           race_returns=args.returns == "race", d_bin=args.d_bin, p_bin=args.p_bin,
+                           n_min=args.n_min, lr=args.lr)
         meta = {"alpha": args.alpha, "env": args.env, "share": out["share"], "rho": out["rho"],
                 "converged": out["converged"], "history": out["history"], "budget": args.budget,
                 "behaviour": args.behaviour, "beta": [args.beta_start, args.beta_end],
-                "returns": args.returns, "bins": [args.d_bin, args.p_bin],
+                "returns": args.returns, "bins": [args.d_bin, args.p_bin], "n_min": args.n_min, "lr": args.lr,
                 "caps": vars(args) if args.env == "mdp" else {"cap_blocks": args.cap_blocks},
                 "trained": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "seconds": round(time.time() - t)}
         n = export_policy(out["q"], args.out, meta)
