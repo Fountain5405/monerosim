@@ -1732,6 +1732,9 @@ which are the 20 adopters, so the 15 exposed are 15 of the 20 non-adopting users
 stemmed straight to a spy, so the recall over all user txs is half the non-adopting users' own rate, 0.138 against P26's 0.173 (0.80x). Busy
 senders: `sp_r` 0 of 5, combined 3 of 5. Stem-peer spy share: non-adopting users' median 0.157... (the 40-user median 0.02 straddles the two
 halves); 49% of reachable nodes ever had a spy stem peer (the non-adopting share of them is 52%).
+*Correction, 2026-10-25 06:55:* the stem-peer sentence above carries a number that was not computed. The scorer gives the 40 users' median
+stem-peer spy share as 0.02 and their median outbound spy share as 0.03, both medians falling between the adopting half at zero and the
+non-adopting half; no per-half median was computed, and "0.157..." should be read as struck.
 
 **P31: four of five lettered clauses hit, and the wall.** (a) 0.0771 in 0.070-0.100 (hit); (b) adopters 0.0000, the non-adopting relays' own share
 1.005x the ceiling in 0.92-1.24x, the relays' class share 0.0766 in 0.070-0.095 (hit); (c) both lines in all 382 logs (hit); (d) users 0.0772 in
