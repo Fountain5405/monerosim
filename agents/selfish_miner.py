@@ -22,7 +22,16 @@ chain and the strategy sees the recruited hashrate as its own lead).
 Attributes (via --attributes KEY VALUE):
     strategy            "honest" | "eyal_sirer" | "trail_stubborn" |
                         "equal_fork_stubborn" | "lead_stubborn" |
-                        "window_stubborn" | "deep_hunt"  (default "honest")
+                        "window_stubborn" | "deep_hunt" | "learned"  (default "honest")
+    policy_file         learned (2026-10-25): the gzip-JSON policy table
+                        scripts/sop_rl.py trained, a diff against the
+                        window_stubborn noown rule (relative to the repository
+                        root unless absolute); the strategy needs weigh "sop",
+                        window_rule "20261020", window_objects 32 and
+                        give_up_objects 5 as the training settings had. A
+                        missing or unreadable file fails the run at once.
+    alpha               learned: the cell's attacker share of the hashrate
+                        (optional); must equal the policy file's training alpha.
     bridges             comma-separated bridge agent ids (required)
     bridge_agent        single-bridge alias for `bridges` (phase-1 configs)
     islands             comma-separated ISLAND bridge agent ids (optional;
@@ -188,6 +197,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.release_depth = kw["release_depth"]
         self.window_rule = kw["window_rule"]
         self.give_up_objects = kw["give_up_objects"]
+        self.policy_file = kw["policy_file"]
+        self.alpha = kw["alpha"]
         self.embedded_shares = str(self.attributes.get("embedded_shares", "false")).strip().lower() in ("1", "true", "yes")
         self.weigh = self.attributes.get("weigh", "sop") or "sop"      # window_stubborn only
         self.sop_w = int(self.attributes.get("sop_w", "16") or 16)     # window_stubborn "sop" weigh only
@@ -249,6 +260,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             "release_depth": int(attributes.get("release_depth", "10") or 10),      # deep_hunt only
             "window_rule": attributes.get("window_rule", "v3") or "v3",            # window_stubborn, deep_hunt
             "give_up_objects": int(attributes.get("give_up_objects", "-1") or -1),  # window_stubborn, deep_hunt; -1 = block rule
+            "policy_file": attributes.get("policy_file") or None,                    # learned only
+            "alpha": float(attributes["alpha"]) if attributes.get("alpha") else None,   # learned only
         }
 
     def _ensure_strategy(self, start_height: int) -> None:
@@ -260,7 +273,9 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                                             give_up_depth=self.give_up_depth,
                                             release_depth=self.release_depth,
                                             window_rule=self.window_rule,
-                                            give_up_objects=self.give_up_objects)
+                                            give_up_objects=self.give_up_objects,
+                                            policy_file=self.policy_file,
+                                            alpha=self.alpha)
 
     @staticmethod
     def _header_difficulty(h) -> int:
@@ -297,11 +312,14 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         (att_objects, att_weight, hon_weight, att_objects above the first
         attacker block, honest objects above the first honest block,
         att_objects + the attacker's pending tip-pool shares, hon_objects +
-        the honest pending tip-pool shares) -- the last two are the give-up
-        currency of `give_up_objects` (pool shares only when tip_shares is
-        on; the own-tip ones count here whatever count_own_tip_shares says,
-        which governs the reveal-test WEIGHT only); for weigh="difficulty",
-        (att_objects, att_weight, hon_weight). None (with a logged warning)
+        the honest pending tip-pool shares, hon_objects) -- [5] and [6] are
+        the give-up currency of `give_up_objects` (pool shares only when
+        tip_shares is on; the own-tip ones count here whatever
+        count_own_tip_shares says, which governs the reveal-test WEIGHT
+        only); [7] (2026-10-25, the learned strategy) is the honest objects
+        behind hon_weight without pending, so [6] - [7] is the honest
+        pending count and [0] - [7] the objects weight difference; for
+        weigh="difficulty", (att_objects, att_weight, hon_weight). None (with a logged warning)
         on an RPCError or a header count mismatch on either side.
 
         weigh="sop" (default): attacker shares per block are
@@ -348,7 +366,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                 att_weight += self._tip_unit(att_headers) * att_pool
             hon_weight += self._tip_unit(hon_headers) * hon_pool
         return (att_objects, att_weight, hon_weight, att_objects - att_first, hon_objects - hon_first,
-                att_objects + att_pool, hon_objects + hon_pool)
+                att_objects + att_pool, hon_objects + hon_pool, hon_objects)
 
     def _tip_unit(self, headers) -> int:
         return max(1, self._header_difficulty(headers[-1]) // self.sop_w) if headers else 0
@@ -984,6 +1002,16 @@ class SelfishMinerAgent(AutonomousMinerAgent):
 
         # 5. Strategy decision first: forward_to (below) depends on it.
         decision = self.strategy.update(pub_height, priv_height, branch_weights=self._branch_weights)
+        if self.strategy.name == "learned" and self.strategy.last_learned is not None:
+            obs, key, act, stored = self.strategy.last_learned
+            self.strategy.last_learned = None
+            self.logger.debug(f"learned: obs={obs} key={key} action={act} stored={stored}")
+            n = self.strategy.learned_decisions + self.strategy.fallback_decisions
+            if n % 200 == 0:
+                self.logger.info(f"learned: decisions={n} stored={self.strategy.learned_decisions} "
+                                 f"fallback={self.strategy.fallback_decisions} "
+                                 f"clipped={self.strategy.clipped_decisions} "
+                                 f"suppressed_reveals={self.strategy.suppressed_reveals}")
         if (self.strategy_name in ("window_stubborn", "deep_hunt") and decision.release_to is not None
                 and pub_height >= self.strategy.start_height):   # warm-up publishes everything
             fork = decision.release_from

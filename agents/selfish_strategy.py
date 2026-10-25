@@ -55,6 +55,7 @@ ahead. tevador's MRL #146 simulator attacker is the same idea with a
 give-up of 5 work objects instead of whole blocks.
 """
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Optional
 
 
@@ -73,7 +74,8 @@ class SelfishStrategy:
     def __init__(self, name: str, start_height: int, trail_depth: int = 1,
                  release_lead: int = 1, window_objects: int = 48,
                  give_up_depth: int = 2, release_depth: int = 10,
-                 window_rule: str = "v3", give_up_objects: int = -1):
+                 window_rule: str = "v3", give_up_objects: int = -1,
+                 policy_file: Optional[str] = None, alpha: Optional[float] = None):
         if name not in (
             "honest",
             "eyal_sirer",
@@ -82,6 +84,7 @@ class SelfishStrategy:
             "lead_stubborn",
             "window_stubborn",
             "deep_hunt",
+            "learned",
         ):
             raise ValueError(f"unknown strategy: {name}")
         self.name = name
@@ -106,6 +109,30 @@ class SelfishStrategy:
         self.window_rule = window_rule
         self._was_tie = False   # equal_fork_stubborn: set on a tie contest (a == h >= 1)
         self.last_weights = None   # window_stubborn: last branch_weights() result seen
+        # learned (2026-10-25, scripts/sop_rl.py): a policy table over the exact-MDP
+        # observation, loaded at construction so a bad file fails the run at once
+        self.policy = None
+        self.policy_meta = None
+        self.alpha = alpha
+        self.learned_decisions = self.fallback_decisions = self.clipped_decisions = 0
+        self.suppressed_reveals = 0
+        self.last_learned = None   # (obs, key, action, stored) of the last learned decision
+        if name == "learned":
+            if not policy_file:
+                raise ValueError("strategy learned needs policy_file")
+            path = Path(policy_file)
+            if not path.is_absolute():
+                path = Path(__file__).resolve().parents[1] / path
+            from scripts.sop_policy import load_policy
+            try:
+                self.policy, self.policy_meta = load_policy(str(path))
+            except (FileNotFoundError, ValueError) as e:
+                raise ValueError(f"learned: cannot load policy_file {policy_file}: {e}") from e
+            pa = self.policy_meta.get("alpha")
+            if alpha is not None and pa is not None and abs(float(pa) - float(alpha)) > 1e-9:
+                raise ValueError(f"learned: policy_file {policy_file} was trained for alpha {pa}, cell has {alpha}")
+            c = self.policy_meta.get("key_clip", {})
+            self._key_clip = (int(c.get("d", 128)), int(c.get("p", 48)), int(c.get("d_bin", 1)))
 
     def update(self, pub_height: int, priv_height: int,
                branch_weights: Optional[Callable[[int, int, int], Optional[tuple]]] = None) -> ReleaseDecision:
@@ -138,7 +165,72 @@ class SelfishStrategy:
             return self._window_stubborn_decision(old_fork, pub_height, priv_height, a, h, branch_weights)
         if self.name == "deep_hunt":
             return self._deep_hunt_decision(old_fork, pub_height, priv_height, a, h, branch_weights)
+        if self.name == "learned":
+            return self._learned_decision(old_fork, pub_height, priv_height, a, h, branch_weights)
         return self._lead_stubborn_decision(old_fork, pub_height, priv_height, a, h)
+
+    @staticmethod
+    def observation(a: int, h: int, weights) -> tuple:
+        """The exact-MDP state (scripts/sop_mdp.py: a, D, xa, pa, h, xh, ph) from
+        the 8-tuple _branch_weights() returns: D = attacker objects - honest
+        objects (blocks + embedded shares, in OBJECTS, not weight units;
+        honest pending excluded), x = objects past each branch's first block
+        capped at 32 and both collapsed to 32 once either passes, pa =
+        weights[5] - weights[0], ph = weights[6] - weights[7]."""
+        from scripts.sop_policy import WINDOW
+        xa, xh = min(int(weights[3]), WINDOW), min(int(weights[4]), WINDOW)
+        if xa >= WINDOW or xh >= WINDOW:
+            xa = xh = WINDOW
+        return (int(a), int(weights[0]) - int(weights[7]), xa, int(weights[5]) - int(weights[0]),
+                int(h), xh, int(weights[6]) - int(weights[7]))
+
+    def _learned_decision(self, old_fork: int, pub_height: int, priv_height: int,
+                          a: int, h: int,
+                          branch_weights: Optional["Callable[[int, int, int], Optional[tuple]]"]
+                          ) -> ReleaseDecision:
+        """Look the observation up in the policy table; sim_stubborn (the
+        window_stubborn noown rule) in unseen states. publish (only with no
+        honest block) releases without a weight test, there is no competing
+        branch; reveal is only released if the strategy's own acceptance test
+        passes (past the window and ahead by weight, as window_stubborn), else
+        it becomes a hold and is counted as suppressed."""
+        from scripts.sop_policy import GIVE_UP, HOLD, PUBLISH, REVEAL, ACTION_NAMES, key_of, sim_stubborn
+        give_up = ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=True, forward_to=None)
+        hold = ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
+        if a == 0 and h == 0:
+            return hold
+        weights = branch_weights(old_fork, priv_height, pub_height) if branch_weights else None
+        self.last_weights = weights
+        if weights is None or len(weights) < 8:
+            return hold
+        obs = self.observation(a, h, weights)
+        key = key_of(obs, *self._key_clip)
+        action = self.policy.get(key)
+        stored = action is not None
+        if stored:
+            self.learned_decisions += 1
+        else:
+            action = sim_stubborn(obs)
+            self.fallback_decisions += 1
+        if key != obs:
+            self.clipped_decisions += 1
+        self.last_learned = (obs, key, ACTION_NAMES[action], stored)
+        if action == GIVE_UP:
+            self.fork = pub_height
+            return give_up
+        if action == PUBLISH:
+            if h != 0 or a < 1:
+                return hold
+            self.fork = priv_height
+            return ReleaseDecision(release_from=old_fork, release_to=priv_height - 1, adopt_public=False, forward_to=None)
+        if action == REVEAL:
+            past = max(weights[3], weights[4]) >= self.window_objects
+            if a < 1 or h < 1 or not past or weights[1] <= weights[2]:
+                self.suppressed_reveals += 1
+                return hold
+            self.fork = priv_height
+            return ReleaseDecision(release_from=old_fork, release_to=priv_height - 1, adopt_public=False, forward_to=None)
+        return hold
 
     def _eyal_sirer_decision(self, old_fork: int, pub_height: int, priv_height: int, a: int, h: int) -> ReleaseDecision:
         """Textbook Eyal-Sirer decision body, parametrized by `self.release_lead`

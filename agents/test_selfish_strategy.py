@@ -560,3 +560,67 @@ def test_give_up_objects_then_reveals_when_past_window_and_heavier():
     d = s.update(pub_height=102, priv_height=103,
                  branch_weights=lambda f, p, q: (50, 5000, 3000, 34, 30, 50, 40))
     assert d.release_to == 102 and d.release_from == 100 and s.fork == 103
+
+
+# ---- learned strategy (docs/superpowers/plans/2026-10-25-sop-rl-attacker.md, Task 5) ----
+
+def _policy_file(tmp_path, entries, alpha=0.45):
+    import gzip
+    import json
+    p = tmp_path / "p.json.gz"
+    with gzip.open(p, "wt") as f:
+        json.dump({"meta": {"alpha": alpha, "env": "race"}, "key_clip": {"d": 128, "p": 48, "d_bin": 1},
+                   "fallback": "sim_stubborn", "policy": entries}, f)
+    return str(p)
+
+
+def test_learned_requires_a_loadable_policy_file(tmp_path):
+    with pytest.raises(ValueError):
+        SelfishStrategy("learned", start_height=0)
+    with pytest.raises(ValueError):
+        SelfishStrategy("learned", start_height=0, policy_file=str(tmp_path / "missing.json.gz"))
+    with pytest.raises(ValueError):
+        SelfishStrategy("learned", start_height=0, policy_file=_policy_file(tmp_path, {}, alpha=0.40), alpha=0.45)
+
+
+def test_learned_observation_matches_sop_mdp():
+    from scripts import sop_mdp as M
+    # fork at 100; attacker 2 blocks (3 and 1 embedded shares), 2 pending; honest 1 block (0 shares), 5 pending
+    w = (6, 6, 1, 2, 0, 8, 6, 1)
+    assert SelfishStrategy.observation(2, 1, w) == (2, 5, 2, 2, 1, 0, 5)
+    s = M.event(M.event(M.event(M.START, True, True, M.Caps()), True, False, M.Caps()), True, False, M.Caps())
+    # one attacker block then two attacker shares: a=1, D=1, pa=2
+    assert SelfishStrategy.observation(1, 0, (1, 1, 0, 0, 0, 3, 0, 0)) == s
+
+
+def test_learned_uses_table_then_falls_back_to_sim_stubborn(tmp_path):
+    s = SelfishStrategy("learned", start_height=0, window_objects=32, window_rule="20261020",
+                        give_up_objects=5, policy_file=_policy_file(tmp_path, {"1,2,32,0,1,32,1": "hold"}))
+    s.fork = 100
+    # stored state says hold where sim_stubborn would reveal (both x collapse to 32)
+    d = s.update(pub_height=101, priv_height=101, branch_weights=lambda f, p, q: (3, 3, 1, 32, 0, 3, 2, 1))
+    assert d.release_to is None and s.learned_decisions == 1 and s.fallback_decisions == 0
+    # unseen state: sim_stubborn reveals (past window, D 3 > ph 1)
+    d = s.update(pub_height=101, priv_height=101, branch_weights=lambda f, p, q: (4, 4, 1, 32, 0, 4, 2, 1))
+    assert d.release_to == 100 and s.fallback_decisions == 1
+
+
+def test_learned_reveal_is_suppressed_when_own_test_fails_and_publish_skips_it(tmp_path):
+    pf = _policy_file(tmp_path, {"1,2,32,0,1,32,3": "reveal", "1,2,0,0,0,0,10": "publish"})
+    s = SelfishStrategy("learned", start_height=0, window_objects=32, window_rule="20261020",
+                        give_up_objects=5, policy_file=pf)
+    s.fork = 100
+    d = s.update(pub_height=101, priv_height=101, branch_weights=lambda f, p, q: (3, 3, 4, 32, 0, 3, 4, 1))   # weight 3 <= 4
+    assert d.release_to is None and s.suppressed_reveals == 1
+    s.fork = 100
+    d = s.update(pub_height=100, priv_height=101, branch_weights=lambda f, p, q: (3, 3, 10, 0, 0, 3, 11, 1))  # h == 0, honest pending heavy
+    assert d.release_to == 100 and d.release_from == 100
+
+
+def test_learned_clips_out_of_range_observations(tmp_path):
+    pf = _policy_file(tmp_path, {"1,128,0,0,1,0,48": "give_up"})
+    s = SelfishStrategy("learned", start_height=0, window_objects=32, window_rule="20261020",
+                        give_up_objects=5, policy_file=pf)
+    s.fork = 100
+    d = s.update(pub_height=101, priv_height=101, branch_weights=lambda f, p, q: (300, 300, 1, 0, 0, 300, 100, 1))
+    assert d.adopt_public is True and s.clipped_decisions == 1

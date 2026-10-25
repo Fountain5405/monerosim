@@ -1051,7 +1051,7 @@ def test_branch_weights_sop_mode_without_embedded_shares():
     result = a._branch_weights(5, 8, 7)
     # attacker shares ignored (embedded_shares off): objects=3, weight=1+2+3=6
     # honest shares always counted: unit*(1+m) = 1*6 + 2*2 = 10
-    assert result == (3, 6, 10, 2, 2, 3, 8)   # totals: no tip_shares -> branch objects
+    assert result == (3, 6, 10, 2, 2, 3, 8, 8)   # totals: no tip_shares -> branch objects; [7] honest objects
     a.daemon_rpc.get_block_headers_range.assert_called_once_with(5, 7)
     a.bridge_rpc.get_block_headers_range.assert_called_once_with(5, 6)
 
@@ -1066,7 +1066,7 @@ def test_branch_weights_sop_mode_with_embedded_shares():
     a.bridge_rpc.get_block_headers_range.return_value = []
     result = a._branch_weights(5, 7, 5)
     # objects = (1+2)+(1+3) = 7; weight = 1*3 + 2*4 = 11; honest range empty -> 0
-    assert result == (7, 11, 0, 4, 0, 7, 0)
+    assert result == (7, 11, 0, 4, 0, 7, 0, 0)
     a.bridge_rpc.get_block_headers_range.assert_not_called()
 
 
@@ -1089,7 +1089,7 @@ def test_branch_weights_wide_difficulty_fallback():
     a.bridge_rpc.get_block_headers_range.return_value = []
     result = a._branch_weights(5, 6, 5)
     # difficulty 16 // sop_w(16) = 1, unit=max(1,1)=1, weight=1*(1+0)=1
-    assert result == (1, 1, 0, 0, 0, 1, 0)
+    assert result == (1, 1, 0, 0, 0, 1, 0, 0)
 
 
 def test_branch_weights_none_on_rpc_error_from_daemon():
@@ -1120,7 +1120,7 @@ def test_branch_weights_empty_honest_range():
         {"difficulty": 16, "major_version": 16, "minor_version": 16 + 0},
     ]
     result = a._branch_weights(5, 6, 5)   # pub_height == fork: empty honest range
-    assert result == (1, 1, 0, 0, 0, 1, 0)
+    assert result == (1, 1, 0, 0, 0, 1, 0, 0)
     a.bridge_rpc.get_block_headers_range.assert_not_called()
 
 
@@ -1216,8 +1216,8 @@ def test_branch_weights_tip_shares(make_miner):
     m = make_miner(attributes={"weigh": "sop", "embedded_shares": "true", "tip_shares": "true"},
                    priv_blocks=[15, 15], pub_blocks=[15, 15],
                    pub_pool=[16, 17, 18, 19, 20], priv_pool=[16, 17, 18])
-    att_objects, att_w, hon_w, att_x1, hon_x1, att_tot, hon_tot = m._branch_weights(fork=100, priv_height=102, pub_height=102)
-    assert (att_objects, att_x1, hon_x1) == (32, 16, 16)
+    att_objects, att_w, hon_w, att_x1, hon_x1, att_tot, hon_tot, hon_objects = m._branch_weights(fork=100, priv_height=102, pub_height=102)
+    assert (att_objects, att_x1, hon_x1, hon_objects) == (32, 16, 16, 32)
     assert att_w == 3200 + 300 and hon_w == 3200 + 500
     assert (att_tot, hon_tot) == (32 + 3, 32 + 5)     # give-up objects include the pending pool shares
 
@@ -1238,8 +1238,8 @@ def test_branch_weights_own_tip_shares_excluded(make_miner):
                                "count_own_tip_shares": "false"},
                    priv_blocks=[15, 15], pub_blocks=[15, 15],
                    pub_pool=[16, 17, 18, 19, 20], priv_pool=[16, 17, 18])
-    att_objects, att_w, hon_w, att_x1, hon_x1, att_tot, hon_tot = m._branch_weights(fork=100, priv_height=102, pub_height=102)
-    assert att_w == 3200 and hon_w == 3200 + 500
+    att_objects, att_w, hon_w, att_x1, hon_x1, att_tot, hon_tot, hon_objects = m._branch_weights(fork=100, priv_height=102, pub_height=102)
+    assert att_w == 3200 and hon_w == 3200 + 500 and hon_tot - hon_objects == 5
     assert (att_tot, hon_tot) == (32 + 3, 32 + 5)     # own pool shares still count as the attacker's work
 
 
@@ -1254,3 +1254,43 @@ def test_tip_shares_wait_for_bridge_tip(make_miner):
     assert [r for (_, _, r) in m.bridge_rpc.submitted] == [True, True]
     m._deliver_tip_shares()
     assert len(m.bridge_rpc.submitted) == 2                  # delivered once
+
+
+# ---- learned strategy plumbing (docs/superpowers/plans/2026-10-25-sop-rl-attacker.md, Task 5) ----
+
+def test_branch_weights_eighth_field_is_honest_objects_without_pending():
+    """Same fork as test_window_stubborn_reveal_is_logged (attacker 2 blocks,
+    honest 1 block, no embedded shares, no tip shares): the new field [7] is
+    the honest objects behind weights[2] (blocks + embedded shares, no
+    pending), so weights[6] - weights[7] is the honest pending share count."""
+    a = _make_agent(strategy="window_stubborn", start_height=0)
+    a._start_synced = True
+    a.daemon_rpc.get_block_headers_range.return_value = [
+        {"difficulty": 16, "major_version": 16, "minor_version": 16 + 3},
+        {"difficulty": 16, "major_version": 16, "minor_version": 16 + 1},
+    ]
+    a.bridge_rpc.get_block_headers_range.return_value = [
+        {"difficulty": 16, "major_version": 16, "minor_version": 16 + 2},
+    ]
+    a.embedded_shares = True
+    w = a._branch_weights(0, 2, 1)
+    assert len(w) == 8
+    assert w[7] == 3                       # 1 block + 2 embedded shares
+    assert w[6] - w[7] == 0                # no tip shares read: no pending
+    assert w[0] == 6 and w[5] - w[0] == 0  # attacker: 2 blocks + 3 + 1 shares, no pending
+
+
+def test_learned_strategy_attributes_are_plumbed(tmp_path):
+    import gzip
+    import json
+    pf = tmp_path / "p.json.gz"
+    with gzip.open(pf, "wt") as f:
+        json.dump({"meta": {"alpha": 0.45, "env": "race"}, "key_clip": {"d": 128, "p": 48, "d_bin": 1},
+                   "fallback": "sim_stubborn", "policy": {}}, f)
+    a = _make_agent(strategy="learned", start_height=0,
+                    extra=(("policy_file", str(pf)), ("alpha", "0.45"), ("window_rule", "20261020"),
+                           ("window_objects", "32"), ("give_up_objects", "5"), ("weigh", "sop"),
+                           ("count_own_tip_shares", "false")))
+    a._ensure_strategy(0)
+    assert a.strategy.name == "learned" and a.strategy.alpha == 0.45
+    assert a.strategy.policy == {}
