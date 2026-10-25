@@ -894,6 +894,9 @@ poisoning (I2) are prerequisites and none exists.
    share of the 20 newest /24s) decides whether lifting the cap is a defense, a no-op or a liveness regression. Nothing
    else moves the recommendation this much, and no simulation replaces it. The lab's counterpart is the thirteenth
    patch (`--sim-white-peerlist-limit`, built 2026-10-25): the same cells with the white list trimmed to the lab's ratio.
+   *2026-10-25 20:49, first lab result (journal E45, E46):* with the white list trimmed to 70 entries the stock rule reads 1.06x the
+   ceiling and the cap-lifted rule 1.06x; the probes' trimmed lists hold the spies below their pool share. The 2.2x is a property of a list that
+   holds the whole network. The dump decides whether mainnet's trimmed lists are like P36's; the sweep at 140 and 35 entries runs.
 2. *No churn, so no cost* (Q2).
 3. *An adversary that refreshes its own recency.* Under the stock rule a fleet that re-announces or re-dials to stay
    newest holds the 2.2x as a floor and removes the users' accidental 0.75x protection too; under the random-sample rule

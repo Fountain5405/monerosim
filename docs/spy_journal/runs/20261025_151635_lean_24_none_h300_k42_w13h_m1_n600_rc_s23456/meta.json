@@ -1,0 +1,30 @@
+{
+ "run_id": "20261025_151635_lean_24_none_h300_k42_w13h_m1_n600_rc_s23456",
+ "box": "simbox3",
+ "cell": "lean_24_none_h300_k42_w13h_m1_n600_rc_s23456",
+ "archived_at": "2026-10-25T15:17:39Z",
+ "monerod_sim_sha": "7a7a32b3c26f",
+ "wall": "4h 30m",
+ "exit_code": 0,
+ "min_avail_mb": 81091,
+ "txs_created": 1097,
+ "txs_in_blocks": 1082,
+ "note": "P35 (E47): P34 at seed 23456 on simbox3 (the twelfth patch, 20 random /24 candidates with the stock cubic draw); light 0.1716 = 1.12x this seed's 0.1539 ceiling, within 0.006 of P34's 0.1657; relays 0.1784, users 0.1376; start-order gradient 1.15x (P34 1.28x); recall 0.152, 32 of 40 exposed; the twelfth line in all 382 logs; six of six; two seeds mean 1.10x, P27's 1.11x; wall 4 h 32 m",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 240,
+ "light_out": 0.1716,
+ "light_out_quarters": [
+  0.1676,
+  0.1711,
+  0.1725,
+  0.175
+ ],
+ "model_out": 0.1539,
+ "fluff_per_hop": 0.192,
+ "stem_txs": 1097,
+ "stem_hops_implied": 5.21,
+ "embargo_rate": 0.0
+}

@@ -1,0 +1,30 @@
+{
+ "run_id": "20261025_151639_lean_24_none_h300_k42_w13h_p3_m1_n600_wl70_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_wl70_s12345",
+ "archived_at": "2026-10-25T15:17:16Z",
+ "monerod_sim_sha": "ab6646d74725",
+ "wall": "2h 16m",
+ "exit_code": 0,
+ "min_avail_mb": 157996,
+ "txs_created": 1099,
+ "txs_in_blocks": 1088,
+ "note": "P36 (E45): the stock rule with the white list trimmed to its 70 newest entries (--sim-white-peerlist-limit 70, the thirteenth patch; mainnet's 1000 of ~4600 scaled to the lab's 342) and 12 probe relays dumping lists; light 0.1616 = 1.06x the ceiling against E27's untrimmed 0.3369 (2.20x): the trim alone removes the stock multiplier; probes' white lists exactly 70 entries, spies 8.5-10.7% of them (pool 12.3%), rank 0.35-0.49; relays 0.1666, users 0.1362, start-order gradient gone (1.05x); recall 0.135, 30 of 40 exposed; three of five clauses (the 0.28-0.50 share clause missed far below); wall 2 h 18 m",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.1616,
+ "light_out_quarters": [
+  0.1654,
+  0.1632,
+  0.1589,
+  0.1594
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.198,
+ "stem_txs": 1099,
+ "stem_hops_implied": 5.05,
+ "embargo_rate": 0.0
+}
