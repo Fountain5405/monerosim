@@ -1,0 +1,8920 @@
+{
+ "archive": "20261025_204207_lean_24_none_h300_k42_w13h_p3_m1_n600_to1h1h_s12345",
+ "slots": 12,
+ "window": 300,
+ "classes": {
+  "medium": {
+   "nodes": 48,
+   "sessions": 48,
+   "restarts": 0,
+   "hours": 911.7266263888889,
+   "fill_first_med_s": 41.4,
+   "fill_first_p90_s": 56.4,
+   "fill_restart_med_s": null,
+   "fill_restart_p90_s": null,
+   "unfilled": 0,
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 1668,
+    "timed_out": 0,
+    "back_ping_failed": 3630,
+    "handshake_ok": 0
+   },
+   "per_node_hour": {
+    "connect_failed": 0.0,
+    "handshake_failed": 1.8294957630079451,
+    "timed_out": 0.0,
+    "back_ping_failed": 3.9814566065460677,
+    "handshake_ok": 0.0
+   }
+  },
+  "miner": {
+   "nodes": 5,
+   "sessions": 5,
+   "restarts": 0,
+   "hours": 94.99596444444444,
+   "fill_first_med_s": 54.4,
+   "fill_first_p90_s": 65.60000000000001,
+   "fill_restart_med_s": null,
+   "fill_restart_p90_s": null,
+   "unfilled": 0,
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 181,
+    "timed_out": 0,
+    "back_ping_failed": 423,
+    "handshake_ok": 0
+   },
+   "per_node_hour": {
+    "connect_failed": 0.0,
+    "handshake_failed": 1.9053440960205468,
+    "timed_out": 0.0,
+    "back_ping_failed": 4.452820732688902,
+    "handshake_ok": 0.0
+   }
+  },
+  "monero-seed": {
+   "nodes": 6,
+   "sessions": 6,
+   "restarts": 0,
+   "hours": 113.99380499999998,
+   "fill_first_med_s": 53.4,
+   "fill_first_p90_s": 55.4,
+   "fill_restart_med_s": null,
+   "fill_restart_p90_s": null,
+   "unfilled": 0,
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 209,
+    "timed_out": 0,
+    "back_ping_failed": 440,
+    "handshake_ok": 0
+   },
+   "per_node_hour": {
+    "connect_failed": 0.0,
+    "handshake_failed": 1.8334329659405617,
+    "timed_out": 0.0,
+    "back_ping_failed": 3.8598588756643406,
+    "handshake_ok": 0.0
+   }
+  },
+  "observer": {
+   "nodes": 8,
+   "sessions": 8,
+   "restarts": 0,
+   "hours": 151.9806336111111,
+   "fill_first_med_s": 53.4,
+   "fill_first_p90_s": 56.4,
+   "fill_restart_med_s": null,
+   "fill_restart_p90_s": null,
+   "unfilled": 0,
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 278,
+    "timed_out": 0,
+    "back_ping_failed": 599,
+    "handshake_ok": 0
+   },
+   "per_node_hour": {
+    "connect_failed": 0.0,
+    "handshake_failed": 1.8291804251280328,
+    "timed_out": 0.0,
+    "back_ping_failed": 3.94129163543774,
+    "handshake_ok": 0.0
+   }
+  },
+  "relay": {
+   "nodes": 233,
+   "sessions": 233,
+   "restarts": 0,
+   "hours": 4198.900838888888,
+   "fill_first_med_s": 99.23700000000008,
+   "fill_first_p90_s": 354.53699999999935,
+   "fill_restart_med_s": null,
+   "fill_restart_p90_s": null,
+   "unfilled": 0,
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 7781,
+    "timed_out": 0,
+    "back_ping_failed": 19595,
+    "handshake_ok": 9170
+   },
+   "per_node_hour": {
+    "connect_failed": 0.0,
+    "handshake_failed": 1.8531040142541224,
+    "timed_out": 0.0,
+    "back_ping_failed": 4.66669748866592,
+    "handshake_ok": 2.183904872215692
+   }
+  },
+  "spy": {
+   "nodes": 42,
+   "sessions": 42,
+   "restarts": 0,
+   "hours": 795.5778655555556,
+   "fill_first_med_s": null,
+   "fill_first_p90_s": null,
+   "fill_restart_med_s": null,
+   "fill_restart_p90_s": null,
+   "unfilled": 42,
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 3293,
+    "handshake_ok": 0
+   },
+   "per_node_hour": {
+    "connect_failed": 0.0,
+    "handshake_failed": 0.0,
+    "timed_out": 0.0,
+    "back_ping_failed": 4.139129735215149,
+    "handshake_ok": 0.0
+   }
+  },
+  "user": {
+   "nodes": 40,
+   "sessions": 412,
+   "restarts": 372,
+   "hours": 731.1597819444444,
+   "fill_first_med_s": 57.156000000000176,
+   "fill_first_p90_s": 92.15600000000018,
+   "fill_restart_med_s": 68.98300000000017,
+   "fill_restart_p90_s": 255.27799999999843,
+   "unfilled": 6,
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 3,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "per_node_hour": {
+    "connect_failed": 0.0,
+    "handshake_failed": 0.004103070319351822,
+    "timed_out": 0.0,
+    "back_ping_failed": 0.0,
+    "handshake_ok": 0.0
+   }
+  }
+ },
+ "nodes": {
+  "medium-a-001": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 0.1,
+     "end": 68397.349,
+     "fill": 56.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 68,
+    "handshake_ok": 0
+   },
+   "hours": 18.999235833333334
+  },
+  "medium-a-002": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 5.1,
+     "end": 68398.576,
+     "fill": 51.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 101,
+    "handshake_ok": 0
+   },
+   "hours": 18.998187777777776
+  },
+  "medium-a-003": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 10.1,
+     "end": 68395.849,
+     "fill": 46.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 63,
+    "handshake_ok": 0
+   },
+   "hours": 18.996041388888887
+  },
+  "medium-a-004": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 15.1,
+     "end": 68397.849,
+     "fill": 41.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 65,
+    "handshake_ok": 0
+   },
+   "hours": 18.995208055555555
+  },
+  "medium-a-005": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 20.1,
+     "end": 68398.583,
+     "fill": 36.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 77,
+    "handshake_ok": 0
+   },
+   "hours": 18.994023055555555
+  },
+  "medium-a-006": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 25.1,
+     "end": 68394.583,
+     "fill": 31.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 128,
+    "handshake_ok": 0
+   },
+   "hours": 18.991523055555554
+  },
+  "medium-a-007": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 30.1,
+     "end": 68398.349,
+     "fill": 26.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 67,
+    "handshake_ok": 0
+   },
+   "hours": 18.991180277777776
+  },
+  "medium-a-008": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 35.1,
+     "end": 68398.226,
+     "fill": 21.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 83,
+    "handshake_ok": 0
+   },
+   "hours": 18.98975722222222
+  },
+  "medium-a-009": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 0.1,
+     "end": 68392.849,
+     "fill": 56.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 105,
+    "handshake_ok": 0
+   },
+   "hours": 18.99798583333333
+  },
+  "medium-a-010": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 5.1,
+     "end": 68399.849,
+     "fill": 51.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 79,
+    "handshake_ok": 0
+   },
+   "hours": 18.99854138888889
+  },
+  "medium-a-011": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 10.1,
+     "end": 68396.586,
+     "fill": 46.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 40,
+    "handshake_ok": 0
+   },
+   "hours": 18.99624611111111
+  },
+  "medium-a-012": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 15.1,
+     "end": 68395.849,
+     "fill": 41.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 35,
+    "timed_out": 0,
+    "back_ping_failed": 62,
+    "handshake_ok": 0
+   },
+   "hours": 18.994652499999997
+  },
+  "medium-a-013": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 20.1,
+     "end": 68398.074,
+     "fill": 36.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 74,
+    "handshake_ok": 0
+   },
+   "hours": 18.993881666666663
+  },
+  "medium-a-014": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 25.1,
+     "end": 68398.083,
+     "fill": 31.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 66,
+    "handshake_ok": 0
+   },
+   "hours": 18.992495277777778
+  },
+  "medium-a-015": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 30.1,
+     "end": 68399.576,
+     "fill": 26.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 97,
+    "handshake_ok": 0
+   },
+   "hours": 18.99152111111111
+  },
+  "medium-a-016": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 35.1,
+     "end": 68394.078,
+     "fill": 21.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 108,
+    "handshake_ok": 0
+   },
+   "hours": 18.988604999999996
+  },
+  "medium-b-001": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 0.1,
+     "end": 68397.249,
+     "fill": 56.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 48,
+    "handshake_ok": 0
+   },
+   "hours": 18.999208055555552
+  },
+  "medium-b-002": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 5.1,
+     "end": 68397.074,
+     "fill": 51.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 93,
+    "handshake_ok": 0
+   },
+   "hours": 18.99777055555555
+  },
+  "medium-b-003": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 10.1,
+     "end": 68398.981,
+     "fill": 46.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 109,
+    "handshake_ok": 0
+   },
+   "hours": 18.996911388888886
+  },
+  "medium-b-004": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 15.1,
+     "end": 68395.565,
+     "fill": 41.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 75,
+    "handshake_ok": 0
+   },
+   "hours": 18.99457361111111
+  },
+  "medium-b-005": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 20.1,
+     "end": 68399.349,
+     "fill": 36.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 47,
+    "handshake_ok": 0
+   },
+   "hours": 18.99423583333333
+  },
+  "medium-b-006": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 25.1,
+     "end": 68396.049,
+     "fill": 31.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 101,
+    "handshake_ok": 0
+   },
+   "hours": 18.991930277777776
+  },
+  "medium-b-007": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 30.1,
+     "end": 68398.06,
+     "fill": 26.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 81,
+    "handshake_ok": 0
+   },
+   "hours": 18.9911
+  },
+  "medium-b-008": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 35.1,
+     "end": 68396.849,
+     "fill": 21.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 60,
+    "handshake_ok": 0
+   },
+   "hours": 18.98937472222222
+  },
+  "medium-b-009": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 0.1,
+     "end": 68397.349,
+     "fill": 56.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 57,
+    "handshake_ok": 0
+   },
+   "hours": 18.999235833333334
+  },
+  "medium-b-010": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 5.1,
+     "end": 68396.065,
+     "fill": 51.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 85,
+    "handshake_ok": 0
+   },
+   "hours": 18.99749027777778
+  },
+  "medium-b-011": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 10.1,
+     "end": 68397.56,
+     "fill": 46.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 87,
+    "handshake_ok": 0
+   },
+   "hours": 18.996516666666665
+  },
+  "medium-b-012": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 15.1,
+     "end": 68395.849,
+     "fill": 41.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 53,
+    "handshake_ok": 0
+   },
+   "hours": 18.994652499999997
+  },
+  "medium-b-013": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 20.1,
+     "end": 68399.349,
+     "fill": 36.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 126,
+    "handshake_ok": 0
+   },
+   "hours": 18.99423583333333
+  },
+  "medium-b-014": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 25.1,
+     "end": 68399.981,
+     "fill": 31.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 58,
+    "handshake_ok": 0
+   },
+   "hours": 18.9930225
+  },
+  "medium-b-015": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 30.1,
+     "end": 68398.349,
+     "fill": 26.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 102,
+    "handshake_ok": 0
+   },
+   "hours": 18.991180277777776
+  },
+  "medium-b-016": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 35.1,
+     "end": 68399.849,
+     "fill": 21.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 55,
+    "handshake_ok": 0
+   },
+   "hours": 18.990208055555556
+  },
+  "medium-c-001": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 0.1,
+     "end": 68397.349,
+     "fill": 56.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 92,
+    "handshake_ok": 0
+   },
+   "hours": 18.999235833333334
+  },
+  "medium-c-002": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 5.1,
+     "end": 68399.086,
+     "fill": 51.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 47,
+    "handshake_ok": 0
+   },
+   "hours": 18.99832944444444
+  },
+  "medium-c-003": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 10.1,
+     "end": 68399.349,
+     "fill": 46.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 113,
+    "handshake_ok": 0
+   },
+   "hours": 18.99701361111111
+  },
+  "medium-c-004": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 15.1,
+     "end": 68388.849,
+     "fill": 41.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 35,
+    "timed_out": 0,
+    "back_ping_failed": 68,
+    "handshake_ok": 0
+   },
+   "hours": 18.992708055555553
+  },
+  "medium-c-005": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 20.1,
+     "end": 68394.349,
+     "fill": 36.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 71,
+    "handshake_ok": 0
+   },
+   "hours": 18.992846944444445
+  },
+  "medium-c-006": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 25.1,
+     "end": 68395.849,
+     "fill": 31.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 56,
+    "handshake_ok": 0
+   },
+   "hours": 18.99187472222222
+  },
+  "medium-c-007": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 30.1,
+     "end": 68397.076,
+     "fill": 26.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 87,
+    "handshake_ok": 0
+   },
+   "hours": 18.990826666666667
+  },
+  "medium-c-008": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 35.1,
+     "end": 68395.349,
+     "fill": 21.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 57,
+    "handshake_ok": 0
+   },
+   "hours": 18.988958055555553
+  },
+  "medium-c-009": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 0.1,
+     "end": 68398.083,
+     "fill": 56.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 38,
+    "timed_out": 0,
+    "back_ping_failed": 90,
+    "handshake_ok": 0
+   },
+   "hours": 18.99943972222222
+  },
+  "medium-c-010": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 5.1,
+     "end": 68399.576,
+     "fill": 51.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 54,
+    "handshake_ok": 0
+   },
+   "hours": 18.998465555555555
+  },
+  "medium-c-011": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 10.1,
+     "end": 68399.715,
+     "fill": 46.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 52,
+    "handshake_ok": 0
+   },
+   "hours": 18.997115277777777
+  },
+  "medium-c-012": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 15.1,
+     "end": 68399.849,
+     "fill": 41.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 60,
+    "handshake_ok": 0
+   },
+   "hours": 18.99576361111111
+  },
+  "medium-c-013": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 20.1,
+     "end": 68398.083,
+     "fill": 36.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 98,
+    "handshake_ok": 0
+   },
+   "hours": 18.993884166666664
+  },
+  "medium-c-014": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 25.1,
+     "end": 68397.849,
+     "fill": 31.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 72,
+    "handshake_ok": 0
+   },
+   "hours": 18.99243027777778
+  },
+  "medium-c-015": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 30.1,
+     "end": 68397.06,
+     "fill": 26.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 42,
+    "handshake_ok": 0
+   },
+   "hours": 18.99082222222222
+  },
+  "medium-c-016": {
+   "class": "medium",
+   "sessions": [
+    {
+     "start": 35.1,
+     "end": 68385.349,
+     "fill": 21.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 51,
+    "handshake_ok": 0
+   },
+   "hours": 18.986180277777777
+  },
+  "miner-001": {
+   "class": "miner",
+   "sessions": [
+    {
+     "start": 0.1,
+     "end": 68399.349,
+     "fill": 65.60000000000001
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 37,
+    "timed_out": 0,
+    "back_ping_failed": 90,
+    "handshake_ok": 0
+   },
+   "hours": 18.999791388888887
+  },
+  "miner-002": {
+   "class": "miner",
+   "sessions": [
+    {
+     "start": 1.1,
+     "end": 68399.576,
+     "fill": 55.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 74,
+    "handshake_ok": 0
+   },
+   "hours": 18.999576666666666
+  },
+  "miner-003": {
+   "class": "miner",
+   "sessions": [
+    {
+     "start": 2.1,
+     "end": 68399.349,
+     "fill": 54.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 105,
+    "handshake_ok": 0
+   },
+   "hours": 18.999235833333334
+  },
+  "miner-004": {
+   "class": "miner",
+   "sessions": [
+    {
+     "start": 3.1,
+     "end": 68399.849,
+     "fill": 53.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 66,
+    "handshake_ok": 0
+   },
+   "hours": 18.999096944444442
+  },
+  "miner-005": {
+   "class": "miner",
+   "sessions": [
+    {
+     "start": 4.1,
+     "end": 68397.849,
+     "fill": 52.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 88,
+    "handshake_ok": 0
+   },
+   "hours": 18.99826361111111
+  },
+  "monero-seed-001": {
+   "class": "monero-seed",
+   "sessions": [
+    {
+     "start": 0.1,
+     "end": 68399.849,
+     "fill": 56.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 75,
+    "handshake_ok": 0
+   },
+   "hours": 18.999930277777775
+  },
+  "monero-seed-002": {
+   "class": "monero-seed",
+   "sessions": [
+    {
+     "start": 1.1,
+     "end": 68399.582,
+     "fill": 55.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 96,
+    "handshake_ok": 0
+   },
+   "hours": 18.99957833333333
+  },
+  "monero-seed-003": {
+   "class": "monero-seed",
+   "sessions": [
+    {
+     "start": 2.1,
+     "end": 68396.583,
+     "fill": 54.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 35,
+    "timed_out": 0,
+    "back_ping_failed": 60,
+    "handshake_ok": 0
+   },
+   "hours": 18.998467499999997
+  },
+  "monero-seed-004": {
+   "class": "monero-seed",
+   "sessions": [
+    {
+     "start": 3.1,
+     "end": 68399.849,
+     "fill": 53.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 62,
+    "handshake_ok": 0
+   },
+   "hours": 18.999096944444442
+  },
+  "monero-seed-005": {
+   "class": "monero-seed",
+   "sessions": [
+    {
+     "start": 4.1,
+     "end": 68399.849,
+     "fill": 52.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 91,
+    "handshake_ok": 0
+   },
+   "hours": 18.998819166666667
+  },
+  "monero-seed-006": {
+   "class": "monero-seed",
+   "sessions": [
+    {
+     "start": 5.1,
+     "end": 68397.586,
+     "fill": 51.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 56,
+    "handshake_ok": 0
+   },
+   "hours": 18.997912777777774
+  },
+  "observer-001": {
+   "class": "observer",
+   "sessions": [
+    {
+     "start": 0.1,
+     "end": 68396.349,
+     "fill": 56.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 83,
+    "handshake_ok": 0
+   },
+   "hours": 18.998958055555555
+  },
+  "observer-002": {
+   "class": "observer",
+   "sessions": [
+    {
+     "start": 3.1,
+     "end": 68392.086,
+     "fill": 53.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 55,
+    "handshake_ok": 0
+   },
+   "hours": 18.996940555555554
+  },
+  "observer-003": {
+   "class": "observer",
+   "sessions": [
+    {
+     "start": 6.1,
+     "end": 68396.578,
+     "fill": 50.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 38,
+    "timed_out": 0,
+    "back_ping_failed": 50,
+    "handshake_ok": 0
+   },
+   "hours": 18.997354999999995
+  },
+  "observer-004": {
+   "class": "observer",
+   "sessions": [
+    {
+     "start": 9.1,
+     "end": 68396.586,
+     "fill": 47.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 48,
+    "handshake_ok": 0
+   },
+   "hours": 18.996523888888888
+  },
+  "observer-005": {
+   "class": "observer",
+   "sessions": [
+    {
+     "start": 0.1,
+     "end": 68399.461,
+     "fill": 56.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 70,
+    "handshake_ok": 0
+   },
+   "hours": 18.999822499999997
+  },
+  "observer-006": {
+   "class": "observer",
+   "sessions": [
+    {
+     "start": 3.1,
+     "end": 68398.349,
+     "fill": 53.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 98,
+    "handshake_ok": 0
+   },
+   "hours": 18.998680277777776
+  },
+  "observer-007": {
+   "class": "observer",
+   "sessions": [
+    {
+     "start": 6.1,
+     "end": 68396.586,
+     "fill": 50.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 99,
+    "handshake_ok": 0
+   },
+   "hours": 18.99735722222222
+  },
+  "observer-008": {
+   "class": "observer",
+   "sessions": [
+    {
+     "start": 9.1,
+     "end": 68391.086,
+     "fill": 47.4
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 96,
+    "handshake_ok": 0
+   },
+   "hours": 18.994996111111107
+  },
+  "relay-r-a-001": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1200.1,
+     "end": 68399.565,
+     "fill": 6.916000000000167
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 63,
+    "handshake_ok": 817
+   },
+   "hours": 18.666518055555553
+  },
+  "relay-r-a-002": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1240.1,
+     "end": 68397.586,
+     "fill": 6.916000000000167
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 101,
+    "handshake_ok": 807
+   },
+   "hours": 18.65485722222222
+  },
+  "relay-r-a-003": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1280.1,
+     "end": 68397.849,
+     "fill": 6.717000000000098
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 81,
+    "handshake_ok": 809
+   },
+   "hours": 18.643819166666667
+  },
+  "relay-r-a-004": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1320.1,
+     "end": 68395.083,
+     "fill": 20.96199999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 71,
+    "handshake_ok": 0
+   },
+   "hours": 18.63193972222222
+  },
+  "relay-r-a-005": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1360.1,
+     "end": 68397.574,
+     "fill": 109.72000000000003
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 74,
+    "handshake_ok": 0
+   },
+   "hours": 18.621520555555552
+  },
+  "relay-r-a-006": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1400.1,
+     "end": 68394.349,
+     "fill": 69.74400000000014
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 142,
+    "handshake_ok": 0
+   },
+   "hours": 18.60951361111111
+  },
+  "relay-r-a-007": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1440.1,
+     "end": 68387.081,
+     "fill": 29.720000000000027
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 55,
+    "handshake_ok": 0
+   },
+   "hours": 18.59638361111111
+  },
+  "relay-r-a-008": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1480.1,
+     "end": 68399.583,
+     "fill": 9.720000000000027
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 72,
+    "handshake_ok": 0
+   },
+   "hours": 18.588745277777775
+  },
+  "relay-r-a-009": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1520.1,
+     "end": 68397.588,
+     "fill": 35.02300000000014
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 59,
+    "handshake_ok": 0
+   },
+   "hours": 18.57708
+  },
+  "relay-r-a-010": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1560.1,
+     "end": 68397.083,
+     "fill": 138.82600000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 68,
+    "handshake_ok": 0
+   },
+   "hours": 18.565828611111108
+  },
+  "relay-r-a-011": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1600.1,
+     "end": 68397.849,
+     "fill": 98.82600000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 53,
+    "handshake_ok": 0
+   },
+   "hours": 18.55493027777778
+  },
+  "relay-r-a-012": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1640.1,
+     "end": 68389.073,
+     "fill": 58.82600000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 92,
+    "handshake_ok": 0
+   },
+   "hours": 18.541381388888887
+  },
+  "relay-r-a-013": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1680.1,
+     "end": 68389.073,
+     "fill": 18.92600000000016
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 51,
+    "handshake_ok": 0
+   },
+   "hours": 18.530270277777777
+  },
+  "relay-r-a-014": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1720.1,
+     "end": 68398.073,
+     "fill": 510.1350000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 70,
+    "handshake_ok": 0
+   },
+   "hours": 18.521659166666666
+  },
+  "relay-r-a-015": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1760.1,
+     "end": 68398.226,
+     "fill": 470.1350000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 88,
+    "handshake_ok": 0
+   },
+   "hours": 18.510590555555552
+  },
+  "relay-r-a-016": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1800.1,
+     "end": 68391.849,
+     "fill": 430.1350000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 104,
+    "handshake_ok": 0
+   },
+   "hours": 18.497708055555556
+  },
+  "relay-r-a-017": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1840.1,
+     "end": 68395.083,
+     "fill": 390.1350000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 48,
+    "handshake_ok": 0
+   },
+   "hours": 18.487495277777775
+  },
+  "relay-r-a-018": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1880.1,
+     "end": 68394.349,
+     "fill": 350.1350000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 46,
+    "handshake_ok": 0
+   },
+   "hours": 18.476180277777775
+  },
+  "relay-r-a-019": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1920.1,
+     "end": 68389.553,
+     "fill": 310.1350000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 107,
+    "handshake_ok": 0
+   },
+   "hours": 18.46373694444444
+  },
+  "relay-r-a-020": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1960.1,
+     "end": 68398.349,
+     "fill": 270.1350000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 105,
+    "handshake_ok": 0
+   },
+   "hours": 18.455069166666664
+  },
+  "relay-r-a-021": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2000.1,
+     "end": 68399.078,
+     "fill": 230.13500000000022
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 92,
+    "handshake_ok": 0
+   },
+   "hours": 18.444160555555552
+  },
+  "relay-r-a-022": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2040.1,
+     "end": 68398.481,
+     "fill": 190.13500000000022
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 54,
+    "handshake_ok": 0
+   },
+   "hours": 18.43288361111111
+  },
+  "relay-r-a-023": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2080.1,
+     "end": 68396.249,
+     "fill": 150.13500000000022
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 62,
+    "handshake_ok": 0
+   },
+   "hours": 18.421152499999998
+  },
+  "relay-r-a-024": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2120.1,
+     "end": 68396.576,
+     "fill": 110.03500000000031
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 110,
+    "handshake_ok": 0
+   },
+   "hours": 18.41013222222222
+  },
+  "relay-r-a-025": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2160.1,
+     "end": 68394.581,
+     "fill": 70.13500000000022
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 82,
+    "handshake_ok": 0
+   },
+   "hours": 18.398466944444444
+  },
+  "relay-r-a-026": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2200.1,
+     "end": 68390.349,
+     "fill": 30.13500000000022
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 50,
+    "handshake_ok": 0
+   },
+   "hours": 18.386180277777775
+  },
+  "relay-r-a-027": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2240.1,
+     "end": 68392.849,
+     "fill": 100.23599999999988
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 99,
+    "handshake_ok": 0
+   },
+   "hours": 18.37576361111111
+  },
+  "relay-r-a-028": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2280.1,
+     "end": 68397.586,
+     "fill": 60.235999999999876
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 40,
+    "handshake_ok": 0
+   },
+   "hours": 18.36596833333333
+  },
+  "relay-r-a-029": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2320.1,
+     "end": 68385.849,
+     "fill": 20.235999999999876
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 48,
+    "handshake_ok": 0
+   },
+   "hours": 18.351596944444445
+  },
+  "relay-r-a-030": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2360.1,
+     "end": 68394.249,
+     "fill": 13.635999999999967
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 63,
+    "handshake_ok": 0
+   },
+   "hours": 18.342819166666665
+  },
+  "relay-r-a-031": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2400.1,
+     "end": 68397.349,
+     "fill": 83.73700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 96,
+    "handshake_ok": 0
+   },
+   "hours": 18.332569166666666
+  },
+  "relay-r-a-032": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2440.1,
+     "end": 68393.349,
+     "fill": 43.73700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 31,
+    "timed_out": 0,
+    "back_ping_failed": 83,
+    "handshake_ok": 0
+   },
+   "hours": 18.320346944444445
+  },
+  "relay-r-a-033": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2480.1,
+     "end": 68396.749,
+     "fill": 294.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 70,
+    "handshake_ok": 0
+   },
+   "hours": 18.310180277777775
+  },
+  "relay-r-a-034": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2520.1,
+     "end": 68396.749,
+     "fill": 254.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 55,
+    "handshake_ok": 0
+   },
+   "hours": 18.299069166666666
+  },
+  "relay-r-a-035": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2560.1,
+     "end": 68397.349,
+     "fill": 214.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 81,
+    "handshake_ok": 0
+   },
+   "hours": 18.28812472222222
+  },
+  "relay-r-a-036": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2600.1,
+     "end": 68385.574,
+     "fill": 174.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 71,
+    "handshake_ok": 0
+   },
+   "hours": 18.273742777777773
+  },
+  "relay-r-a-037": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2640.1,
+     "end": 68394.849,
+     "fill": 134.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 105,
+    "handshake_ok": 0
+   },
+   "hours": 18.265208055555554
+  },
+  "relay-r-a-038": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2680.1,
+     "end": 68397.086,
+     "fill": 94.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 46,
+    "handshake_ok": 0
+   },
+   "hours": 18.25471833333333
+  },
+  "relay-r-a-039": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2720.1,
+     "end": 68396.349,
+     "fill": 54.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 71,
+    "handshake_ok": 0
+   },
+   "hours": 18.2434025
+  },
+  "relay-r-a-040": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2760.1,
+     "end": 68396.578,
+     "fill": 14.936999999999898
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 60,
+    "handshake_ok": 0
+   },
+   "hours": 18.232355
+  },
+  "relay-r-a-041": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2800.1,
+     "end": 68394.349,
+     "fill": 129.03700000000026
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 87,
+    "handshake_ok": 0
+   },
+   "hours": 18.220624722222222
+  },
+  "relay-r-a-042": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2840.1,
+     "end": 68395.583,
+     "fill": 89.03700000000026
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 50,
+    "handshake_ok": 0
+   },
+   "hours": 18.209856388888888
+  },
+  "relay-r-a-043": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2880.1,
+     "end": 68395.481,
+     "fill": 49.03700000000026
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 52,
+    "handshake_ok": 0
+   },
+   "hours": 18.198716944444445
+  },
+  "relay-r-a-044": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2920.1,
+     "end": 68397.849,
+     "fill": 9.037000000000262
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 48,
+    "handshake_ok": 0
+   },
+   "hours": 18.18826361111111
+  },
+  "relay-r-a-045": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2960.1,
+     "end": 68397.061,
+     "fill": 34.73700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 112,
+    "handshake_ok": 0
+   },
+   "hours": 18.17693361111111
+  },
+  "relay-r-a-046": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3000.1,
+     "end": 68398.849,
+     "fill": 88.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 154,
+    "handshake_ok": 0
+   },
+   "hours": 18.166319166666668
+  },
+  "relay-r-a-047": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3040.1,
+     "end": 68399.349,
+     "fill": 48.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 106,
+    "handshake_ok": 0
+   },
+   "hours": 18.155346944444446
+  },
+  "relay-r-a-048": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3080.1,
+     "end": 68389.583,
+     "fill": 8.936999999999898
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 51,
+    "handshake_ok": 0
+   },
+   "hours": 18.141523055555556
+  },
+  "relay-r-a-049": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3120.1,
+     "end": 68396.461,
+     "fill": 179.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 119,
+    "handshake_ok": 0
+   },
+   "hours": 18.1323225
+  },
+  "relay-r-a-050": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3160.1,
+     "end": 68395.054,
+     "fill": 139.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 59,
+    "handshake_ok": 0
+   },
+   "hours": 18.120820555555557
+  },
+  "relay-r-a-051": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3200.1,
+     "end": 68390.749,
+     "fill": 99.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 50,
+    "handshake_ok": 0
+   },
+   "hours": 18.10851361111111
+  },
+  "relay-r-a-052": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3240.1,
+     "end": 68399.06,
+     "fill": 59.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 51,
+    "handshake_ok": 0
+   },
+   "hours": 18.099711111111112
+  },
+  "relay-r-a-053": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3280.1,
+     "end": 68398.577,
+     "fill": 19.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 93,
+    "handshake_ok": 0
+   },
+   "hours": 18.088465833333334
+  },
+  "relay-r-a-054": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3320.1,
+     "end": 68396.586,
+     "fill": 99.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 74,
+    "handshake_ok": 0
+   },
+   "hours": 18.076801666666665
+  },
+  "relay-r-a-055": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3360.1,
+     "end": 68399.349,
+     "fill": 59.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 90,
+    "handshake_ok": 0
+   },
+   "hours": 18.066458055555557
+  },
+  "relay-r-a-056": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3400.1,
+     "end": 68395.56,
+     "fill": 19.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 49,
+    "handshake_ok": 0
+   },
+   "hours": 18.054294444444444
+  },
+  "relay-r-a-057": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3440.1,
+     "end": 68399.077,
+     "fill": 65.03700000000026
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 94,
+    "handshake_ok": 0
+   },
+   "hours": 18.04416027777778
+  },
+  "relay-r-a-058": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3480.1,
+     "end": 68389.566,
+     "fill": 25.037000000000262
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 54,
+    "handshake_ok": 0
+   },
+   "hours": 18.030407222222223
+  },
+  "relay-r-a-059": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3520.1,
+     "end": 68395.849,
+     "fill": 122.4369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 133,
+    "handshake_ok": 0
+   },
+   "hours": 18.02104138888889
+  },
+  "relay-r-a-060": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3560.1,
+     "end": 68394.349,
+     "fill": 82.4369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 92,
+    "handshake_ok": 0
+   },
+   "hours": 18.009513611111114
+  },
+  "relay-r-a-061": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3600.1,
+     "end": 68396.849,
+     "fill": 42.4369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 129,
+    "handshake_ok": 0
+   },
+   "hours": 17.999096944444446
+  },
+  "relay-r-a-062": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3640.1,
+     "end": 68399.086,
+     "fill": 267.337
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 61,
+    "handshake_ok": 0
+   },
+   "hours": 17.98860722222222
+  },
+  "relay-r-a-063": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3680.1,
+     "end": 68397.57,
+     "fill": 227.337
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 99,
+    "handshake_ok": 0
+   },
+   "hours": 17.977075000000003
+  },
+  "relay-r-a-064": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3720.1,
+     "end": 68394.574,
+     "fill": 187.337
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 87,
+    "handshake_ok": 0
+   },
+   "hours": 17.965131666666665
+  },
+  "relay-r-a-065": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3760.1,
+     "end": 68391.586,
+     "fill": 147.337
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 106,
+    "handshake_ok": 0
+   },
+   "hours": 17.953190555555555
+  },
+  "relay-r-a-066": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3800.1,
+     "end": 68393.583,
+     "fill": 107.33699999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 137,
+    "handshake_ok": 0
+   },
+   "hours": 17.942634166666668
+  },
+  "relay-r-a-067": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3840.1,
+     "end": 68397.481,
+     "fill": 67.33699999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 89,
+    "handshake_ok": 0
+   },
+   "hours": 17.932605833333334
+  },
+  "relay-r-a-068": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3880.1,
+     "end": 68397.086,
+     "fill": 27.33699999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 167,
+    "handshake_ok": 0
+   },
+   "hours": 17.921385
+  },
+  "relay-r-a-069": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3920.1,
+     "end": 68398.565,
+     "fill": 47.13700000000017
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 54,
+    "handshake_ok": 0
+   },
+   "hours": 17.910684722222225
+  },
+  "relay-r-a-070": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3960.1,
+     "end": 68398.077,
+     "fill": 484.0369999999998
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 107,
+    "handshake_ok": 0
+   },
+   "hours": 17.899438055555557
+  },
+  "relay-r-a-071": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4000.1,
+     "end": 68396.749,
+     "fill": 444.0369999999998
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 66,
+    "handshake_ok": 0
+   },
+   "hours": 17.887958055555554
+  },
+  "relay-r-a-072": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4040.1,
+     "end": 68399.349,
+     "fill": 404.0369999999998
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 120,
+    "handshake_ok": 0
+   },
+   "hours": 17.877569166666667
+  },
+  "relay-r-a-073": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4080.1,
+     "end": 68396.583,
+     "fill": 364.0369999999998
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 101,
+    "handshake_ok": 0
+   },
+   "hours": 17.86568972222222
+  },
+  "relay-r-a-074": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4120.1,
+     "end": 68397.586,
+     "fill": 324.03699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 146,
+    "handshake_ok": 0
+   },
+   "hours": 17.854857222222222
+  },
+  "relay-r-a-075": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4160.1,
+     "end": 68396.606,
+     "fill": 284.03699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 93,
+    "handshake_ok": 0
+   },
+   "hours": 17.84347388888889
+  },
+  "relay-r-a-076": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4200.1,
+     "end": 68399.711,
+     "fill": 244.03699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 140,
+    "handshake_ok": 0
+   },
+   "hours": 17.833225277777778
+  },
+  "relay-r-a-077": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4240.1,
+     "end": 68397.976,
+     "fill": 594.5369999999994
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 100,
+    "handshake_ok": 0
+   },
+   "hours": 17.82163222222222
+  },
+  "relay-r-a-078": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4280.1,
+     "end": 68397.586,
+     "fill": 164.03699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 80,
+    "handshake_ok": 0
+   },
+   "hours": 17.810412777777778
+  },
+  "relay-r-a-079": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4320.1,
+     "end": 68393.849,
+     "fill": 124.03699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 56,
+    "handshake_ok": 0
+   },
+   "hours": 17.79826361111111
+  },
+  "relay-r-a-080": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4360.1,
+     "end": 68397.349,
+     "fill": 84.03699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 49,
+    "handshake_ok": 0
+   },
+   "hours": 17.78812472222222
+  },
+  "relay-r-a-081": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4400.1,
+     "end": 68397.726,
+     "fill": 44.03699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 31,
+    "timed_out": 0,
+    "back_ping_failed": 97,
+    "handshake_ok": 0
+   },
+   "hours": 17.777118333333334
+  },
+  "relay-r-a-082": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4440.1,
+     "end": 68394.574,
+     "fill": 394.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 103,
+    "handshake_ok": 0
+   },
+   "hours": 17.765131666666665
+  },
+  "relay-r-a-083": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4480.1,
+     "end": 68398.981,
+     "fill": 354.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 122,
+    "handshake_ok": 0
+   },
+   "hours": 17.755244722222223
+  },
+  "relay-r-a-084": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4520.1,
+     "end": 68399.849,
+     "fill": 314.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 105,
+    "handshake_ok": 0
+   },
+   "hours": 17.744374722222222
+  },
+  "relay-r-a-085": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4560.1,
+     "end": 68399.849,
+     "fill": 274.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 103,
+    "handshake_ok": 0
+   },
+   "hours": 17.733263611111113
+  },
+  "relay-r-a-086": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4600.1,
+     "end": 68396.849,
+     "fill": 234.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 121,
+    "handshake_ok": 0
+   },
+   "hours": 17.721319166666667
+  },
+  "relay-r-a-087": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4640.1,
+     "end": 68398.349,
+     "fill": 194.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 82,
+    "handshake_ok": 0
+   },
+   "hours": 17.710624722222224
+  },
+  "relay-r-a-088": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4680.1,
+     "end": 68399.849,
+     "fill": 154.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 126,
+    "handshake_ok": 0
+   },
+   "hours": 17.699930277777778
+  },
+  "relay-r-a-089": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4720.1,
+     "end": 68399.249,
+     "fill": 114.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 132,
+    "handshake_ok": 0
+   },
+   "hours": 17.6886525
+  },
+  "relay-r-a-090": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4760.1,
+     "end": 68399.965,
+     "fill": 74.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 122,
+    "handshake_ok": 0
+   },
+   "hours": 17.677740277777776
+  },
+  "relay-r-a-091": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4800.1,
+     "end": 68397.349,
+     "fill": 34.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 139,
+    "handshake_ok": 0
+   },
+   "hours": 17.6659025
+  },
+  "relay-r-a-092": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4840.1,
+     "end": 68398.586,
+     "fill": 77.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 43,
+    "handshake_ok": 0
+   },
+   "hours": 17.655134999999998
+  },
+  "relay-r-a-093": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4880.1,
+     "end": 68398.849,
+     "fill": 37.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 92,
+    "handshake_ok": 0
+   },
+   "hours": 17.644096944444446
+  },
+  "relay-r-a-094": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4920.1,
+     "end": 68398.349,
+     "fill": 113.4369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 95,
+    "handshake_ok": 0
+   },
+   "hours": 17.632846944444445
+  },
+  "relay-r-a-095": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4960.1,
+     "end": 68397.349,
+     "fill": 73.4369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 126,
+    "handshake_ok": 0
+   },
+   "hours": 17.621458055555557
+  },
+  "relay-r-a-096": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5000.1,
+     "end": 68388.849,
+     "fill": 33.4369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 45,
+    "handshake_ok": 0
+   },
+   "hours": 17.607985833333334
+  },
+  "relay-r-a-097": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5040.1,
+     "end": 68399.849,
+     "fill": 138.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 50,
+    "handshake_ok": 0
+   },
+   "hours": 17.59993027777778
+  },
+  "relay-r-a-098": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5080.1,
+     "end": 68386.849,
+     "fill": 98.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 65,
+    "handshake_ok": 0
+   },
+   "hours": 17.585208055555558
+  },
+  "relay-r-a-099": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5120.1,
+     "end": 68396.849,
+     "fill": 58.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 71,
+    "handshake_ok": 0
+   },
+   "hours": 17.57687472222222
+  },
+  "relay-r-a-100": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5160.1,
+     "end": 68398.07,
+     "fill": 18.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 136,
+    "handshake_ok": 0
+   },
+   "hours": 17.56610277777778
+  },
+  "relay-r-a-101": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5200.1,
+     "end": 68389.349,
+     "fill": 149.63699999999972
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 105,
+    "handshake_ok": 0
+   },
+   "hours": 17.552569166666668
+  },
+  "relay-r-a-102": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5240.1,
+     "end": 68395.981,
+     "fill": 109.63699999999972
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 113,
+    "handshake_ok": 0
+   },
+   "hours": 17.543300277777778
+  },
+  "relay-r-a-103": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5280.1,
+     "end": 68394.849,
+     "fill": 69.63699999999972
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 54,
+    "handshake_ok": 0
+   },
+   "hours": 17.531874722222224
+  },
+  "relay-r-a-104": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5320.1,
+     "end": 68390.349,
+     "fill": 29.636999999999716
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 108,
+    "handshake_ok": 0
+   },
+   "hours": 17.519513611111112
+  },
+  "relay-r-a-105": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5360.1,
+     "end": 68396.981,
+     "fill": 377.2370000000001
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 56,
+    "handshake_ok": 0
+   },
+   "hours": 17.51024472222222
+  },
+  "relay-r-a-106": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5400.1,
+     "end": 68398.083,
+     "fill": 337.2370000000001
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 93,
+    "handshake_ok": 0
+   },
+   "hours": 17.499439722222224
+  },
+  "relay-r-a-107": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5440.1,
+     "end": 68397.061,
+     "fill": 297.2370000000001
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 91,
+    "handshake_ok": 0
+   },
+   "hours": 17.488044722222224
+  },
+  "relay-r-a-108": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5480.1,
+     "end": 68398.06,
+     "fill": 257.2370000000001
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 54,
+    "handshake_ok": 0
+   },
+   "hours": 17.47721111111111
+  },
+  "relay-r-a-109": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5520.1,
+     "end": 68394.081,
+     "fill": 217.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 55,
+    "handshake_ok": 0
+   },
+   "hours": 17.464994722222226
+  },
+  "relay-r-a-110": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5560.1,
+     "end": 68399.349,
+     "fill": 177.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 113,
+    "handshake_ok": 0
+   },
+   "hours": 17.455346944444447
+  },
+  "relay-r-a-111": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5600.1,
+     "end": 68399.557,
+     "fill": 137.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 69,
+    "handshake_ok": 0
+   },
+   "hours": 17.44429361111111
+  },
+  "relay-r-a-112": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5640.1,
+     "end": 68395.583,
+     "fill": 97.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 63,
+    "handshake_ok": 0
+   },
+   "hours": 17.432078611111113
+  },
+  "relay-r-a-113": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5680.1,
+     "end": 68394.081,
+     "fill": 57.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 56,
+    "handshake_ok": 0
+   },
+   "hours": 17.420550277777778
+  },
+  "relay-r-a-114": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5720.1,
+     "end": 68397.481,
+     "fill": 17.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 98,
+    "handshake_ok": 0
+   },
+   "hours": 17.41038361111111
+  },
+  "relay-r-a-115": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5760.1,
+     "end": 68396.349,
+     "fill": 8.536999999999352
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 54,
+    "handshake_ok": 721
+   },
+   "hours": 17.398958055555557
+  },
+  "relay-r-a-116": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5800.1,
+     "end": 68397.549,
+     "fill": 8.936999999999898
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 115,
+    "handshake_ok": 715
+   },
+   "hours": 17.388180277777778
+  },
+  "relay-r-a-117": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5840.1,
+     "end": 68397.549,
+     "fill": 8.936999999999898
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 60,
+    "handshake_ok": 719
+   },
+   "hours": 17.37706916666667
+  },
+  "relay-r-b-001": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1220.1,
+     "end": 68396.578,
+     "fill": 7.516000000000076
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 67,
+    "handshake_ok": 809
+   },
+   "hours": 18.660132777777775
+  },
+  "relay-r-b-002": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1260.1,
+     "end": 68398.349,
+     "fill": 7.517000000000053
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 46,
+    "handshake_ok": 812
+   },
+   "hours": 18.64951361111111
+  },
+  "relay-r-b-003": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1300.1,
+     "end": 68397.549,
+     "fill": 6.718000000000075
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 64,
+    "handshake_ok": 806
+   },
+   "hours": 18.638180277777774
+  },
+  "relay-r-b-004": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1340.1,
+     "end": 68392.849,
+     "fill": 129.72000000000003
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 44,
+    "handshake_ok": 0
+   },
+   "hours": 18.62576361111111
+  },
+  "relay-r-b-005": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1380.1,
+     "end": 68389.073,
+     "fill": 89.72000000000003
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 100,
+    "handshake_ok": 0
+   },
+   "hours": 18.61360361111111
+  },
+  "relay-r-b-006": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1420.1,
+     "end": 68398.349,
+     "fill": 49.72000000000003
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 115,
+    "handshake_ok": 0
+   },
+   "hours": 18.605069166666667
+  },
+  "relay-r-b-007": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1460.1,
+     "end": 68398.849,
+     "fill": 9.720000000000027
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 104,
+    "handshake_ok": 0
+   },
+   "hours": 18.594096944444445
+  },
+  "relay-r-b-008": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1500.1,
+     "end": 68389.082,
+     "fill": 55.12300000000005
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 45,
+    "handshake_ok": 0
+   },
+   "hours": 18.580272777777775
+  },
+  "relay-r-b-009": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1540.1,
+     "end": 68398.249,
+     "fill": 15.023000000000138
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 51,
+    "handshake_ok": 0
+   },
+   "hours": 18.571708055555554
+  },
+  "relay-r-b-010": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1580.1,
+     "end": 68384.849,
+     "fill": 118.82600000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 58,
+    "handshake_ok": 0
+   },
+   "hours": 18.556874722222222
+  },
+  "relay-r-b-011": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1620.1,
+     "end": 68390.349,
+     "fill": 78.82600000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 81,
+    "handshake_ok": 0
+   },
+   "hours": 18.547291388888887
+  },
+  "relay-r-b-012": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1660.1,
+     "end": 68398.349,
+     "fill": 38.92600000000016
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 47,
+    "handshake_ok": 0
+   },
+   "hours": 18.5384025
+  },
+  "relay-r-b-013": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1700.1,
+     "end": 68399.849,
+     "fill": 530.1350000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 50,
+    "handshake_ok": 0
+   },
+   "hours": 18.527708055555554
+  },
+  "relay-r-b-014": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1740.1,
+     "end": 68395.349,
+     "fill": 490.1350000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 86,
+    "handshake_ok": 0
+   },
+   "hours": 18.515346944444442
+  },
+  "relay-r-b-015": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1780.1,
+     "end": 68396.586,
+     "fill": 450.1350000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 45,
+    "handshake_ok": 0
+   },
+   "hours": 18.504579444444442
+  },
+  "relay-r-b-016": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1820.1,
+     "end": 68394.565,
+     "fill": 410.1350000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 54,
+    "handshake_ok": 0
+   },
+   "hours": 18.492906944444442
+  },
+  "relay-r-b-017": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1860.1,
+     "end": 68398.849,
+     "fill": 370.1350000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 74,
+    "handshake_ok": 0
+   },
+   "hours": 18.48298583333333
+  },
+  "relay-r-b-018": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1900.1,
+     "end": 68398.074,
+     "fill": 330.1350000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 95,
+    "handshake_ok": 0
+   },
+   "hours": 18.47165944444444
+  },
+  "relay-r-b-019": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1940.1,
+     "end": 68369.849,
+     "fill": 290.1350000000002
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 48,
+    "handshake_ok": 0
+   },
+   "hours": 18.452708055555554
+  },
+  "relay-r-b-020": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 1980.1,
+     "end": 68399.565,
+     "fill": 250.13500000000022
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 121,
+    "handshake_ok": 0
+   },
+   "hours": 18.449851388888888
+  },
+  "relay-r-b-021": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2020.1,
+     "end": 68396.56,
+     "fill": 210.13500000000022
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 47,
+    "handshake_ok": 0
+   },
+   "hours": 18.437905555555552
+  },
+  "relay-r-b-022": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2060.1,
+     "end": 68398.461,
+     "fill": 170.13500000000022
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 120,
+    "handshake_ok": 0
+   },
+   "hours": 18.4273225
+  },
+  "relay-r-b-023": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2100.1,
+     "end": 68390.586,
+     "fill": 130.13500000000022
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 104,
+    "handshake_ok": 0
+   },
+   "hours": 18.414023888888885
+  },
+  "relay-r-b-024": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2140.1,
+     "end": 68396.565,
+     "fill": 90.13500000000022
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 40,
+    "handshake_ok": 0
+   },
+   "hours": 18.40457361111111
+  },
+  "relay-r-b-025": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2180.1,
+     "end": 68398.711,
+     "fill": 50.13500000000022
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 117,
+    "handshake_ok": 0
+   },
+   "hours": 18.39405861111111
+  },
+  "relay-r-b-026": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2220.1,
+     "end": 68392.349,
+     "fill": 10.135000000000218
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 54,
+    "handshake_ok": 0
+   },
+   "hours": 18.381180277777776
+  },
+  "relay-r-b-027": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2260.1,
+     "end": 68395.849,
+     "fill": 80.23599999999988
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 82,
+    "handshake_ok": 0
+   },
+   "hours": 18.371041388888887
+  },
+  "relay-r-b-028": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2300.1,
+     "end": 68391.063,
+     "fill": 40.235999999999876
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 46,
+    "handshake_ok": 0
+   },
+   "hours": 18.35860083333333
+  },
+  "relay-r-b-029": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2340.1,
+     "end": 68394.349,
+     "fill": 33.63599999999997
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 139,
+    "handshake_ok": 0
+   },
+   "hours": 18.3484025
+  },
+  "relay-r-b-030": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2380.1,
+     "end": 68395.349,
+     "fill": 103.73700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 106,
+    "handshake_ok": 0
+   },
+   "hours": 18.337569166666665
+  },
+  "relay-r-b-031": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2420.1,
+     "end": 68387.587,
+     "fill": 63.73700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 56,
+    "handshake_ok": 0
+   },
+   "hours": 18.324301944444443
+  },
+  "relay-r-b-032": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2460.1,
+     "end": 68395.583,
+     "fill": 23.73700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 127,
+    "handshake_ok": 0
+   },
+   "hours": 18.315411944444442
+  },
+  "relay-r-b-033": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2500.1,
+     "end": 68396.849,
+     "fill": 274.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 90,
+    "handshake_ok": 0
+   },
+   "hours": 18.3046525
+  },
+  "relay-r-b-034": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2540.1,
+     "end": 68398.461,
+     "fill": 234.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 120,
+    "handshake_ok": 0
+   },
+   "hours": 18.293989166666663
+  },
+  "relay-r-b-035": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2580.1,
+     "end": 68399.849,
+     "fill": 194.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 118,
+    "handshake_ok": 0
+   },
+   "hours": 18.28326361111111
+  },
+  "relay-r-b-036": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2620.1,
+     "end": 68396.976,
+     "fill": 154.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 81,
+    "handshake_ok": 0
+   },
+   "hours": 18.27135444444444
+  },
+  "relay-r-b-037": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2660.1,
+     "end": 68398.849,
+     "fill": 114.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 44,
+    "handshake_ok": 0
+   },
+   "hours": 18.26076361111111
+  },
+  "relay-r-b-038": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2700.1,
+     "end": 68398.711,
+     "fill": 74.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 91,
+    "handshake_ok": 0
+   },
+   "hours": 18.249614166666664
+  },
+  "relay-r-b-039": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2740.1,
+     "end": 68398.356,
+     "fill": 34.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 33,
+    "timed_out": 0,
+    "back_ping_failed": 119,
+    "handshake_ok": 0
+   },
+   "hours": 18.23840444444444
+  },
+  "relay-r-b-040": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2780.1,
+     "end": 68399.097,
+     "fill": 149.03700000000026
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 80,
+    "handshake_ok": 0
+   },
+   "hours": 18.227499166666664
+  },
+  "relay-r-b-041": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2820.1,
+     "end": 68387.851,
+     "fill": 109.03700000000026
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 60,
+    "handshake_ok": 0
+   },
+   "hours": 18.213264166666665
+  },
+  "relay-r-b-042": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2860.1,
+     "end": 68395.353,
+     "fill": 69.03700000000026
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 134,
+    "handshake_ok": 0
+   },
+   "hours": 18.204236944444446
+  },
+  "relay-r-b-043": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2900.1,
+     "end": 68395.751,
+     "fill": 29.037000000000262
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 54,
+    "handshake_ok": 0
+   },
+   "hours": 18.19323638888889
+  },
+  "relay-r-b-044": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2940.1,
+     "end": 68390.593,
+     "fill": 11.936999999999898
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 56,
+    "handshake_ok": 0
+   },
+   "hours": 18.1806925
+  },
+  "relay-r-b-045": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 2980.1,
+     "end": 68397.606,
+     "fill": 14.73700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 104,
+    "handshake_ok": 0
+   },
+   "hours": 18.171529444444445
+  },
+  "relay-r-b-046": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3020.1,
+     "end": 68392.576,
+     "fill": 68.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 58,
+    "handshake_ok": 0
+   },
+   "hours": 18.159021111111112
+  },
+  "relay-r-b-047": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3060.1,
+     "end": 68396.349,
+     "fill": 28.936999999999898
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 96,
+    "handshake_ok": 0
+   },
+   "hours": 18.148958055555557
+  },
+  "relay-r-b-048": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3100.1,
+     "end": 68396.106,
+     "fill": 199.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 110,
+    "handshake_ok": 0
+   },
+   "hours": 18.137779444444444
+  },
+  "relay-r-b-049": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3140.1,
+     "end": 68390.356,
+     "fill": 159.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 70,
+    "handshake_ok": 0
+   },
+   "hours": 18.12507111111111
+  },
+  "relay-r-b-050": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3180.1,
+     "end": 68398.593,
+     "fill": 119.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 130,
+    "handshake_ok": 0
+   },
+   "hours": 18.116248055555555
+  },
+  "relay-r-b-051": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3220.1,
+     "end": 68393.501,
+     "fill": 79.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 97,
+    "handshake_ok": 0
+   },
+   "hours": 18.1037225
+  },
+  "relay-r-b-052": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3260.1,
+     "end": 68395.349,
+     "fill": 39.24299999999994
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 84,
+    "handshake_ok": 0
+   },
+   "hours": 18.093124722222225
+  },
+  "relay-r-b-053": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3300.1,
+     "end": 68398.352,
+     "fill": 119.24499999999989
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 95,
+    "handshake_ok": 0
+   },
+   "hours": 18.08284777777778
+  },
+  "relay-r-b-054": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3340.1,
+     "end": 68395.751,
+     "fill": 79.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 89,
+    "handshake_ok": 0
+   },
+   "hours": 18.071014166666668
+  },
+  "relay-r-b-055": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3380.1,
+     "end": 68394.349,
+     "fill": 39.24499999999989
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 86,
+    "handshake_ok": 0
+   },
+   "hours": 18.05951361111111
+  },
+  "relay-r-b-056": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3420.1,
+     "end": 68395.851,
+     "fill": 85.03700000000026
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 75,
+    "handshake_ok": 0
+   },
+   "hours": 18.04881972222222
+  },
+  "relay-r-b-057": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3460.1,
+     "end": 68395.101,
+     "fill": 45.03700000000026
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 53,
+    "handshake_ok": 0
+   },
+   "hours": 18.037500277777777
+  },
+  "relay-r-b-058": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3500.1,
+     "end": 68398.231,
+     "fill": 24.33699999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 92,
+    "handshake_ok": 0
+   },
+   "hours": 18.02725861111111
+  },
+  "relay-r-b-059": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3540.1,
+     "end": 68387.602,
+     "fill": 367.2370000000001
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 51,
+    "handshake_ok": 0
+   },
+   "hours": 18.013195
+  },
+  "relay-r-b-060": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3580.1,
+     "end": 68391.501,
+     "fill": 62.4369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 60,
+    "handshake_ok": 0
+   },
+   "hours": 18.003166944444445
+  },
+  "relay-r-b-061": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3620.1,
+     "end": 68393.849,
+     "fill": 22.436999999999898
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 61,
+    "handshake_ok": 0
+   },
+   "hours": 17.992708055555557
+  },
+  "relay-r-b-062": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3660.1,
+     "end": 68397.353,
+     "fill": 247.337
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 81,
+    "handshake_ok": 0
+   },
+   "hours": 17.98257027777778
+  },
+  "relay-r-b-063": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3700.1,
+     "end": 68393.603,
+     "fill": 207.337
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 54,
+    "handshake_ok": 0
+   },
+   "hours": 17.9704175
+  },
+  "relay-r-b-064": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3740.1,
+     "end": 68398.102,
+     "fill": 167.337
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 120,
+    "handshake_ok": 0
+   },
+   "hours": 17.96055611111111
+  },
+  "relay-r-b-065": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3780.1,
+     "end": 68390.853,
+     "fill": 127.33699999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 69,
+    "handshake_ok": 0
+   },
+   "hours": 17.94743138888889
+  },
+  "relay-r-b-066": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3820.1,
+     "end": 68390.606,
+     "fill": 87.33699999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 31,
+    "timed_out": 0,
+    "back_ping_failed": 96,
+    "handshake_ok": 0
+   },
+   "hours": 17.936251666666667
+  },
+  "relay-r-b-067": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3860.1,
+     "end": 68389.103,
+     "fill": 47.33699999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 122,
+    "handshake_ok": 0
+   },
+   "hours": 17.924723055555557
+  },
+  "relay-r-b-068": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3900.1,
+     "end": 68395.601,
+     "fill": 11.336999999999989
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 61,
+    "handshake_ok": 0
+   },
+   "hours": 17.915416944444445
+  },
+  "relay-r-b-069": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3940.1,
+     "end": 68399.59,
+     "fill": 27.13700000000017
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 81,
+    "handshake_ok": 0
+   },
+   "hours": 17.905413888888887
+  },
+  "relay-r-b-070": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 3980.1,
+     "end": 68397.606,
+     "fill": 464.0369999999998
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 78,
+    "handshake_ok": 0
+   },
+   "hours": 17.893751666666667
+  },
+  "relay-r-b-071": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4020.1,
+     "end": 68398.349,
+     "fill": 424.0369999999998
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 66,
+    "handshake_ok": 0
+   },
+   "hours": 17.882846944444445
+  },
+  "relay-r-b-072": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4060.1,
+     "end": 68397.356,
+     "fill": 384.0369999999998
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 115,
+    "handshake_ok": 0
+   },
+   "hours": 17.87146
+  },
+  "relay-r-b-073": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4100.1,
+     "end": 68397.586,
+     "fill": 344.03699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 120,
+    "handshake_ok": 0
+   },
+   "hours": 17.86041277777778
+  },
+  "relay-r-b-074": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4140.1,
+     "end": 68395.751,
+     "fill": 304.03699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 58,
+    "handshake_ok": 0
+   },
+   "hours": 17.848791944444447
+  },
+  "relay-r-b-075": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4180.1,
+     "end": 68399.849,
+     "fill": 264.03699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 36,
+    "timed_out": 0,
+    "back_ping_failed": 68,
+    "handshake_ok": 0
+   },
+   "hours": 17.838819166666667
+  },
+  "relay-r-b-076": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4220.1,
+     "end": 68397.103,
+     "fill": 224.03699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 143,
+    "handshake_ok": 0
+   },
+   "hours": 17.826945277777778
+  },
+  "relay-r-b-077": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4260.1,
+     "end": 68397.594,
+     "fill": 184.03699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 84,
+    "handshake_ok": 0
+   },
+   "hours": 17.815970555555555
+  },
+  "relay-r-b-078": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4300.1,
+     "end": 68398.353,
+     "fill": 144.03699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 86,
+    "handshake_ok": 0
+   },
+   "hours": 17.80507027777778
+  },
+  "relay-r-b-079": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4340.1,
+     "end": 68399.097,
+     "fill": 104.03699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 151,
+    "handshake_ok": 0
+   },
+   "hours": 17.79416583333333
+  },
+  "relay-r-b-080": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4380.1,
+     "end": 68396.501,
+     "fill": 64.03699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 31,
+    "timed_out": 0,
+    "back_ping_failed": 124,
+    "handshake_ok": 0
+   },
+   "hours": 17.782333611111113
+  },
+  "relay-r-b-081": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4420.1,
+     "end": 68396.353,
+     "fill": 24.036999999999352
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 47,
+    "handshake_ok": 0
+   },
+   "hours": 17.77118138888889
+  },
+  "relay-r-b-082": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4460.1,
+     "end": 68398.59,
+     "fill": 374.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 107,
+    "handshake_ok": 0
+   },
+   "hours": 17.760691666666666
+  },
+  "relay-r-b-083": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4500.1,
+     "end": 68398.349,
+     "fill": 334.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 86,
+    "handshake_ok": 0
+   },
+   "hours": 17.749513611111112
+  },
+  "relay-r-b-084": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4540.1,
+     "end": 68399.353,
+     "fill": 294.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 73,
+    "handshake_ok": 0
+   },
+   "hours": 17.73868138888889
+  },
+  "relay-r-b-085": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4580.1,
+     "end": 68397.849,
+     "fill": 254.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 123,
+    "handshake_ok": 0
+   },
+   "hours": 17.727152500000003
+  },
+  "relay-r-b-086": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4620.1,
+     "end": 68394.601,
+     "fill": 214.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 55,
+    "handshake_ok": 0
+   },
+   "hours": 17.715139166666667
+  },
+  "relay-r-b-087": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4660.1,
+     "end": 68399.352,
+     "fill": 174.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 54,
+    "handshake_ok": 0
+   },
+   "hours": 17.705347777777778
+  },
+  "relay-r-b-088": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4700.1,
+     "end": 68391.106,
+     "fill": 134.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 102,
+    "handshake_ok": 0
+   },
+   "hours": 17.69194611111111
+  },
+  "relay-r-b-089": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4740.1,
+     "end": 68396.353,
+     "fill": 94.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 63,
+    "handshake_ok": 0
+   },
+   "hours": 17.682292500000003
+  },
+  "relay-r-b-090": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4780.1,
+     "end": 68399.356,
+     "fill": 54.53699999999935
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 57,
+    "handshake_ok": 0
+   },
+   "hours": 17.672015555555557
+  },
+  "relay-r-b-091": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4820.1,
+     "end": 68393.083,
+     "fill": 14.536999999999352
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 55,
+    "handshake_ok": 0
+   },
+   "hours": 17.659161944444445
+  },
+  "relay-r-b-092": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4860.1,
+     "end": 68394.853,
+     "fill": 57.9369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 80,
+    "handshake_ok": 0
+   },
+   "hours": 17.6485425
+  },
+  "relay-r-b-093": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4900.1,
+     "end": 68398.349,
+     "fill": 17.936999999999898
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 128,
+    "handshake_ok": 0
+   },
+   "hours": 17.6384025
+  },
+  "relay-r-b-094": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4940.1,
+     "end": 68398.001,
+     "fill": 93.4369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 112,
+    "handshake_ok": 0
+   },
+   "hours": 17.627194722222224
+  },
+  "relay-r-b-095": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 4980.1,
+     "end": 68397.001,
+     "fill": 53.4369999999999
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 55,
+    "handshake_ok": 0
+   },
+   "hours": 17.615805833333336
+  },
+  "relay-r-b-096": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5020.1,
+     "end": 68396.606,
+     "fill": 13.436999999999898
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 56,
+    "handshake_ok": 0
+   },
+   "hours": 17.604585
+  },
+  "relay-r-b-097": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5060.1,
+     "end": 68395.603,
+     "fill": 118.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 89,
+    "handshake_ok": 0
+   },
+   "hours": 17.593195277777777
+  },
+  "relay-r-b-098": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5100.1,
+     "end": 68398.731,
+     "fill": 78.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 148,
+    "handshake_ok": 0
+   },
+   "hours": 17.582953055555556
+  },
+  "relay-r-b-099": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5140.1,
+     "end": 68397.085,
+     "fill": 38.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 69,
+    "handshake_ok": 0
+   },
+   "hours": 17.571384722222223
+  },
+  "relay-r-b-100": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5180.1,
+     "end": 68384.102,
+     "fill": 169.63699999999972
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 51,
+    "handshake_ok": 0
+   },
+   "hours": 17.556667222222224
+  },
+  "relay-r-b-101": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5220.1,
+     "end": 68398.356,
+     "fill": 129.63699999999972
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 88,
+    "handshake_ok": 0
+   },
+   "hours": 17.549515555555555
+  },
+  "relay-r-b-102": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5260.1,
+     "end": 68393.103,
+     "fill": 89.63699999999972
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 154,
+    "handshake_ok": 0
+   },
+   "hours": 17.53694527777778
+  },
+  "relay-r-b-103": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5300.1,
+     "end": 68396.856,
+     "fill": 49.636999999999716
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 101,
+    "handshake_ok": 0
+   },
+   "hours": 17.526876666666666
+  },
+  "relay-r-b-104": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5340.1,
+     "end": 68398.849,
+     "fill": 397.2370000000001
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 61,
+    "handshake_ok": 0
+   },
+   "hours": 17.51631916666667
+  },
+  "relay-r-b-105": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5380.1,
+     "end": 68387.352,
+     "fill": 357.2370000000001
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 57,
+    "handshake_ok": 0
+   },
+   "hours": 17.502014444444445
+  },
+  "relay-r-b-106": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5420.1,
+     "end": 68397.103,
+     "fill": 317.2370000000001
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 111,
+    "handshake_ok": 0
+   },
+   "hours": 17.493611944444446
+  },
+  "relay-r-b-107": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5460.1,
+     "end": 68393.353,
+     "fill": 277.2370000000001
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 54,
+    "handshake_ok": 0
+   },
+   "hours": 17.481459166666667
+  },
+  "relay-r-b-108": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5500.1,
+     "end": 68397.853,
+     "fill": 237.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 54,
+    "handshake_ok": 0
+   },
+   "hours": 17.471598055555557
+  },
+  "relay-r-b-109": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5540.1,
+     "end": 68397.749,
+     "fill": 197.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 84,
+    "handshake_ok": 0
+   },
+   "hours": 17.460458055555556
+  },
+  "relay-r-b-110": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5580.1,
+     "end": 68397.853,
+     "fill": 157.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 114,
+    "handshake_ok": 0
+   },
+   "hours": 17.449375833333335
+  },
+  "relay-r-b-111": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5620.1,
+     "end": 68399.751,
+     "fill": 117.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 34,
+    "timed_out": 0,
+    "back_ping_failed": 62,
+    "handshake_ok": 0
+   },
+   "hours": 17.438791944444446
+  },
+  "relay-r-b-112": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5660.1,
+     "end": 68396.353,
+     "fill": 77.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 150,
+    "handshake_ok": 0
+   },
+   "hours": 17.426736944444446
+  },
+  "relay-r-b-113": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5700.1,
+     "end": 68396.251,
+     "fill": 37.23700000000008
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 70,
+    "handshake_ok": 0
+   },
+   "hours": 17.4155975
+  },
+  "relay-r-b-114": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5740.1,
+     "end": 68398.549,
+     "fill": 9.536999999999352
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 44,
+    "handshake_ok": 721
+   },
+   "hours": 17.405124722222222
+  },
+  "relay-r-b-115": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5780.1,
+     "end": 68399.249,
+     "fill": 9.336999999999534
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 86,
+    "handshake_ok": 719
+   },
+   "hours": 17.394208055555556
+  },
+  "relay-r-b-116": {
+   "class": "relay",
+   "sessions": [
+    {
+     "start": 5820.1,
+     "end": 68399.949,
+     "fill": 9.136999999999716
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 32,
+    "timed_out": 0,
+    "back_ping_failed": 102,
+    "handshake_ok": 715
+   },
+   "hours": 17.38329138888889
+  },
+  "spy-a-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 0.1,
+     "end": 68397.565,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 101,
+    "handshake_ok": 0
+   },
+   "hours": 18.99929583333333
+  },
+  "spy-b-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 10.1,
+     "end": 68397.086,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 54,
+    "handshake_ok": 0
+   },
+   "hours": 18.996384999999997
+  },
+  "spy-c-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 20.1,
+     "end": 68397.349,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 60,
+    "handshake_ok": 0
+   },
+   "hours": 18.993680277777777
+  },
+  "spy-d-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 30.1,
+     "end": 68397.586,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 77,
+    "handshake_ok": 0
+   },
+   "hours": 18.99096833333333
+  },
+  "spy-e-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 40.1,
+     "end": 68397.349,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 75,
+    "handshake_ok": 0
+   },
+   "hours": 18.98812472222222
+  },
+  "spy-f-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 50.1,
+     "end": 68397.086,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 79,
+    "handshake_ok": 0
+   },
+   "hours": 18.985273888888887
+  },
+  "spy-g-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 60.1,
+     "end": 68398.349,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 56,
+    "handshake_ok": 0
+   },
+   "hours": 18.982846944444443
+  },
+  "spy-h-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 70.1,
+     "end": 68397.849,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 88,
+    "handshake_ok": 0
+   },
+   "hours": 18.979930277777775
+  },
+  "spy-i-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 80.1,
+     "end": 68397.576,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 101,
+    "handshake_ok": 0
+   },
+   "hours": 18.977076666666665
+  },
+  "spy-j-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 90.1,
+     "end": 68396.349,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 86,
+    "handshake_ok": 0
+   },
+   "hours": 18.973958055555556
+  },
+  "spy-k-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 100.1,
+     "end": 68397.086,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 109,
+    "handshake_ok": 0
+   },
+   "hours": 18.971384999999998
+  },
+  "spy-l-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 110.1,
+     "end": 68397.349,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 67,
+    "handshake_ok": 0
+   },
+   "hours": 18.968680277777775
+  },
+  "spy-m-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 120.1,
+     "end": 68398.349,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 83,
+    "handshake_ok": 0
+   },
+   "hours": 18.966180277777777
+  },
+  "spy-n-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 130.1,
+     "end": 68399.349,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 113,
+    "handshake_ok": 0
+   },
+   "hours": 18.963680277777776
+  },
+  "spy-o-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 140.1,
+     "end": 68398.349,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 50,
+    "handshake_ok": 0
+   },
+   "hours": 18.96062472222222
+  },
+  "spy-p-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 150.1,
+     "end": 68394.083,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 59,
+    "handshake_ok": 0
+   },
+   "hours": 18.95666194444444
+  },
+  "spy-q-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 160.1,
+     "end": 68396.849,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 58,
+    "handshake_ok": 0
+   },
+   "hours": 18.954652499999998
+  },
+  "spy-r-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 170.1,
+     "end": 68396.586,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 114,
+    "handshake_ok": 0
+   },
+   "hours": 18.951801666666665
+  },
+  "spy-s-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 180.1,
+     "end": 68396.586,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 105,
+    "handshake_ok": 0
+   },
+   "hours": 18.949023888888885
+  },
+  "spy-t-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 190.1,
+     "end": 68399.086,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 97,
+    "handshake_ok": 0
+   },
+   "hours": 18.946940555555553
+  },
+  "spy-u-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 200.1,
+     "end": 68397.586,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 91,
+    "handshake_ok": 0
+   },
+   "hours": 18.943746111111107
+  },
+  "spy-v-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 210.1,
+     "end": 68398.57,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 67,
+    "handshake_ok": 0
+   },
+   "hours": 18.941241666666667
+  },
+  "spy-w-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 220.1,
+     "end": 68398.098,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 78,
+    "handshake_ok": 0
+   },
+   "hours": 18.938332777777777
+  },
+  "spy-x-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 230.1,
+     "end": 68397.349,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 52,
+    "handshake_ok": 0
+   },
+   "hours": 18.935346944444444
+  },
+  "spy-x26-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 260.1,
+     "end": 68397.086,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 109,
+    "handshake_ok": 0
+   },
+   "hours": 18.926940555555554
+  },
+  "spy-x27-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 270.1,
+     "end": 68396.086,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 102,
+    "handshake_ok": 0
+   },
+   "hours": 18.923885
+  },
+  "spy-x28-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 280.1,
+     "end": 68397.349,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 47,
+    "handshake_ok": 0
+   },
+   "hours": 18.921458055555554
+  },
+  "spy-x29-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 290.1,
+     "end": 68394.849,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 47,
+    "handshake_ok": 0
+   },
+   "hours": 18.917985833333333
+  },
+  "spy-x30-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 300.1,
+     "end": 68397.576,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 59,
+    "handshake_ok": 0
+   },
+   "hours": 18.915965555555555
+  },
+  "spy-x31-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 310.1,
+     "end": 68397.576,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 64,
+    "handshake_ok": 0
+   },
+   "hours": 18.913187777777775
+  },
+  "spy-x32-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 320.1,
+     "end": 68399.349,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 116,
+    "handshake_ok": 0
+   },
+   "hours": 18.9109025
+  },
+  "spy-x33-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 330.1,
+     "end": 68399.577,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 62,
+    "handshake_ok": 0
+   },
+   "hours": 18.908188055555556
+  },
+  "spy-x34-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 340.1,
+     "end": 68397.086,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 62,
+    "handshake_ok": 0
+   },
+   "hours": 18.90471833333333
+  },
+  "spy-x35-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 350.1,
+     "end": 68398.349,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 67,
+    "handshake_ok": 0
+   },
+   "hours": 18.902291388888887
+  },
+  "spy-x36-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 360.1,
+     "end": 68398.586,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 65,
+    "handshake_ok": 0
+   },
+   "hours": 18.89957944444444
+  },
+  "spy-x37-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 370.1,
+     "end": 68396.586,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 65,
+    "handshake_ok": 0
+   },
+   "hours": 18.896246111111108
+  },
+  "spy-x38-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 380.1,
+     "end": 68399.349,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 128,
+    "handshake_ok": 0
+   },
+   "hours": 18.894235833333333
+  },
+  "spy-x39-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 390.1,
+     "end": 68399.577,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 88,
+    "handshake_ok": 0
+   },
+   "hours": 18.89152138888889
+  },
+  "spy-x40-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 400.1,
+     "end": 68396.849,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 66,
+    "handshake_ok": 0
+   },
+   "hours": 18.88798583333333
+  },
+  "spy-x41-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 410.1,
+     "end": 68396.108,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 74,
+    "handshake_ok": 0
+   },
+   "hours": 18.88500222222222
+  },
+  "spy-y-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 240.1,
+     "end": 68394.583,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 76,
+    "handshake_ok": 0
+   },
+   "hours": 18.93180083333333
+  },
+  "spy-z-001": {
+   "class": "spy",
+   "sessions": [
+    {
+     "start": 250.1,
+     "end": 68398.576,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 76,
+    "handshake_ok": 0
+   },
+   "hours": 18.93013222222222
+  },
+  "user-001": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1200.1,
+     "end": 4207.1,
+     "fill": 23.054000000000087
+    },
+    {
+     "start": 4207.1,
+     "end": 11860.1,
+     "fill": 237.05199999999968
+    },
+    {
+     "start": 11860.1,
+     "end": 16429.1,
+     "fill": 14.971999999999753
+    },
+    {
+     "start": 16429.1,
+     "end": 19430.1,
+     "fill": 115.57300000000032
+    },
+    {
+     "start": 19430.1,
+     "end": 22734.1,
+     "fill": 63.873999999999796
+    },
+    {
+     "start": 22734.1,
+     "end": 26596.1,
+     "fill": 281.8790000000008
+    },
+    {
+     "start": 26596.1,
+     "end": 33096.1,
+     "fill": 112.67500000000291
+    },
+    {
+     "start": 33096.1,
+     "end": 42933.1,
+     "fill": 35.692000000002736
+    },
+    {
+     "start": 42933.1,
+     "end": 48682.1,
+     "fill": 289.8790000000008
+    },
+    {
+     "start": 48682.1,
+     "end": 54130.1,
+     "fill": 42.58099999999831
+    },
+    {
+     "start": 54130.1,
+     "end": 64909.1,
+     "fill": 211.4820000000036
+    },
+    {
+     "start": 64909.1,
+     "end": 68384.148,
+     "fill": 19.294000000001688
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.662235555555554
+  },
+  "user-002": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1205.1,
+     "end": 9399.1,
+     "fill": 18.054000000000087
+    },
+    {
+     "start": 9399.1,
+     "end": 16899.1,
+     "fill": 115.45199999999932
+    },
+    {
+     "start": 16899.1,
+     "end": 33848.1,
+     "fill": 211.07300000000032
+    },
+    {
+     "start": 33848.1,
+     "end": 35668.1,
+     "fill": 115.07700000000477
+    },
+    {
+     "start": 35668.1,
+     "end": 41116.1,
+     "fill": 56.07700000000477
+    },
+    {
+     "start": 41116.1,
+     "end": 46344.1,
+     "fill": 68.77999999999884
+    },
+    {
+     "start": 46344.1,
+     "end": 59349.1,
+     "fill": 93.77999999999884
+    },
+    {
+     "start": 59349.1,
+     "end": 65206.123,
+     "fill": 44.463000000003376
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 17.778061944444445
+  },
+  "user-003": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1210.1,
+     "end": 18100.1,
+     "fill": 13.104000000000042
+    },
+    {
+     "start": 18100.1,
+     "end": 24757.1,
+     "fill": 58.87300000000323
+    },
+    {
+     "start": 24757.1,
+     "end": 27313.1,
+     "fill": 70.67500000000291
+    },
+    {
+     "start": 27313.1,
+     "end": 32361.1,
+     "fill": 194.07500000000073
+    },
+    {
+     "start": 32361.1,
+     "end": 34042.1,
+     "fill": 43.957000000002154
+    },
+    {
+     "start": 34042.1,
+     "end": 37748.1,
+     "fill": 78.47699999999895
+    },
+    {
+     "start": 37748.1,
+     "end": 40235.1,
+     "fill": 255.27799999999843
+    },
+    {
+     "start": 40235.1,
+     "end": 49009.1,
+     "fill": 85.67900000000373
+    },
+    {
+     "start": 49009.1,
+     "end": 57517.1,
+     "fill": 181.9820000000036
+    },
+    {
+     "start": 57517.1,
+     "end": 63305.1,
+     "fill": 81.28300000000309
+    },
+    {
+     "start": 63305.1,
+     "end": 68398.889,
+     "fill": 32.133999999998196
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.663552499999998
+  },
+  "user-004": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1215.1,
+     "end": 3496.1,
+     "fill": 102.15600000000018
+    },
+    {
+     "start": 3496.1,
+     "end": 10001.1,
+     "fill": 28.352000000000317
+    },
+    {
+     "start": 10001.1,
+     "end": 15348.1,
+     "fill": 256.771999999999
+    },
+    {
+     "start": 15348.1,
+     "end": 23945.1,
+     "fill": 81.17299999999886
+    },
+    {
+     "start": 23945.1,
+     "end": 28503.1,
+     "fill": 60.375
+    },
+    {
+     "start": 28503.1,
+     "end": 32252.1,
+     "fill": 91.67600000000311
+    },
+    {
+     "start": 32252.1,
+     "end": 36250.1,
+     "fill": 119.67699999999968
+    },
+    {
+     "start": 36250.1,
+     "end": 41156.1,
+     "fill": 44.978000000002794
+    },
+    {
+     "start": 41156.1,
+     "end": 53452.1,
+     "fill": 28.758999999998196
+    },
+    {
+     "start": 53452.1,
+     "end": 57820.1,
+     "fill": 63.382000000005064
+    },
+    {
+     "start": 57820.1,
+     "end": 58956.1,
+     "fill": 26.663000000000466
+    },
+    {
+     "start": 58956.1,
+     "end": 60986.1,
+     "fill": 19.913000000000466
+    },
+    {
+     "start": 60986.1,
+     "end": 61737.1,
+     "fill": 20.754000000000815
+    },
+    {
+     "start": 61737.1,
+     "end": 62368.1,
+     "fill": 25.313999999998487
+    },
+    {
+     "start": 62368.1,
+     "end": 65496.1,
+     "fill": 27.264000000002852
+    },
+    {
+     "start": 65496.1,
+     "end": 68063.11,
+     "fill": 24.313999999998487
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.568891666666666
+  },
+  "user-005": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1220.1,
+     "end": 9841.1,
+     "fill": 97.15600000000018
+    },
+    {
+     "start": 9841.1,
+     "end": 17811.1,
+     "fill": 416.771999999999
+    },
+    {
+     "start": 17811.1,
+     "end": 30014.1,
+     "fill": 46.99300000000221
+    },
+    {
+     "start": 30014.1,
+     "end": 32547.1,
+     "fill": 371.1760000000031
+    },
+    {
+     "start": 32547.1,
+     "end": 41305.1,
+     "fill": 116.57700000000114
+    },
+    {
+     "start": 41305.1,
+     "end": 45555.1,
+     "fill": 49.679000000003725
+    },
+    {
+     "start": 45555.1,
+     "end": 52112.1,
+     "fill": null
+    },
+    {
+     "start": 52112.1,
+     "end": 56116.1,
+     "fill": 64.1820000000007
+    },
+    {
+     "start": 56116.1,
+     "end": 61092.1,
+     "fill": 68.98300000000017
+    },
+    {
+     "start": 61092.1,
+     "end": 66913.1,
+     "fill": 21.984000000004016
+    },
+    {
+     "start": 66913.1,
+     "end": 68330.1,
+     "fill": 54.288999999989755
+    },
+    {
+     "start": 68330.1,
+     "end": 68398.641,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.66070583333333
+  },
+  "user-006": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1225.1,
+     "end": 8608.1,
+     "fill": 92.15600000000018
+    },
+    {
+     "start": 8608.1,
+     "end": 11432.1,
+     "fill": 266.35199999999895
+    },
+    {
+     "start": 11432.1,
+     "end": 29027.1,
+     "fill": 217.45199999999932
+    },
+    {
+     "start": 29027.1,
+     "end": 36550.1,
+     "fill": 175.07600000000093
+    },
+    {
+     "start": 36550.1,
+     "end": 38204.1,
+     "fill": 57.883999999998196
+    },
+    {
+     "start": 38204.1,
+     "end": 39961.1,
+     "fill": 84.77799999999843
+    },
+    {
+     "start": 39961.1,
+     "end": 45927.1,
+     "fill": 18.889000000002852
+    },
+    {
+     "start": 45927.1,
+     "end": 52118.1,
+     "fill": 27.18000000000029
+    },
+    {
+     "start": 52118.1,
+     "end": 62579.1,
+     "fill": 58.1620000000039
+    },
+    {
+     "start": 62579.1,
+     "end": 68381.1,
+     "fill": 27.203999999997905
+    },
+    {
+     "start": 68381.1,
+     "end": 68396.369,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.658685833333333
+  },
+  "user-007": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1230.1,
+     "end": 13186.1,
+     "fill": 87.20600000000013
+    },
+    {
+     "start": 13186.1,
+     "end": 27268.1,
+     "fill": 103.37199999999939
+    },
+    {
+     "start": 27268.1,
+     "end": 38812.1,
+     "fill": 239.07500000000073
+    },
+    {
+     "start": 38812.1,
+     "end": 43372.1,
+     "fill": 46.978000000002794
+    },
+    {
+     "start": 43372.1,
+     "end": 46482.1,
+     "fill": 28.578999999997905
+    },
+    {
+     "start": 46482.1,
+     "end": 53780.1,
+     "fill": 205.58000000000175
+    },
+    {
+     "start": 53780.1,
+     "end": 57316.1,
+     "fill": 263.04499999999825
+    },
+    {
+     "start": 57316.1,
+     "end": 63648.1,
+     "fill": 23.38300000000163
+    },
+    {
+     "start": 63648.1,
+     "end": 68163.1,
+     "fill": 19.184000000001106
+    },
+    {
+     "start": 68163.1,
+     "end": 68398.898,
+     "fill": 33.49499999999534
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.657999444444442
+  },
+  "user-008": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1235.1,
+     "end": 5121.1,
+     "fill": 82.15600000000018
+    },
+    {
+     "start": 5121.1,
+     "end": 17444.1,
+     "fill": 57.2519999999995
+    },
+    {
+     "start": 17444.1,
+     "end": 26568.1,
+     "fill": 280.87300000000323
+    },
+    {
+     "start": 26568.1,
+     "end": 36529.1,
+     "fill": 140.65500000000247
+    },
+    {
+     "start": 36529.1,
+     "end": 45249.1,
+     "fill": 78.85800000000017
+    },
+    {
+     "start": 45249.1,
+     "end": 47433.1,
+     "fill": 94.95999999999913
+    },
+    {
+     "start": 47433.1,
+     "end": 53093.1,
+     "fill": 237.76000000000204
+    },
+    {
+     "start": 53093.1,
+     "end": 59727.1,
+     "fill": 34.78199999999924
+    },
+    {
+     "start": 59727.1,
+     "end": 62620.1,
+     "fill": 20.18300000000454
+    },
+    {
+     "start": 62620.1,
+     "end": 67265.119,
+     "fill": 51.6140000000014
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.341671944444446
+  },
+  "user-009": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1240.1,
+     "end": 4030.1,
+     "fill": 77.20600000000013
+    },
+    {
+     "start": 4030.1,
+     "end": 19354.1,
+     "fill": 414.05200000000013
+    },
+    {
+     "start": 19354.1,
+     "end": 23066.1,
+     "fill": 139.8739999999998
+    },
+    {
+     "start": 23066.1,
+     "end": 24680.1,
+     "fill": 211.65500000000247
+    },
+    {
+     "start": 24680.1,
+     "end": 28306.1,
+     "fill": 147.6750000000029
+    },
+    {
+     "start": 28306.1,
+     "end": 33672.1,
+     "fill": 90.67600000000311
+    },
+    {
+     "start": 33672.1,
+     "end": 38324.1,
+     "fill": 291.0770000000048
+    },
+    {
+     "start": 38324.1,
+     "end": 41223.1,
+     "fill": 19.87800000000425
+    },
+    {
+     "start": 41223.1,
+     "end": 54436.1,
+     "fill": 131.67900000000373
+    },
+    {
+     "start": 54436.1,
+     "end": 60390.1,
+     "fill": 246.862000000001
+    },
+    {
+     "start": 60390.1,
+     "end": 63974.1,
+     "fill": 59.01400000000285
+    },
+    {
+     "start": 63974.1,
+     "end": 67690.115,
+     "fill": 35.41400000000431
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.4583375
+  },
+  "user-010": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1245.1,
+     "end": 6466.1,
+     "fill": 72.15600000000018
+    },
+    {
+     "start": 6466.1,
+     "end": 16246.1,
+     "fill": 84.55199999999968
+    },
+    {
+     "start": 16246.1,
+     "end": 17279.1,
+     "fill": 85.07300000000032
+    },
+    {
+     "start": 17279.1,
+     "end": 26578.1,
+     "fill": 165.97300000000178
+    },
+    {
+     "start": 26578.1,
+     "end": 29733.1,
+     "fill": 130.6750000000029
+    },
+    {
+     "start": 29733.1,
+     "end": 39718.1,
+     "fill": 146.07600000000093
+    },
+    {
+     "start": 39718.1,
+     "end": 42503.1,
+     "fill": 62.169999999998254
+    },
+    {
+     "start": 42503.1,
+     "end": 56457.156,
+     "fill": 125.96399999999994
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 15.336682222222223
+  },
+  "user-011": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1250.1,
+     "end": 12523.1,
+     "fill": 67.20600000000013
+    },
+    {
+     "start": 12523.1,
+     "end": 18889.1,
+     "fill": 220.29399999999987
+    },
+    {
+     "start": 18889.1,
+     "end": 23803.1,
+     "fill": 88.75300000000061
+    },
+    {
+     "start": 23803.1,
+     "end": 29578.1,
+     "fill": 54.67500000000291
+    },
+    {
+     "start": 29578.1,
+     "end": 33822.1,
+     "fill": 142.4760000000024
+    },
+    {
+     "start": 33822.1,
+     "end": 40266.1,
+     "fill": 141.07700000000477
+    },
+    {
+     "start": 40266.1,
+     "end": 41917.1,
+     "fill": 54.679000000003725
+    },
+    {
+     "start": 41917.1,
+     "end": 49633.1,
+     "fill": 54.27900000000227
+    },
+    {
+     "start": 49633.1,
+     "end": 51680.1,
+     "fill": 83.08099999999831
+    },
+    {
+     "start": 51680.1,
+     "end": 57857.1,
+     "fill": 50.361000000004424
+    },
+    {
+     "start": 57857.1,
+     "end": 68397.796,
+     "fill": 33.663000000000466
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 1,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.652137777777778
+  },
+  "user-012": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1255.1,
+     "end": 4919.1,
+     "fill": 62.156000000000176
+    },
+    {
+     "start": 4919.1,
+     "end": 20914.1,
+     "fill": 114.45199999999932
+    },
+    {
+     "start": 20914.1,
+     "end": 29502.1,
+     "fill": 148.07400000000052
+    },
+    {
+     "start": 29502.1,
+     "end": 35772.1,
+     "fill": 18.07600000000093
+    },
+    {
+     "start": 35772.1,
+     "end": 41769.1,
+     "fill": 26.677000000003318
+    },
+    {
+     "start": 41769.1,
+     "end": 52555.1,
+     "fill": 149.0789999999979
+    },
+    {
+     "start": 52555.1,
+     "end": 59384.1,
+     "fill": 354.9820000000036
+    },
+    {
+     "start": 59384.1,
+     "end": 63439.116,
+     "fill": 17.9429999999993
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 17.27333777777778
+  },
+  "user-013": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1260.1,
+     "end": 7381.1,
+     "fill": 57.156000000000176
+    },
+    {
+     "start": 7381.1,
+     "end": 13906.1,
+     "fill": 22.271999999999935
+    },
+    {
+     "start": 13906.1,
+     "end": 23846.1,
+     "fill": 49.37299999999959
+    },
+    {
+     "start": 23846.1,
+     "end": 25698.1,
+     "fill": 58.55500000000029
+    },
+    {
+     "start": 25698.1,
+     "end": 36823.1,
+     "fill": 101.77500000000146
+    },
+    {
+     "start": 36823.1,
+     "end": 42769.1,
+     "fill": 715.0780000000013
+    },
+    {
+     "start": 42769.1,
+     "end": 49079.1,
+     "fill": 73.87900000000081
+    },
+    {
+     "start": 49079.1,
+     "end": 53930.1,
+     "fill": 111.98099999999977
+    },
+    {
+     "start": 53930.1,
+     "end": 56589.1,
+     "fill": 113.97299999999814
+    },
+    {
+     "start": 56589.1,
+     "end": 63584.1,
+     "fill": 55.883999999998196
+    },
+    {
+     "start": 63584.1,
+     "end": 66070.11,
+     "fill": 33.633999999998196
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.002780555555557
+  },
+  "user-014": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1265.1,
+     "end": 8954.1,
+     "fill": 52.156000000000176
+    },
+    {
+     "start": 8954.1,
+     "end": 11977.1,
+     "fill": 64.97199999999975
+    },
+    {
+     "start": 11977.1,
+     "end": 14754.1,
+     "fill": 316.97199999999975
+    },
+    {
+     "start": 14754.1,
+     "end": 17823.1,
+     "fill": 159.8729999999996
+    },
+    {
+     "start": 17823.1,
+     "end": 19417.1,
+     "fill": 34.99300000000221
+    },
+    {
+     "start": 19417.1,
+     "end": 26656.1,
+     "fill": 76.8739999999998
+    },
+    {
+     "start": 26656.1,
+     "end": 30583.1,
+     "fill": 52.67500000000291
+    },
+    {
+     "start": 30583.1,
+     "end": 34695.1,
+     "fill": 177.57600000000093
+    },
+    {
+     "start": 34695.1,
+     "end": 38652.1,
+     "fill": 16.377000000000407
+    },
+    {
+     "start": 38652.1,
+     "end": 40875.1,
+     "fill": 27.87800000000425
+    },
+    {
+     "start": 40875.1,
+     "end": 41501.1,
+     "fill": 53.47899999999936
+    },
+    {
+     "start": 41501.1,
+     "end": 51601.1,
+     "fill": 172.09000000000378
+    },
+    {
+     "start": 51601.1,
+     "end": 52426.1,
+     "fill": 90.08099999999831
+    },
+    {
+     "start": 52426.1,
+     "end": 58870.1,
+     "fill": 483.9820000000036
+    },
+    {
+     "start": 58870.1,
+     "end": 63563.1,
+     "fill": 22.963000000003376
+    },
+    {
+     "start": 63563.1,
+     "end": 68390.148,
+     "fill": 35.03399999999965
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.645846666666664
+  },
+  "user-015": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1270.1,
+     "end": 3618.1,
+     "fill": 47.156000000000176
+    },
+    {
+     "start": 3618.1,
+     "end": 9087.1,
+     "fill": 24.452000000000226
+    },
+    {
+     "start": 9087.1,
+     "end": 10272.1,
+     "fill": 200.27199999999903
+    },
+    {
+     "start": 10272.1,
+     "end": 28786.1,
+     "fill": 404.47199999999975
+    },
+    {
+     "start": 28786.1,
+     "end": 40830.1,
+     "fill": 58.176000000003114
+    },
+    {
+     "start": 40830.1,
+     "end": 47984.1,
+     "fill": 98.47899999999936
+    },
+    {
+     "start": 47984.1,
+     "end": 63832.1,
+     "fill": 133.18100000000413
+    },
+    {
+     "start": 63832.1,
+     "end": 64678.103,
+     "fill": 39.96399999999994
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 17.613334166666668
+  },
+  "user-016": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1275.1,
+     "end": 23386.1,
+     "fill": 42.156000000000176
+    },
+    {
+     "start": 23386.1,
+     "end": 36295.1,
+     "fill": 36.780000000002474
+    },
+    {
+     "start": 36295.1,
+     "end": 37821.1,
+     "fill": 37.677999999999884
+    },
+    {
+     "start": 37821.1,
+     "end": 48313.1,
+     "fill": 182.27799999999843
+    },
+    {
+     "start": 48313.1,
+     "end": 58327.1,
+     "fill": 207.68100000000413
+    },
+    {
+     "start": 58327.1,
+     "end": 63993.1,
+     "fill": 21.70300000000134
+    },
+    {
+     "start": 63993.1,
+     "end": 68396.898,
+     "fill": 29.734000000004016
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.644943888888893
+  },
+  "user-017": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1280.1,
+     "end": 3262.1,
+     "fill": 37.156000000000176
+    },
+    {
+     "start": 3262.1,
+     "end": 5669.1,
+     "fill": 37.25199999999995
+    },
+    {
+     "start": 5669.1,
+     "end": 10136.1,
+     "fill": 68.27700000000004
+    },
+    {
+     "start": 10136.1,
+     "end": 17119.1,
+     "fill": 121.77199999999903
+    },
+    {
+     "start": 17119.1,
+     "end": 20016.1,
+     "fill": 28.677999999999884
+    },
+    {
+     "start": 20016.1,
+     "end": 21666.1,
+     "fill": 24.65400000000227
+    },
+    {
+     "start": 21666.1,
+     "end": 27379.1,
+     "fill": 118.15400000000227
+    },
+    {
+     "start": 27379.1,
+     "end": 40428.1,
+     "fill": 128.07500000000073
+    },
+    {
+     "start": 40428.1,
+     "end": 52415.1,
+     "fill": 45.078999999997905
+    },
+    {
+     "start": 52415.1,
+     "end": 61363.1,
+     "fill": 494.9820000000036
+    },
+    {
+     "start": 61363.1,
+     "end": 67546.1,
+     "fill": 34.26400000000285
+    },
+    {
+     "start": 67546.1,
+     "end": 68309.103,
+     "fill": 47.56399999999849
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.6191675
+  },
+  "user-018": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1285.1,
+     "end": 19580.1,
+     "fill": 32.20600000000013
+    },
+    {
+     "start": 19580.1,
+     "end": 21113.1,
+     "fill": 36.27400000000125
+    },
+    {
+     "start": 21113.1,
+     "end": 25974.1,
+     "fill": 74.07400000000052
+    },
+    {
+     "start": 25974.1,
+     "end": 27277.1,
+     "fill": 90.57500000000073
+    },
+    {
+     "start": 27277.1,
+     "end": 28227.1,
+     "fill": 230.07500000000073
+    },
+    {
+     "start": 28227.1,
+     "end": 35130.1,
+     "fill": 16.476000000002387
+    },
+    {
+     "start": 35130.1,
+     "end": 49427.1,
+     "fill": 24.7870000000039
+    },
+    {
+     "start": 49427.1,
+     "end": 53571.1,
+     "fill": 20.181000000004133
+    },
+    {
+     "start": 53571.1,
+     "end": 55731.1,
+     "fill": 471.95300000000134
+    },
+    {
+     "start": 55731.1,
+     "end": 62267.1,
+     "fill": 158.6820000000007
+    },
+    {
+     "start": 62267.1,
+     "end": 63403.1,
+     "fill": 40.51400000000285
+    },
+    {
+     "start": 63403.1,
+     "end": 68393.396,
+     "fill": 28.264000000002852
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.641193333333334
+  },
+  "user-019": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1290.1,
+     "end": 6800.1,
+     "fill": 27.20600000000013
+    },
+    {
+     "start": 6800.1,
+     "end": 28568.1,
+     "fill": 64.7519999999995
+    },
+    {
+     "start": 28568.1,
+     "end": 32751.1,
+     "fill": 26.676000000003114
+    },
+    {
+     "start": 32751.1,
+     "end": 38804.1,
+     "fill": 74.07700000000477
+    },
+    {
+     "start": 38804.1,
+     "end": 44470.1,
+     "fill": 54.978000000002794
+    },
+    {
+     "start": 44470.1,
+     "end": 60865.1,
+     "fill": 344.6800000000003
+    },
+    {
+     "start": 60865.1,
+     "end": 68384.1,
+     "fill": 37.26400000000285
+    },
+    {
+     "start": 68384.1,
+     "end": 68397.838,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.641038333333338
+  },
+  "user-020": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1295.1,
+     "end": 7730.1,
+     "fill": 22.156000000000176
+    },
+    {
+     "start": 7730.1,
+     "end": 11793.1,
+     "fill": 81.15200000000004
+    },
+    {
+     "start": 11793.1,
+     "end": 22169.1,
+     "fill": 81.97199999999975
+    },
+    {
+     "start": 22169.1,
+     "end": 30206.1,
+     "fill": 50.38400000000183
+    },
+    {
+     "start": 30206.1,
+     "end": 36516.1,
+     "fill": 179.1760000000031
+    },
+    {
+     "start": 36516.1,
+     "end": 41752.1,
+     "fill": 91.8839999999982
+    },
+    {
+     "start": 41752.1,
+     "end": 46775.1,
+     "fill": 20.891999999999825
+    },
+    {
+     "start": 46775.1,
+     "end": 53452.1,
+     "fill": 16.080000000001746
+    },
+    {
+     "start": 53452.1,
+     "end": 58297.1,
+     "fill": 63.382000000005064
+    },
+    {
+     "start": 58297.1,
+     "end": 64591.1,
+     "fill": 35.83299999999872
+    },
+    {
+     "start": 64591.1,
+     "end": 68390.871,
+     "fill": 30.764000000002852
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.637714166666665
+  },
+  "user-021": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1200.1,
+     "end": 3263.1,
+     "fill": 23.104000000000042
+    },
+    {
+     "start": 3263.1,
+     "end": 23023.1,
+     "fill": 36.25199999999995
+    },
+    {
+     "start": 23023.1,
+     "end": 24144.1,
+     "fill": 17.754000000000815
+    },
+    {
+     "start": 24144.1,
+     "end": 34821.1,
+     "fill": 683.6750000000029
+    },
+    {
+     "start": 34821.1,
+     "end": 48318.1,
+     "fill": 15.877000000000407
+    },
+    {
+     "start": 48318.1,
+     "end": 60752.1,
+     "fill": 202.68100000000413
+    },
+    {
+     "start": 60752.1,
+     "end": 68398.148,
+     "fill": 25.414000000004307
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 1,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.666124444444446
+  },
+  "user-022": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1205.1,
+     "end": 13382.1,
+     "fill": 18.054000000000087
+    },
+    {
+     "start": 13382.1,
+     "end": 14610.1,
+     "fill": 207.77299999999923
+    },
+    {
+     "start": 14610.1,
+     "end": 20549.1,
+     "fill": 303.8729999999996
+    },
+    {
+     "start": 20549.1,
+     "end": 23618.1,
+     "fill": 60.559000000001106
+    },
+    {
+     "start": 23618.1,
+     "end": 34137.1,
+     "fill": 239.6750000000029
+    },
+    {
+     "start": 34137.1,
+     "end": 37462.1,
+     "fill": 30.377000000000407
+    },
+    {
+     "start": 37462.1,
+     "end": 53733.1,
+     "fill": 76.07800000000134
+    },
+    {
+     "start": 53733.1,
+     "end": 62193.1,
+     "fill": 344.0619999999981
+    },
+    {
+     "start": 62193.1,
+     "end": 64539.1,
+     "fill": 27.664000000004307
+    },
+    {
+     "start": 64539.1,
+     "end": 68389.625,
+     "fill": 19.264000000002852
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.662368055555554
+  },
+  "user-023": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1210.1,
+     "end": 12792.1,
+     "fill": 13.054000000000087
+    },
+    {
+     "start": 12792.1,
+     "end": 19203.1,
+     "fill": 53.37700000000041
+    },
+    {
+     "start": 19203.1,
+     "end": 27644.1,
+     "fill": 143.97400000000198
+    },
+    {
+     "start": 27644.1,
+     "end": 29838.1,
+     "fill": 33.97500000000218
+    },
+    {
+     "start": 29838.1,
+     "end": 39979.1,
+     "fill": 41.07600000000093
+    },
+    {
+     "start": 39979.1,
+     "end": 48590.1,
+     "fill": 77.37900000000081
+    },
+    {
+     "start": 48590.1,
+     "end": 67589.1,
+     "fill": 134.5809999999983
+    },
+    {
+     "start": 67589.1,
+     "end": 68393.648,
+     "fill": 45.463999999992666
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.662096666666667
+  },
+  "user-024": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1215.1,
+     "end": 12467.1,
+     "fill": 102.15600000000018
+    },
+    {
+     "start": 12467.1,
+     "end": 14826.1,
+     "fill": 42.85199999999895
+    },
+    {
+     "start": 14826.1,
+     "end": 16914.1,
+     "fill": 87.87299999999959
+    },
+    {
+     "start": 16914.1,
+     "end": 33935.1,
+     "fill": 196.07300000000032
+    },
+    {
+     "start": 33935.1,
+     "end": 39088.1,
+     "fill": 28.077000000004773
+    },
+    {
+     "start": 39088.1,
+     "end": 64173.1,
+     "fill": 54.478000000002794
+    },
+    {
+     "start": 64173.1,
+     "end": 68397.796,
+     "fill": 26.614000000001397
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.661859999999997
+  },
+  "user-025": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1220.1,
+     "end": 3787.1,
+     "fill": 97.20600000000013
+    },
+    {
+     "start": 3787.1,
+     "end": 6744.1,
+     "fill": 120.3720000000003
+    },
+    {
+     "start": 6744.1,
+     "end": 9761.1,
+     "fill": 120.7519999999995
+    },
+    {
+     "start": 9761.1,
+     "end": 12433.1,
+     "fill": null
+    },
+    {
+     "start": 12433.1,
+     "end": 21130.1,
+     "fill": 76.8799999999992
+    },
+    {
+     "start": 21130.1,
+     "end": 31608.1,
+     "fill": 57.074000000000524
+    },
+    {
+     "start": 31608.1,
+     "end": 33899.1,
+     "fill": 80.3760000000002
+    },
+    {
+     "start": 33899.1,
+     "end": 36197.1,
+     "fill": 64.07700000000477
+    },
+    {
+     "start": 36197.1,
+     "end": 48484.1,
+     "fill": 97.98400000000402
+    },
+    {
+     "start": 48484.1,
+     "end": 65545.1,
+     "fill": 36.68100000000413
+    },
+    {
+     "start": 65545.1,
+     "end": 68390.638,
+     "fill": 22.364000000001397
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.658482777777778
+  },
+  "user-026": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1225.1,
+     "end": 3278.1,
+     "fill": 92.15600000000018
+    },
+    {
+     "start": 3278.1,
+     "end": 6727.1,
+     "fill": 21.251999999999953
+    },
+    {
+     "start": 6727.1,
+     "end": 10562.1,
+     "fill": 137.7519999999995
+    },
+    {
+     "start": 10562.1,
+     "end": 10910.1,
+     "fill": 114.45199999999932
+    },
+    {
+     "start": 10910.1,
+     "end": 31435.1,
+     "fill": 34.271999999999025
+    },
+    {
+     "start": 31435.1,
+     "end": 42633.1,
+     "fill": 46.07600000000093
+    },
+    {
+     "start": 42633.1,
+     "end": 53181.1,
+     "fill": 209.87900000000081
+    },
+    {
+     "start": 53181.1,
+     "end": 61617.1,
+     "fill": 50.6820000000007
+    },
+    {
+     "start": 61617.1,
+     "end": 65309.115,
+     "fill": 25.58400000000256
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 17.80111527777778
+  },
+  "user-027": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1230.1,
+     "end": 14646.1,
+     "fill": 87.15600000000018
+    },
+    {
+     "start": 14646.1,
+     "end": 24247.1,
+     "fill": 267.85299999999916
+    },
+    {
+     "start": 24247.1,
+     "end": 30286.1,
+     "fill": 580.6750000000029
+    },
+    {
+     "start": 30286.1,
+     "end": 38520.1,
+     "fill": 99.17600000000311
+    },
+    {
+     "start": 38520.1,
+     "end": 42118.1,
+     "fill": 49.677999999999884
+    },
+    {
+     "start": 42118.1,
+     "end": 59582.1,
+     "fill": 510.97899999999936
+    },
+    {
+     "start": 59582.1,
+     "end": 65603.1,
+     "fill": 17.506000000001222
+    },
+    {
+     "start": 65603.1,
+     "end": 68387.128,
+     "fill": 71.53399999999965
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.654729999999997
+  },
+  "user-028": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1235.1,
+     "end": 3880.1,
+     "fill": 82.15600000000018
+    },
+    {
+     "start": 3880.1,
+     "end": 11923.1,
+     "fill": 27.352000000000317
+    },
+    {
+     "start": 11923.1,
+     "end": 15089.1,
+     "fill": 370.97199999999975
+    },
+    {
+     "start": 15089.1,
+     "end": 21411.1,
+     "fill": 231.07300000000032
+    },
+    {
+     "start": 21411.1,
+     "end": 33181.1,
+     "fill": 71.6740000000027
+    },
+    {
+     "start": 33181.1,
+     "end": 43075.1,
+     "fill": 33.57700000000477
+    },
+    {
+     "start": 43075.1,
+     "end": 48976.1,
+     "fill": 147.85900000000402
+    },
+    {
+     "start": 48976.1,
+     "end": 51291.1,
+     "fill": 214.98099999999977
+    },
+    {
+     "start": 51291.1,
+     "end": 52673.1,
+     "fill": 18.980999999999767
+    },
+    {
+     "start": 52673.1,
+     "end": 56055.1,
+     "fill": 236.96199999999953
+    },
+    {
+     "start": 56055.1,
+     "end": 57993.1,
+     "fill": 26.59200000000419
+    },
+    {
+     "start": 57993.1,
+     "end": 59365.1,
+     "fill": 68.88300000000163
+    },
+    {
+     "start": 59365.1,
+     "end": 61761.1,
+     "fill": 28.483000000000175
+    },
+    {
+     "start": 61761.1,
+     "end": 68397.125,
+     "fill": 26.484000000004016
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 1,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.656118055555552
+  },
+  "user-029": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1240.1,
+     "end": 2423.1,
+     "fill": 77.20600000000013
+    },
+    {
+     "start": 2423.1,
+     "end": 8610.1,
+     "fill": 60.70100000000002
+    },
+    {
+     "start": 8610.1,
+     "end": 11356.1,
+     "fill": 264.3719999999994
+    },
+    {
+     "start": 11356.1,
+     "end": 14544.1,
+     "fill": 35.17200000000048
+    },
+    {
+     "start": 14544.1,
+     "end": 21497.1,
+     "fill": 12.864999999999782
+    },
+    {
+     "start": 21497.1,
+     "end": 32190.1,
+     "fill": 287.1740000000027
+    },
+    {
+     "start": 32190.1,
+     "end": 41543.1,
+     "fill": 45.09600000000137
+    },
+    {
+     "start": 41543.1,
+     "end": 45485.1,
+     "fill": 130.09000000000378
+    },
+    {
+     "start": 45485.1,
+     "end": 65482.1,
+     "fill": 469.1800000000003
+    },
+    {
+     "start": 65482.1,
+     "end": 67895.11,
+     "fill": 24.914000000004307
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.515280555555552
+  },
+  "user-030": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1245.1,
+     "end": 8017.1,
+     "fill": 72.21100000000001
+    },
+    {
+     "start": 8017.1,
+     "end": 10103.1,
+     "fill": 176.8770000000004
+    },
+    {
+     "start": 10103.1,
+     "end": 16358.1,
+     "fill": 154.77700000000004
+    },
+    {
+     "start": 16358.1,
+     "end": 24633.1,
+     "fill": 186.57799999999952
+    },
+    {
+     "start": 24633.1,
+     "end": 32839.1,
+     "fill": 194.6800000000003
+    },
+    {
+     "start": 32839.1,
+     "end": 42257.1,
+     "fill": 38.59100000000035
+    },
+    {
+     "start": 42257.1,
+     "end": 46577.1,
+     "fill": 371.984000000004
+    },
+    {
+     "start": 46577.1,
+     "end": 48858.1,
+     "fill": 110.58499999999913
+    },
+    {
+     "start": 48858.1,
+     "end": 56851.1,
+     "fill": 28.486000000004424
+    },
+    {
+     "start": 56851.1,
+     "end": 61554.1,
+     "fill": 242.6180000000022
+    },
+    {
+     "start": 61554.1,
+     "end": 68361.1,
+     "fill": 28.069000000003143
+    },
+    {
+     "start": 68361.1,
+     "end": 68398.63,
+     "fill": null
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.653758333333332
+  },
+  "user-031": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1250.1,
+     "end": 6920.1,
+     "fill": 67.16100000000006
+    },
+    {
+     "start": 6920.1,
+     "end": 15760.1,
+     "fill": 74.57699999999932
+    },
+    {
+     "start": 15760.1,
+     "end": 19823.1,
+     "fill": 44.57799999999952
+    },
+    {
+     "start": 19823.1,
+     "end": 22837.1,
+     "fill": 100.57900000000154
+    },
+    {
+     "start": 22837.1,
+     "end": 25851.1,
+     "fill": 178.88300000000163
+    },
+    {
+     "start": 25851.1,
+     "end": 32303.1,
+     "fill": 17.280000000002474
+    },
+    {
+     "start": 32303.1,
+     "end": 34071.1,
+     "fill": 68.68700000000172
+    },
+    {
+     "start": 34071.1,
+     "end": 35961.1,
+     "fill": 49.48200000000361
+    },
+    {
+     "start": 35961.1,
+     "end": 40183.1,
+     "fill": 333.9890000000014
+    },
+    {
+     "start": 40183.1,
+     "end": 48427.1,
+     "fill": 137.6889999999985
+    },
+    {
+     "start": 48427.1,
+     "end": 64519.1,
+     "fill": 93.6909999999989
+    },
+    {
+     "start": 64519.1,
+     "end": 64819.101,
+     "fill": 17.9690000000046
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 17.658055833333336
+  },
+  "user-032": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1255.1,
+     "end": 6086.1,
+     "fill": 62.16100000000006
+    },
+    {
+     "start": 6086.1,
+     "end": 25893.1,
+     "fill": 161.3769999999995
+    },
+    {
+     "start": 25893.1,
+     "end": 30726.1,
+     "fill": 171.5600000000013
+    },
+    {
+     "start": 30726.1,
+     "end": 41672.1,
+     "fill": 34.58100000000195
+    },
+    {
+     "start": 41672.1,
+     "end": 43258.1,
+     "fill": 100.89700000000448
+    },
+    {
+     "start": 43258.1,
+     "end": 44545.1,
+     "fill": 142.58400000000256
+    },
+    {
+     "start": 44545.1,
+     "end": 53263.1,
+     "fill": 269.68500000000495
+    },
+    {
+     "start": 53263.1,
+     "end": 64385.1,
+     "fill": 123.7870000000039
+    },
+    {
+     "start": 64385.1,
+     "end": 68391.157,
+     "fill": 21.019000000000233
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.648904722222223
+  },
+  "user-033": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1260.1,
+     "end": 10353.1,
+     "fill": 57.21100000000001
+    },
+    {
+     "start": 10353.1,
+     "end": 17371.1,
+     "fill": 323.48199999999997
+    },
+    {
+     "start": 17371.1,
+     "end": 32143.1,
+     "fill": 73.979000000003
+    },
+    {
+     "start": 32143.1,
+     "end": 46587.1,
+     "fill": 92.09100000000035
+    },
+    {
+     "start": 46587.1,
+     "end": 47206.1,
+     "fill": 100.56500000000233
+    },
+    {
+     "start": 47206.1,
+     "end": 48763.1,
+     "fill": 430.2850000000035
+    },
+    {
+     "start": 48763.1,
+     "end": 54219.1,
+     "fill": 52.68600000000151
+    },
+    {
+     "start": 54219.1,
+     "end": 55652.1,
+     "fill": 122.46700000000419
+    },
+    {
+     "start": 55652.1,
+     "end": 61393.1,
+     "fill": 235.71800000000076
+    },
+    {
+     "start": 61393.1,
+     "end": 63385.1,
+     "fill": 15.688999999998487
+    },
+    {
+     "start": 63385.1,
+     "end": 66598.1,
+     "fill": 46.559000000001106
+    },
+    {
+     "start": 66598.1,
+     "end": 68394.135,
+     "fill": 33.68899999999849
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.648343055555554
+  },
+  "user-034": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1265.1,
+     "end": 5578.1,
+     "fill": 52.16100000000006
+    },
+    {
+     "start": 5578.1,
+     "end": 13289.1,
+     "fill": 159.2569999999996
+    },
+    {
+     "start": 13289.1,
+     "end": 22407.1,
+     "fill": 24.877000000000407
+    },
+    {
+     "start": 22407.1,
+     "end": 26596.1,
+     "fill": 39.77900000000227
+    },
+    {
+     "start": 26596.1,
+     "end": 35006.1,
+     "fill": 112.68000000000029
+    },
+    {
+     "start": 35006.1,
+     "end": 48895.1,
+     "fill": 22.56199999999808
+    },
+    {
+     "start": 48895.1,
+     "end": 54523.1,
+     "fill": 295.9860000000044
+    },
+    {
+     "start": 54523.1,
+     "end": 56755.1,
+     "fill": 159.18699999999808
+    },
+    {
+     "start": 56755.1,
+     "end": 63158.1,
+     "fill": 22.18800000000192
+    },
+    {
+     "start": 63158.1,
+     "end": 65081.1,
+     "fill": 38.26900000000023
+    },
+    {
+     "start": 65081.1,
+     "end": 68388.143,
+     "fill": 30.789000000004307
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.64528972222222
+  },
+  "user-035": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1270.1,
+     "end": 5610.1,
+     "fill": 47.16100000000006
+    },
+    {
+     "start": 5610.1,
+     "end": 11131.1,
+     "fill": 127.27700000000004
+    },
+    {
+     "start": 11131.1,
+     "end": 18472.1,
+     "fill": 149.3819999999996
+    },
+    {
+     "start": 18472.1,
+     "end": 29411.1,
+     "fill": 150.3780000000006
+    },
+    {
+     "start": 29411.1,
+     "end": 33508.1,
+     "fill": 12.8650000000016
+    },
+    {
+     "start": 33508.1,
+     "end": 39963.1,
+     "fill": 30.882000000005064
+    },
+    {
+     "start": 39963.1,
+     "end": 42834.1,
+     "fill": 16.883999999998196
+    },
+    {
+     "start": 42834.1,
+     "end": 44764.1,
+     "fill": 72.6840000000011
+    },
+    {
+     "start": 44764.1,
+     "end": 48888.1,
+     "fill": 50.68500000000495
+    },
+    {
+     "start": 48888.1,
+     "end": 60267.1,
+     "fill": 302.96600000000035
+    },
+    {
+     "start": 60267.1,
+     "end": 66318.124,
+     "fill": 31.419000000001688
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.068895555555557
+  },
+  "user-036": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1275.1,
+     "end": 16254.1,
+     "fill": 42.16100000000006
+    },
+    {
+     "start": 16254.1,
+     "end": 24390.1,
+     "fill": 77.07799999999952
+    },
+    {
+     "start": 24390.1,
+     "end": 35407.1,
+     "fill": 437.6800000000003
+    },
+    {
+     "start": 35407.1,
+     "end": 40674.1,
+     "fill": 50.6620000000039
+    },
+    {
+     "start": 40674.1,
+     "end": 44776.1,
+     "fill": 110.08400000000256
+    },
+    {
+     "start": 44776.1,
+     "end": 49689.1,
+     "fill": 38.66500000000087
+    },
+    {
+     "start": 49689.1,
+     "end": 53071.1,
+     "fill": 27.065999999998894
+    },
+    {
+     "start": 53071.1,
+     "end": 60159.1,
+     "fill": 56.7870000000039
+    },
+    {
+     "start": 60159.1,
+     "end": 61153.1,
+     "fill": 16.169000000001688
+    },
+    {
+     "start": 61153.1,
+     "end": 64206.112,
+     "fill": 44.359000000004016
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 17.48083666666667
+  },
+  "user-037": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1280.1,
+     "end": 9656.1,
+     "fill": 37.16100000000006
+    },
+    {
+     "start": 9656.1,
+     "end": 14301.1,
+     "fill": 22.256999999999607
+    },
+    {
+     "start": 14301.1,
+     "end": 19665.1,
+     "fill": 75.27800000000025
+    },
+    {
+     "start": 19665.1,
+     "end": 24685.1,
+     "fill": 51.77900000000227
+    },
+    {
+     "start": 24685.1,
+     "end": 32538.1,
+     "fill": 142.6800000000003
+    },
+    {
+     "start": 32538.1,
+     "end": 34069.1,
+     "fill": 125.56200000000172
+    },
+    {
+     "start": 34069.1,
+     "end": 39252.1,
+     "fill": 51.47200000000157
+    },
+    {
+     "start": 39252.1,
+     "end": 56713.1,
+     "fill": 64.88300000000163
+    },
+    {
+     "start": 56713.1,
+     "end": 62115.1,
+     "fill": 64.18800000000192
+    },
+    {
+     "start": 62115.1,
+     "end": 66657.1,
+     "fill": 24.118999999998778
+    },
+    {
+     "start": 66657.1,
+     "end": 68382.153,
+     "fill": 25.769000000000233
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.639459166666665
+  },
+  "user-038": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1285.1,
+     "end": 6167.1,
+     "fill": 32.16100000000006
+    },
+    {
+     "start": 6167.1,
+     "end": 15197.1,
+     "fill": 80.35699999999997
+    },
+    {
+     "start": 15197.1,
+     "end": 26502.1,
+     "fill": 123.07799999999952
+    },
+    {
+     "start": 26502.1,
+     "end": 28251.1,
+     "fill": 206.65999999999985
+    },
+    {
+     "start": 28251.1,
+     "end": 39828.1,
+     "fill": 25.381000000001222
+    },
+    {
+     "start": 39828.1,
+     "end": 40734.1,
+     "fill": 122.1840000000011
+    },
+    {
+     "start": 40734.1,
+     "end": 50936.1,
+     "fill": 50.08400000000256
+    },
+    {
+     "start": 50936.1,
+     "end": 65926.16,
+     "fill": 164.46600000000035
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 17.95585
+  },
+  "user-039": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1290.1,
+     "end": 13109.1,
+     "fill": 27.161000000000058
+    },
+    {
+     "start": 13109.1,
+     "end": 27423.1,
+     "fill": 50.35699999999997
+    },
+    {
+     "start": 27423.1,
+     "end": 28850.1,
+     "fill": 84.08000000000175
+    },
+    {
+     "start": 28850.1,
+     "end": 32970.1,
+     "fill": 352.08100000000195
+    },
+    {
+     "start": 32970.1,
+     "end": 35570.1,
+     "fill": 51.895000000004075
+    },
+    {
+     "start": 35570.1,
+     "end": 56358.1,
+     "fill": 154.08200000000215
+    },
+    {
+     "start": 56358.1,
+     "end": 58978.11,
+     "fill": 49.588000000003376
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 16.02444722222222
+  },
+  "user-040": {
+   "class": "user",
+   "sessions": [
+    {
+     "start": 1295.1,
+     "end": 5678.1,
+     "fill": 22.161000000000058
+    },
+    {
+     "start": 5678.1,
+     "end": 7869.1,
+     "fill": 59.25699999999961
+    },
+    {
+     "start": 7869.1,
+     "end": 15913.1,
+     "fill": 88.69999999999982
+    },
+    {
+     "start": 15913.1,
+     "end": 32328.1,
+     "fill": 131.08200000000033
+    },
+    {
+     "start": 32328.1,
+     "end": 35025.1,
+     "fill": 43.68700000000172
+    },
+    {
+     "start": 35025.1,
+     "end": 35561.1,
+     "fill": 129.79299999999785
+    },
+    {
+     "start": 35561.1,
+     "end": 37497.1,
+     "fill": 163.08200000000215
+    },
+    {
+     "start": 37497.1,
+     "end": 42052.1,
+     "fill": 41.088000000003376
+    },
+    {
+     "start": 42052.1,
+     "end": 56095.1,
+     "fill": 77.08899999999994
+    },
+    {
+     "start": 56095.1,
+     "end": 65675.1,
+     "fill": 89.98800000000483
+    },
+    {
+     "start": 65675.1,
+     "end": 68397.11,
+     "fill": 21.418999999994412
+    }
+   ],
+   "counts": {
+    "connect_failed": 0,
+    "handshake_failed": 0,
+    "timed_out": 0,
+    "back_ping_failed": 0,
+    "handshake_ok": 0
+   },
+   "hours": 18.639447222222223
+  }
+ }
+}

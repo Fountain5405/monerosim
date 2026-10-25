@@ -34,7 +34,7 @@ fleet to **0.184** (0.55x, the same ratio as on the packed fleet), adopters to z
 of 40 (E29, P20 eight of eight): the list's effect does not depend on the layout, and half the network adopting recovers only what
 the stock rule's /24 counting gave the spread fleet. Eight spies per /24 at 26-30 h read 0.1497, below the 2-per-/24 cell's 0.1572 but still draining
 (-14% over hours 20-30; E30, P16b three of four): packing IPs into /24s dilutes a little and delays a lot, and the /24 count is what
-buys share. Running (20:49 10-25): `zenith2alpha`, the 256 GB Threadripper, validated by E31/P22 at 06:12 (0.0624 on the H=71 `legacy` cell), finished P23 at 09:36
+buys share. Running (23:19 10-25): `zenith2alpha`, the 256 GB Threadripper, validated by E31/P22 at 06:12 (0.0624 on the H=71 `legacy` cell), finished P23 at 09:36
 (E34: **0.3524**, the seed-23456 read of the 24 h spread fleet, 5% above P21's; four of seven), P24 at 12:01 (E35: **0.3207** with the white-list
 pick made uniform, 2.09x the ceiling, gradient intact: the recency draw is not the cause of the 2.2x; one of five) and P26 at 17:15 (E36: **0.1577**,
 1.03x the ceiling with the 20-candidate cap lifted, gradient gone: **the cap is the whole 2.2x**; five of six, the miss being exposed users up from 28 to
@@ -42,10 +42,10 @@ pick made uniform, 2.09x the ceiling, gradient intact: the recency draw is not t
 and the stock cubic draw kept: the draw's shape is worth 8%; two of five) and P28 at 21:53 (E38: **0.1557**, P26 replicated at seed 23456, 1.01x; three
 of five, the users at 0.139 just under their clause), sat idle until 00:35 (no watcher), finished P29 at 03:55 (E39: **0.1655**, the 24 h spread fleet
 with the cap lifted, 1.08x the ceiling, nothing accumulates over the day; recall 0.187 against the stock 24 h cells' 0.134 and 0.109; four of five) and P31 at 06:15 (E40: **0.0771**, E29's half ban list
-with the cap lifted, 0.49x the no-list cell and 1.01x the half-list model, adopters at zero and the non-adopters at exactly their ceiling; four of five), P32 at 12:43 (E42: **0.0764**, the half list with the cap lifted at seed 23456, 1.00x the half-list model and 0.49x the no-list cell again; five of five; the user, before 10:20: "proceed with the twelfth patch, and queue P31 at seed 23456 meanwhile"), P34 at 15:01 (E43: **0.1657**, the twelfth patch, 20 random /24 candidates with the stock cubic draw, 1.08x the ceiling, the same as the lifted cap with that draw; six of six), rebuilt with the thirteenth patch (runtime peer-list limits) at 15:09, finished P36 at 17:36 (E45: **0.1616**, the stock rule with the white list trimmed to 70 entries, 1.06x the ceiling against the untrimmed 2.20x: **the trim alone removes the multiplier**, the trimmed lists holding the spies below their pool share; three of five, the share clause missed far below) and P37 at 19:56 (E46: **0.1619**, the cap lifted with the same trim, 1.06x: the candidate-set fix is a no-op once the list is trimmed; four of five), and runs P38 (the stock rule under 1 h/1 h peer turnover with probe relays, the honest-cost baseline, started 20:42, due ~23:10) with P39 (the cap lifted under the same turnover) queued behind it; the plan was reviewed against its three questions on 10-25 (plan section 7: the cap finding's transfer to mainnet is gated by the list age structure, the honest cost under churn and an active-recency adversary; revised order there); `phantom` finished P21 at 07:19 (E32: **0.3354**, E27's number at a 24 h warmup, five of seven clauses) and P25 at 08:11
+with the cap lifted, 0.49x the no-list cell and 1.01x the half-list model, adopters at zero and the non-adopters at exactly their ceiling; four of five), P32 at 12:43 (E42: **0.0764**, the half list with the cap lifted at seed 23456, 1.00x the half-list model and 0.49x the no-list cell again; five of five; the user, before 10:20: "proceed with the twelfth patch, and queue P31 at seed 23456 meanwhile"), P34 at 15:01 (E43: **0.1657**, the twelfth patch, 20 random /24 candidates with the stock cubic draw, 1.08x the ceiling, the same as the lifted cap with that draw; six of six), rebuilt with the thirteenth patch (runtime peer-list limits) at 15:09, finished P36 at 17:36 (E45: **0.1616**, the stock rule with the white list trimmed to 70 entries, 1.06x the ceiling against the untrimmed 2.20x: **the trim alone removes the multiplier**, the trimmed lists holding the spies below their pool share; three of five, the share clause missed far below) and P37 at 19:56 (E46: **0.1619**, the cap lifted with the same trim, 1.06x: the candidate-set fix is a no-op once the list is trimmed; four of five), finished P38 at 23:00 (E48: **0.3512**; the turnover reached only the users, the reachable nodes being exempt as pinned, and the run exited 1 at its end-of-run cleanup, fixed in `5115b02b`), stopped P39 at 23:13 for the same defect, and runs P42 (the stock rule with the reachable honest nodes cycling as well, started 23:16) with P43 (the cap lifted under the same turnover) behind it; the plan was reviewed against its three questions on 10-25 (plan section 7: the cap finding's transfer to mainnet is gated by the list age structure, the honest cost under churn and an active-recency adversary; revised order there); `phantom` finished P21 at 07:19 (E32: **0.3354**, E27's number at a 24 h warmup, five of seven clauses) and P25 at 08:11
 (E33: 0.0628, the ten-patch binary passes its flag-off check) and has left the lab (its 38 archives on the Threadripper's array, the pool's home since 10-24; the source deleted 18:26); `simbox3` drained at 09:49 (the `tail` seed-34567 filler read 0.1812, E10's third seed: 0.176-0.195 across three seeds; the `core` one 0.0348), its five archives moved to the array 10-25 00:35 (local copies deleted, 89 GB free), was rebuilt with the eleven patches at 00:46 10-25 and finished P30 at 07:56 (E41: **0.1482**, P26 at seed 34567, 0.97x the ceiling, flat to 0.3%; five of five; the rebuilt binary passes its gate; three seeds mean 1.005x), its archive moved to the array (91 GB free), was rebuilt with the twelve patches at 10:37 (3 min, ccache), finished P33 at 15:16 (E44: **0.0792**, the half list with the cap lifted at seed 34567, 1.04x the half-list model; five of five; the half-list line closed at three seeds; the user, 10:30: "is there anything that could be running on .176? its idle") and P35 at 19:51 (E47: **0.1716**, the twelfth patch at seed 23456, 1.12x; six of six; two seeds 1.10x, the lifted cap's number), was rebuilt with the thirteen patches at 20:42 and runs P40 (the trim sweep: the stock rule with the white list at 140 entries, started 20:46, due ~01:20) with P41 (at 35) queued behind it;
 `simbox2` is handed over to the selfish-mining project (its 21 archives on the array, the source deleted 18:26, handover note written). Since 10-24 the session runs on the control box and cells are generated
-there (`make_cell.sh`, section 2 addendum). Entries E1-E47 below; predictions P1-P43 in section 5.
+there (`make_cell.sh`, section 2 addendum). Entries E1-E48 below; predictions P1-P43 in section 5.
 
 ## 1. How this journal works
 
@@ -305,6 +305,7 @@ own selection rule and its spy layout.
 | `20261025_151635_lean_24_none_h300_k42_w13h_m1_n600_rc_s23456` | simbox3 | 42 / 42 | 300 / 240 | 0.1716 (0.1539) | 0.168, 0.171, 0.172, 0.175 | 0.192 | 1097 | 4h 30m | 79.2 | 0 | P35 (E47): P34 at seed 23456 on simbox3 (the twelfth patch, 20 random /24 candidates with the stock cubic draw); light 0.1716 = 1.12x this seed's 0.1539 ceiling, within 0.006 of P34's 0.1657; relays 0.1784, users 0.1376; start-order gradient 1.15x (P34 1.28x); recall 0.152, 32 of 40 exposed; the twelfth line in all 382 logs; six of six; two seeds mean 1.10x, P27's 1.11x; wall 4 h 32 m |
 | `20261025_151639_lean_24_none_h300_k42_w13h_p3_m1_n600_wl70_s12345` | zenith2alpha | 42 / 42 | 300 / 242 | 0.1616 (0.1531) | 0.165, 0.163, 0.159, 0.159 | 0.198 | 1099 | 2h 16m | 154.3 | 0 | P36 (E45): the stock rule with the white list trimmed to its 70 newest entries (--sim-white-peerlist-limit 70, the thirteenth patch; mainnet's 1000 of ~4600 scaled to the lab's 342) and 12 probe relays dumping lists; light 0.1616 = 1.06x the ceiling against E27's untrimmed 0.3369 (2.20x): the trim alone removes the stock multiplier; probes' white lists exactly 70 entries, spies 8.5-10.7% of them (pool 12.3%), rank 0.35-0.49; relays 0.1666, users 0.1362, start-order gradient gone (1.05x); recall 0.135, 30 of 40 exposed; three of five clauses (the 0.28-0.50 share clause missed far below); wall 2 h 18 m |
 | `20261025_173648_lean_24_none_h300_k42_w13h_p3_m1_n600_up_wl70_wc0_s12345` | zenith2alpha | 42 / 42 | 300 / 242 | 0.1619 (0.1531) | 0.164, 0.163, 0.162, 0.159 | 0.179 | 1097 | 2h 16m | 152.6 | 0 | P37 (E46): the cap lifted with the uniform draw and the white list trimmed to 70 entries (P26 plus the thirteenth patch's limit, probes); light 0.1619 = 1.06x the ceiling, P37/P36 = 1.00 (untrimmed P26/E27 0.47): the fix is a no-op once the list is trimmed; probes' lists 70 entries, spies 9.3-10.2%; relays 0.1644, users 0.1491; recall 0.134, 32 of 40 exposed; four of five (the spies' share of list entries clause missed: below 0.15, not above); wall 2 h 17 m |
+| `20261025_204207_lean_24_none_h300_k42_w13h_p3_m1_n600_to1h1h_s12345` | zenith2alpha | 42 / 42 | 300 / 242 | 0.3512 (0.1531) | 0.346, 0.352, 0.352, 0.354 | 0.207 | 575 | 2h 15m | 153.2 | 1 | P38 as run: 1 h/1 h turnover reached only the 40 users (reachable nodes set hide-my-port false and are kept up as pinned); exit 1 from 15 user agents stopped by Shadow at the end (fixed in 5115b02b); window data complete; light 0.3512 |
 <!-- register:end -->
 
 ## 4. Entries
@@ -1977,6 +1978,44 @@ in the run's folder; events in `logs/queue_events_simbox3_through_20261025.event
 array over ssh at 20:48 (2,624 regular files both sides, dry-run clean, the local copy deleted). simbox3 was rebuilt with the thirteen patches
 at 20:42 (sha `c1a4e670`) and started P40 (the trim sweep at 140) at 20:46.
 
+### E48. P38 as run: the turnover reached only the users; the relays read E27's stock number, and the run exited 1 at its end-of-run cleanup (2026-10-25 20:42-23:00, `zenith2alpha`)
+
+**Cell.** `lean_24_none_h300_k42_w13h_p3_m1_n600_to1h1h_s12345` (P38, md5 `c7666148`): E27's stock spread-fleet cell plus `general.turnover`
+(1 h online, 1 h offline, exponential, fraction 1.0) and the twelve probe relays; the thirteen-patch binary (sha `ab6646d7`), none of the
+three rule flags in any of the 382 logs. **As run, only the 40 users cycled** (7-16 daemon sessions each, 412 in all). The generator keeps a
+daemon with `hide-my-port: false` up as a pinned supernode (`is_pinned_reachable` in `src/agent/user_agents.rs`), and every reachable node in
+the lean cells sets it; the generator's log said "40 node(s) cycle", which nobody read before the run. Wall 2 h 15 m. Shadow ran all 19 sim
+hours and the run **exited 1**: 15 of the 40 user agents were still running at the end. Each got its cleanup signal at 68,280 s with its own
+daemon offline (13 of the 15) or just restarted, so every wallet call blocked for its 180 s timeout and the cleanup overran the 120 s margin.
+The window's data are complete: all 382 daemons logged to the end, nodes at height 1,993-1,995 at hour 19, lowest free RAM 157 GB, 575 stem
+txs (E27 1,098), 0.207 fluff per hop. The generator now gives a cycling agent no end-of-run signal (`5115b02b`; its dry run on P42's cell has
+all 40 user agents expected running).
+
+**Reading.** Light-node share **0.3512**, 1.04x E27's 0.3369 and 2.29x the ceiling 0.1531, by quarter 0.3458, 0.3518, 0.3523, 0.3544. By
+class: relays **0.3774** (E27 0.3746), users **0.1083** (E27 0.133), observers 0.2643, medium 0.2106, miners 0.2656, seeds 0.0662. Relays by
+start-order quarter over hours 15-19: about 0.23, 0.33, 0.43, 0.52 (E27 0.22-0.25 and 0.50-0.54), the stock family's gradient unchanged; the
+relay curve is flat at 0.37-0.38 from hour 9. With no relay churn the relays' lists are E27's, and the users' churn moves the relays by under
+1%. Exposure: the users' daemons were up about half the time and sent half E27's transactions; `sp_r` recall **0.096** [0.06, 0.15] at
+precision **0.82** (49 of 60 guesses correct; E27 0.126 at 1.000), 18 of the 36 sending users exposed (E27 27 of 40), the users' median
+outbound spy share 0.097. The eleven wrong guesses are new; E27 had none, and they are not traced.
+
+**Churn cost** (`churn_cost.py`'s first run on restarting daemons; `churn_cost.txt` in the run's folder). The users' sessions split at the
+start-up banner into 412, the config's count: median time to 12 outbound peers **1.0 min** on the first session and **1.1 min** after a
+restart (p90 4.3 min), 6 sessions never filled. The relays ran one session each: **1.7 min** median and 5.9 min p90 to 12 outbound (P36
+without turnover: 2.3 and 6.0). Handshake failures 1.85 per relay-hour (P36 0.37); outbound connect failures zero, as no reachable peer ever
+went offline. These are a no-relay-churn baseline, not the cost the cell was filed to measure.
+
+**P38: two of four scorable clauses hit, and both are the parts the defect did not touch.** (a) exit 0: **missed** (exit 1, the cleanup);
+height 1,900 by hour 19 hit (1,993). (b) light-node share 0.20-0.45: 0.3512, hit, but on a cell without relay churn, so the band's reasoning
+(stale entries diluting the recency edge) is not tested. (c) each probe relay restarts at least three times: **missed** (no relay restarted).
+(d) the cost scorer's baseline numbers: reported above, for users only. (e) wall under 4 h: hit (2 h 15 m). P42, queued 23:16, is the cell P38
+meant.
+
+**Register.** `20261025_204207_lean_24_none_h300_k42_w13h_p3_m1_n600_to1h1h_s12345`, box `zenith2alpha` (run 86); estimators,
+`spy_share_vs_time.txt` and `churn_cost.{txt,json}` in the run's folder; events in `logs/queue_events_tr_through_20261024.events`. The
+archive moved to the array at 23:18 (3,748 regular files both sides, dry-run clean, the `/fast` copy deleted). P39 (the same defect) was
+stopped a minute in; its 251-file directory moved to the array as a record.
+
 ## 5. Pre-registered predictions
 
 
@@ -2568,7 +2607,8 @@ Prior 65% on (c). A (c) miss means the recency filter buys nothing measurable at
 puts a number on what the cubic draw's recency preference is for, which the recommendation then has to weigh.
 *Note, 2026-10-25 23:16:* P38's cell ran with only the 40 users cycling. The generator keeps any daemon with `hide-my-port: false` up as a
 pinned supernode, and every reachable node in the lean cells sets it (`make_lean.py --turnover`'s help said "non-pinned"; the clauses above
-assumed every relay cycled). P38's outcome is under E48; P42 is the cell P38 meant. *Withdrawn, 2026-10-25 23:16:* P39 started at 23:12 and the
+assumed every relay cycled). P38's outcome is under E48; P42 is the cell P38 meant. *Outcome, 2026-10-25 23:19:* **two of four scorable clauses**: (a) exit 1 (missed; height 1,993, hit), (b) 0.3512 (hit, on
+a cell without relay churn), (c) no relay restarted (missed), (e) wall 2 h 15 m (hit); (d) reported for the users only. See E48. *Withdrawn, 2026-10-25 23:16:* P39 started at 23:12 and the
 agent stopped it at 23:13, the same defect making its (c) untestable; P43 carries its clauses on the intended cell.
 
 **P40, filed 2026-10-25 20:42, before the cell is queued (the stock rule with the white list trimmed to 140 entries; the trim sweep's
@@ -2755,6 +2795,9 @@ start-order quarter 0.89x (hit) but the window's quarters span 7.5% against 3% (
     construction. Needs: a turnover cell (`make_lean.py --turnover 1h,1h`, `general.turnover`, built today; users cycle too, which cuts their
     transactions, so the cell is read for connectivity, not exposure) under the stock rule against `_up_wc0` and `_rc`, and a scorer for time to
     12 outbound slots after each restart and for failed dials from the daemon logs. Neither new rule is recommended before this is read.
+    (a) 2026-10-25 23:19: P38's cell cycled only the users (the pinned-reachable exemption; E48). The users' sessions reach 12 outbound
+    peers in 1.0-1.1 min median, and the relays' no-churn baseline is 1.7 min median, 5.9 min p90. The relay-churn pair is P42/P43 (queued
+    23:16 with `--turnover-reachable`).
 12. **The reachable sender classes are unmeasured** (added 2026-10-25 15:13, from the plan review). The lean cells have no reachable home
     senders (the estimators' reachable row is n = 0) and run users at ~150x mainnet's rate, which decides the relayed-stem cover of reachable
     senders. Needs: a cell with reachable senders at a mainnet-like rate over a 24 h window, and N4 (the fluff-epoch leak) computed from the

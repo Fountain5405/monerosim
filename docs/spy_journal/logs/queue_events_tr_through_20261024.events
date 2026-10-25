@@ -41,3 +41,11 @@ share fluff_per_hop=0.198 stem_txs=1099 run=/fast/antiproxy/monerosim_archives/2
 19:56 DONE lean_24_none_h300_k42_w13h_p3_m1_n600_up_wl70_wc0_s12345 exit=0 wall=137m min_avail_mb=156274 light_out_share=0.1619
 share fluff_per_hop=0.179 stem_txs=1097 run=/fast/antiproxy/monerosim_archives/20261025_173648_lean_24_none_h300_k42_w13h_p3_m1_n600_up_wl70_wc0_s12345
 19:56 QUEUE EMPTY
+20:42 START lean_24_none_h300_k42_w13h_p3_m1_n600_to1h1h_s12345 run=/fast/antiproxy/monerosim_archives/20261025_204207_lean_24_none_h300_k42_w13h_p3_m1_n600_to1h1h_s12345
+23:00 DONE lean_24_none_h300_k42_w13h_p3_m1_n600_to1h1h_s12345 exit=1 wall=136m min_avail_mb=156857 light_out_share=0.3512
+share fluff_per_hop=0.207 stem_txs=575 run=/fast/antiproxy/monerosim_archives/20261025_204207_lean_24_none_h300_k42_w13h_p3_m1_n600_to1h1h_s12345
+23:00 STOPPING QUEUE after lean_24_none_h300_k42_w13h_p3_m1_n600_to1h1h_s12345 (trip='' exit=1)
+23:12 START lean_24_none_h300_k42_w13h_p3_m1_n600_up_to1h1h_wc0_s12345 run=/fast/antiproxy/monerosim_archives/20261025_231217_lean_24_none_h300_k42_w13h_p3_m1_n600_up_to1h1h_wc0_s12345
+23:13 STOPPED by signal
+23:13 STOPPED lean_24_none_h300_k42_w13h_p3_m1_n600_up_to1h1h_wc0_s12345 by the agent at sim start: turnover reached only the 40 users (reachable nodes set hide-my-port false and are exempt), so the cell does not test its prediction
+23:16 START lean_24_none_h300_k42_w13h_p3_m1_n600_tor1h1h_s12345 run=/fast/antiproxy/monerosim_archives/20261025_231645_lean_24_none_h300_k42_w13h_p3_m1_n600_tor1h1h_s12345
