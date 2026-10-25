@@ -1,0 +1,30 @@
+{
+ "run_id": "20261025_035537_lean_24_half_h300_k42_w13h_m1_n600_up_wc0_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_half_h300_k42_w13h_m1_n600_up_wc0_s12345",
+ "archived_at": "2026-10-25T03:56:15Z",
+ "monerod_sim_sha": "8d8255edb4ea",
+ "wall": "2h 17m",
+ "exit_code": 0,
+ "min_avail_mb": 161394,
+ "txs_created": 1085,
+ "txs_in_blocks": 1078,
+ "note": "P31 (E40): E29's cell (the full 42-/24 ban list on half the honest nodes: 117 of 233 relays, 20 of 40 users) with the 20-candidate cap lifted and the uniform draw, 13 h warmup, window 15-19 h, seed 12345; light 0.0771 = 0.49x the cap-lifted no-list cell (P26 0.1577; E29 under the stock rule 0.55x) and 1.01x the half-list model 0.0765; adopters 0.0000, non-adopters 0.1539 = 1.005x the ceiling (E29 +10%); users 0.0772, 15 of 40 exposed (all among the 20 non-adopters), sp_r recall 0.069 (P26 0.173); quarters 0.080-0.075; both flag lines in all 382 logs; wall 2 h 18 m",
+ "scored_cell": "24/half",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0771,
+ "light_out_quarters": [
+  0.0804,
+  0.0769,
+  0.0748,
+  0.0768
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.2,
+ "stem_txs": 1097,
+ "stem_hops_implied": 5.0,
+ "embargo_rate": 0.0
+}

@@ -24,3 +24,6 @@ share fluff_per_hop=0.2 stem_txs=1097 run=/fast/antiproxy/monerosim_archives/202
 03:55 DONE lean_24_none_h300_k42_w24h_m1_n600_fx_up_wc0_s12345 exit=0 wall=198m min_avail_mb=161265 light_out_share=0.1655
 share fluff_per_hop=0.212 stem_txs=1102 run=/fast/antiproxy/monerosim_archives/20261025_003506_lean_24_none_h300_k42_w24h_m1_n600_fx_up_wc0_s12345
 03:55 START lean_24_half_h300_k42_w13h_m1_n600_up_wc0_s12345 run=/fast/antiproxy/monerosim_archives/20261025_035537_lean_24_half_h300_k42_w13h_m1_n600_up_wc0_s12345
+06:15 DONE lean_24_half_h300_k42_w13h_m1_n600_up_wc0_s12345 exit=0 wall=138m min_avail_mb=161394 light_out_share=0.0771
+share fluff_per_hop=0.2 stem_txs=1097 run=/fast/antiproxy/monerosim_archives/20261025_035537_lean_24_half_h300_k42_w13h_m1_n600_up_wc0_s12345
+06:15 QUEUE EMPTY
