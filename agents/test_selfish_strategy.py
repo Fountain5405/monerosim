@@ -478,6 +478,20 @@ def test_window_rule_20261020_either_branch():
     assert d.release_to == 103
 
 
+def test_window_rule_20261020_with_difficulty_weights_falls_back_to_v3():
+    """A stock attacker (weigh difficulty) gets a 3-tuple from _branch_weights.
+    Before 2026-10-25 the 20261020 branch then never set `past`, so the
+    attacker held forever (sop_v4_o5_stock_72h: 0 reveals in 6 x 72 h)."""
+    s = _ws("20261020", objects=0)
+    # ahead by difficulty: reveal
+    d = s.update(pub_height=101, priv_height=103, branch_weights=lambda f, p, q: (3, 3000, 1000))
+    assert d.release_to == 102
+    s = _ws("20261020", objects=0)
+    # not ahead: hold
+    d = s.update(pub_height=103, priv_height=104, branch_weights=lambda f, p, q: (4, 4000, 4000))
+    assert d.release_to is None
+
+
 def test_window_rule_v3_unchanged():
     s = _ws("v3", objects=48)
     d = s.update(pub_height=101, priv_height=103, branch_weights=lambda f, p, q: (60, 6000, 1600, 20, 0))

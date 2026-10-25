@@ -288,11 +288,16 @@ class SelfishStrategy:
                 self.fork = pub_height
                 return give_up
         att_objects, att_weight, hon_weight = weights[:3]
-        if self.window_rule == "20261020":
+        if self.window_rule == "20261020" and len(weights) >= 5:
             # MRL #146 2026-10-16: objective once EITHER branch holds (k-1)*w
             # objects above its first block (window_objects = 32 in the specs).
-            past = len(weights) >= 5 and max(weights[3], weights[4]) >= self.window_objects
+            past = max(weights[3], weights[4]) >= self.window_objects
         else:
+            # v3, or a weights tuple without the per-branch window counts (the
+            # "difficulty" weigh on a stock network returns 3 values). Before
+            # 2026-10-25 the 20261020 branch made `past` False for a 3-tuple,
+            # so a stock attacker with window_rule 20261020 never revealed
+            # (sop_v4_o5_stock_72h: 0 reveals in 6 x 72 h, every block orphaned).
             past = att_objects >= self.window_objects
         if not past or att_weight <= hon_weight:
             # Inside the window, or not ahead by weight: hold.
