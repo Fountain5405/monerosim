@@ -42,7 +42,7 @@ pick made uniform, 2.09x the ceiling, gradient intact: the recency draw is not t
 cubic draw, 1.51x in the model; started 17:15, due ~19:15); `phantom` finished P21 at 07:19 (E32: **0.3354**, E27's number at a 24 h warmup, five of seven clauses) and P25 at 08:11
 (E33: 0.0628, the ten-patch binary passes its flag-off check) and has left the lab (its 38 archives on the Threadripper's array, the pool's home since 10-24; the source deleted 18:26); `simbox3` drained at 09:49 (the `tail` seed-34567 filler read 0.1812, E10's third seed: 0.176-0.195 across three seeds; the `core` one 0.0348) and is idle;
 `simbox2` is handed over to the selfish-mining project (its 21 archives on the array, the source deleted 18:26, handover note written). Since 10-24 the session runs on the control box and cells are generated
-there (`make_cell.sh`, section 2 addendum). Entries E1-E36 below; predictions P1-P28 in section 5.
+there (`make_cell.sh`, section 2 addendum). Entries E1-E36 below; predictions P1-P29 in section 5.
 
 ## 1. How this journal works
 
@@ -2043,6 +2043,17 @@ the ceiling, 0.75-0.95x (P26 0.82x; this clause asks whether that is structure o
 below 0.13 or above 0.19 means E36's 1.03x does not hold across seeds and the Monte Carlo's agreement was luck; fewer than 28 exposed means the
 exposure rise was seed noise. Wall under 2.75 h.
 
+**P29, filed 2026-10-25 00:40, before the cell is queued (the 24 h steady state with the cap lifted).** `lean_24_none_h300_k42_w24h_m1_n600_fx_up_wc0_s12345`
+on `zenith2alpha` (md5 `527a8a60`; E32's cell, the 24 h spread fleet at seed 12345 with the fixed RandomX seed, plus `sim-uniform-whitelist-pick: true`
+and `sim-whitelist-candidates: 0`, the only differing lines; window hours 26-30). Under the stock rule the 24 h read was flat at this seed (E32 0.3354
+against E27 0.3369) and 5% up at seed 23456 (E34 0.3524 against E27b 0.334), the late-started relays' lists ageing into a deeper gradient. With the cap
+lifted there is no gradient to deepen (E36, P28), so the day-old network should read what the 13 h cells read: (a) light-node share **0.145-0.170**
+(P26 0.1577, P28 0.1557); (b) relays within 1.15x the ceiling and the latest-started quarter at most 1.3x the earliest over hours 26-30; (c) both flag
+lines in every daemon log; (d) users' share 0.12-0.19 and at least 30 of 40 users exposed (P26 0.165 and 37, P28 0.139); (e) no drift: the four
+quarters of the window within 3% of one another and no half hour between hours 6 and 30 above 0.19 in `spy_share_vs_time`. Prior 80%. Above 0.19
+means something accumulates in the lists over a day that the 13 h cells did not show, even with every /24 drawable; below 0.13 means the longer
+warmup lets the spies fall out of the lists. Wall under 3.5 h (P23's 24 h cell took 3 h 16 m at 32 workers).
+
 ## 6. Open questions
 
 1. **The 1.5x in the dedup plateau** (E5). Needs a probe cell at long warmup with
@@ -2196,6 +2207,7 @@ in the conversation.
 | 10-24 18:26 | Source archive folders deleted on the user's word: `phantom:/mnt/ssdpool/monerosim_archives` (38 runs, 100,813 files; `/mnt/ssdpool` 322 -> 18 GB used, 422 GB free) and `simbox2:~/monerosim_archives` (21 runs, 58,373 files; `/` 665 -> 494 GB used, 347 GB free), each `rm -rf` run only after a final dry-run rsync against the array in the same minute listed nothing to send (regular files transferred 0 of 100,813 and 0 of 58,373; `~/queue/final_dryrun.txt` on each box). Dated deletion lines appended to both handover notes (on the boxes, in `/srv/lab_handover/`, in `docs/spy_journal/`). The array is now the only copy of those 59 runs; simbox3's 5 and the Threadripper's own stay local as well | the user said "go ahead and delete the source archives on .22 and .25" after the 16:06 verification | none: the sources are gone; the array copy was verified twice (16:06 and 18:26) | user |
 | 10-24 18:40 | P26 scored on `zenith2alpha` (estimators and `spy_share_vs_time` detached there, the six small files fetched, run 74 in the register) and written up as E36: five of six clauses, the cap confirmed as the whole multiplier, the exposure clause missed upward (37 of 40). P26's archive stays on `/fast` until P27 ends (no extra disk traffic under a timed run), then moves to the array. P27 running since 17:15 (68% at 18:32, due ~19:15); E37 when it lands. Then the queue turns to a second seed of P26 (`s23456`, the 1% replication the family has had since E27b) and to the users' side of open question 10 | the cap reading is one cell deep and the exposure finding reverses the policy reading, so it needs a replicate before anything is claimed; the owner decides which number the defense work targets | none | agent |
 | 10-24 18:45 | P28 filed: P26 at seed 23456 (`make_cell.sh`, the same arguments with `--seed 23456`; md5 `975cee8e`; the diff against P26's cell is the seed line alone), to run on `zenith2alpha` behind P27 by appending it to `q.txt` (the driver reads the next line when P27 ends, so no idle gap). simbox3 was the alternative but sits at 49 GB free with its 5 local archives still in place (deleting them is the user's call), below the lab's 45 GB floor once a 384-daemon archive lands, and still runs the nine-patch binary | the cap result reverses the policy reading of open question 10 and is one seed deep; the family's replicate practice (E27b) is a second seed before any claim | remove the line from `q.txt` before P27 ends, or stop the driver by pid | agent |
+| 10-25 00:40 | Archives *moved*, not copied, from the lab's own boxes (the user, 00:30: "don't you have the ability to move the local archives to the spinny on .33?"): simbox3's five local archives deleted after a final dry-run rsync against the array compared 14,185 regular files and listed none to send (`/` 49 -> 89 GB free; the driver's empty `~/monerosim_archives` recreated); the Threadripper's six `/fast` archives (three not yet on the array: P26, P27, P28) copying to the array under `nice`/`ionice`, to be deleted from `/fast` after the same dry-run check once their scoring has read them. P27 (DONE 19:34, **0.1705**) and P28 (DONE 21:53, **0.1557**) scoring detached on the box; the queue had been empty since 21:53. P29 filed (the 24 h spread fleet with the cap lifted, md5 `527a8a60`) and the driver restarted on it | the box was idle and the move is the standing plan; the deletion half had been waiting on the user's word, which this message gives for the lab's boxes | re-copy from the array (`rsync` back); stop the driver by pid | user, agent |
 
 ## 8. Files
 
