@@ -101,11 +101,28 @@ reveal credits every hold of its race in one pass (unit test: a 3-hold
 chain ending in a 3-block reveal values its first hold at 3 after one
 race, where one-step targets leave it at 0); (b) the design's fallback,
 D binned by 2 (`--d-bin 2`); (c) both, with the pending counts binned by
-2 as well (`--p-bin 2`). Pass bar unchanged. The one-step runs at
-0.45/0.48/0.50 continue (the bisection warm-starts each step from the
-previous table, so later steps may still climb); the 0.40 run was
-stopped (stubborn earns 0.06 there against honest's 0.40: nothing to
-learn or to simulate). Result: (pending).
+2 as well (`--p-bin 2`). Pass bar unchanged. The 0.40 run was stopped
+(stubborn earns 0.06 there against honest's 0.40: nothing to learn or to
+simulate).
+
+The first of these to report (race + bins, rho 0.575, 1.57 M keys, 47
+min) scored 0.311, which exposed a flaw in the bisection rather than in
+the learner: at a rho above the optimum every settlement loses and
+holding scores 0, so the greedy policy holds until the deficit cap
+forces it, and the probe is wasted by construction; the bisection then
+carried that table into the next step. The one-step runs' second step,
+at rho 0.6125, was the same waste. Fix: every step now trains from the
+best table so far (a failed probe's table is dropped; unit-tested).
+
+Fourth attempt (22:10Z, alpha 0.50, bracket 0.50-0.60 so the first step
+asks for a share above 0.55, under `sim_stubborn`'s 0.5715): four runs on
+lithium, all warm-started from `sim_stubborn`: one-step targets (the
+control), race returns, D binned by 2, race returns with D and pending
+counts binned by 2. The one-step runs at 0.45 and 0.48 were stopped: a
+one-step learner that cannot reproduce stubborn at 0.50 has nothing to
+show at alphas where honest mining already beats stubborn; those alphas
+are trained later with whichever configuration passes at 0.50. Result:
+(pending).
 
 ### 4. Smoke cell (6 h)
 

@@ -131,6 +131,30 @@ def test_train_matches_exact_solver_on_a_small_window_reaching_game(race_returns
     assert abs(r["share"] - rho_exact) < 0.01, (r["share"], rho_exact)
 
 
+def test_share_search_trains_each_step_from_the_best_table_so_far(monkeypatch):
+    # a probe at a rho above the optimum degenerates (settling always loses, holding scores 0):
+    # its table must not seed the next step; the best table so far does (2026-10-25 21:51Z:
+    # race+bins at rho 0.575 -> share 0.311, table carried into the 0.5125 step)
+    seen, shares = [], iter([0.60, 0.30, 0.55, 0.40])
+
+    def fake_train(env, alpha, rho, budget, q=None, **kw):
+        seen.append(sorted(q.q) if q is not None else None)
+        t = RL.QTable()
+        t.q[(len(seen),)] = [0.0, 0.0, 0.0, 0.0]
+        return t
+
+    monkeypatch.setattr(RL, "train", fake_train)
+    monkeypatch.setattr(RL, "rollout", lambda env, policy, n: {"share": next(shares)})
+
+    class E:
+        def reset(self, seed):
+            pass
+
+    out = RL.share_search(lambda seed: E(), 0.5, budget=1, lo=0.5, hi=0.6, tol=0.01, eval_objects=1, seeds=(1,))
+    assert seen == [[], [(1,)], [(1,)], [(1,)]]     # steps 3 and 4 start from step 1's table (0.60)
+    assert out["share"] == 0.60 and sorted(out["q"].q) == [(1,)]
+
+
 def test_share_search_terminates_and_reports_best_when_nothing_learns():
     # a budget of 0 steps leaves Q empty: every rollout is sim_stubborn through the MDP game
     caps = M.Caps(3, 3, 40, 12, 12)

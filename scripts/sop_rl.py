@@ -379,11 +379,14 @@ def share_search(make_env: Callable[[int], object], alpha: float, budget: int, l
                  behaviour: Optional[Callable[[Obs], int]] = None, beta_start: float = 1.0,
                  beta_end: float = 0.0, race_returns: bool = False, d_bin: int = 1, p_bin: int = 1) -> dict:
     """Bisection on rho (Sapirshtein-Sompolinsky-Zohar): train at mid
-    (warm-started from the previous table), roll the greedy policy out on
+    (warm-started from the BEST table so far), roll the greedy policy out on
     `eval_objects` objects per seed with fresh envs from make_env(seed), and
     move lo up if the mean share exceeds mid (gain > 0), else hi down. Stops
     at hi - lo <= tol or after max_steps. Returns rho, the best rollout share
-    seen with its table, converged, and the (rho, share, states) history."""
+    seen with its table, converged, and the (rho, share, states) history.
+    A probe at a rho above the optimum degenerates (every settlement loses,
+    holding scores 0, so the greedy policy holds until forced: 0.311 at rho
+    0.575, alpha 0.50, 2026-10-25); its table is dropped, not carried."""
     make_train_env = make_train_env or make_env
     q: Optional[QTable] = QTable(d_bin=d_bin, p_bin=p_bin)
     best_share, best_q = -1.0, None
@@ -408,6 +411,9 @@ def share_search(make_env: Callable[[int], object], alpha: float, budget: int, l
                   file=log, flush=True)
         if share > best_share:
             best_share, best_q = share, _copy_table(q)
+        else:
+            q = None                   # drop the failed probe's table before copying (peak: two tables)
+            q = _copy_table(best_q)
         if share > mid:
             lo = mid
         else:
