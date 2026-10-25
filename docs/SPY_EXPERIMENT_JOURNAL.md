@@ -45,7 +45,7 @@ with the cap lifted, 1.08x the ceiling, nothing accumulates over the day; recall
 with the cap lifted, 0.49x the no-list cell and 1.01x the half-list model, adopters at zero and the non-adopters at exactly their ceiling; four of five), P32 at 12:43 (E42: **0.0764**, the half list with the cap lifted at seed 23456, 1.00x the half-list model and 0.49x the no-list cell again; five of five; the user, before 10:20: "proceed with the twelfth patch, and queue P31 at seed 23456 meanwhile"), P34 at 15:01 (E43: **0.1657**, the twelfth patch, 20 random /24 candidates with the stock cubic draw, 1.08x the ceiling, the same as the lifted cap with that draw; six of six), rebuilt with the thirteenth patch (runtime peer-list limits) at 15:09 and runs P36 (the stock rule with the white list trimmed to 70 entries, started 15:16, due ~17:45) with P37 (the cap lifted with the same trim) queued behind it; the plan was reviewed against its three questions on 10-25 (plan section 7: the cap finding's transfer to mainnet is gated by the list age structure, the honest cost under churn and an active-recency adversary; revised order there); `phantom` finished P21 at 07:19 (E32: **0.3354**, E27's number at a 24 h warmup, five of seven clauses) and P25 at 08:11
 (E33: 0.0628, the ten-patch binary passes its flag-off check) and has left the lab (its 38 archives on the Threadripper's array, the pool's home since 10-24; the source deleted 18:26); `simbox3` drained at 09:49 (the `tail` seed-34567 filler read 0.1812, E10's third seed: 0.176-0.195 across three seeds; the `core` one 0.0348), its five archives moved to the array 10-25 00:35 (local copies deleted, 89 GB free), was rebuilt with the eleven patches at 00:46 10-25 and finished P30 at 07:56 (E41: **0.1482**, P26 at seed 34567, 0.97x the ceiling, flat to 0.3%; five of five; the rebuilt binary passes its gate; three seeds mean 1.005x), its archive moved to the array (91 GB free), was rebuilt with the twelve patches at 10:37 (3 min, ccache) and runs P33 (P31 at seed 34567, started 10:37, due ~15:10; the user, 10:30: "is there anything that could be running on .176? its idle") with P35 (the twelfth patch at seed 23456) queued behind it;
 `simbox2` is handed over to the selfish-mining project (its 21 archives on the array, the source deleted 18:26, handover note written). Since 10-24 the session runs on the control box and cells are generated
-there (`make_cell.sh`, section 2 addendum). Entries E1-E43 below; predictions P1-P41 in section 5.
+there (`make_cell.sh`, section 2 addendum). Entries E1-E44 below; predictions P1-P41 in section 5.
 
 ## 1. How this journal works
 
@@ -1852,6 +1852,38 @@ uniform draw (`_rc_up`), is deferred behind the review's items 1-3 (plan section
 in the run's folder; events in `logs/queue_events_tr_through_20261024.events` (through the 15:01 `QUEUE EMPTY`). The archive moved to the array at
 15:10 (2,624 regular files both sides, dry-run clean, the `/fast` copy deleted). The Threadripper rebuilt with the thirteenth patch at 15:09.
 
+### E44. The half list with the cap lifted at a third seed, on simbox3: 0.0792, 1.04x the half-list model and 0.53x the no-list cell; three seeds read the model at 1.00-1.04x (2026-10-25 10:37-15:16, `simbox3`)
+
+**Cell.** `lean_24_half_h300_k42_w13h_m1_n600_up_wc0_s34567` (P33): P31's cell with `simulation_seed: 34567`, the 165 ban-list paths rewritten
+for simbox3's account (md5 `0252e259` as generated, `e3407251` as run), the 42-line list and the adopter set identical; the first cell on
+simbox3's twelve-patch binary (sha `7a7a32b3`) with the twelfth flag off: its line in no log, the two cap-lifted lines in all 382. Wall 4 h 35 m,
+exit 0, all checks passed, 382 nodes at 100% sync, height 2088 (552 blocks in 18.87 h), lowest free RAM 81 GB, 1,087 stem txs, 0.204 fluff
+per hop.
+
+**Reading.** Light-node outbound share **0.0792**, by quarter 0.0791, 0.0774, 0.0809, 0.0795 (a 4.5% span). The half-list model at this seed,
+0.1523 x 140/281 = 0.0759: **1.04x** (P31 1.01x, P32 1.00x). Against the cap-lifted no-list cell at this seed (P30 0.1482): **0.53x** (P31 and
+P32 0.49x). Adopters (165 nodes) **0.0000**; the scorer's non-adopter group **0.1575 = 1.03x the ceiling**; the non-adopting light nodes together
+0.0792 x 281/140 = 0.159, 1.07x their no-list read (P30 0.1482, the lowest of the three no-list seeds). By class with the adopters' zeros scaled
+out: relays 0.0795 (the 116 non-adopting relays 0.1597, 1.05x), users 0.0723 (the 20 non-adopting users 0.1446; P30 0.1521), medium 0.0782,
+observers 0.1066, miners 0.1649, seeds 0.0807. Relays by start-order quarter over hours 15-19: 0.0842, 0.0758, 0.0807, 0.0784, the latest 0.93x
+the earliest. Over the run: means 0.132 over hours 0-3, 0.090 over 3-6, 0.075 over 6-12, 0.077 over 12-15, 0.080 over 15-19, flat from hour 6
+(P31 and P32 eased 7% into the window). Exposure: `sp_r` recall **0.071** [0.04, 0.11] (P31 0.069, P32 0.066), precision 1.00, **17 of 40**
+users attributed (17 of the 39 twenty-transaction users, 0 of the one with 10-19); 20 of the 40 users ever had a spy stem peer, the
+non-adopters, so 17 of the 20 non-adopting users are exposed (P31 15, P32 17). Busy senders: `sp_r` 0 of 5, combined 5 of 5.
+
+**P33: five of five clauses hit, and the wall.** (a) 0.0792 in 0.070-0.095 (hit); (b) adopters 0.0000 and the non-adopting relays 1.05x in
+0.92-1.10x (hit); (c) both flag lines in all 382 logs and the twelfth in none (hit); (d) users 0.0723 in 0.06-0.10 and 17 of 40 exposed in
+12-20, all non-adopters (hit); (e) the quarters 4.5% apart under 8% and the start-order quarter 0.93x in 0.7-1.3x (hit). Wall 4 h 35 m under
+6 h. **Three seeds, two boxes:** the full list on half the nodes with every /24 drawable reads 0.0771, 0.0764 and 0.0792 against half-list
+models of 0.0763, 0.0767 and 0.0759 (1.01x, 1.00x, 1.04x; mean 1.02x), 0.49x, 0.49x and 0.53x the no-list cell at the same seed, with the
+adopters at zero and the non-adopters at 1.005x, 1.01x and 1.03x their subnet share every time. The half-list line is closed at three seeds,
+and the twelve-patch build passes its flag-off check (this cell reads like P31 and P32).
+
+**Register.** `20261025_103748_lean_24_half_h300_k42_w13h_m1_n600_up_wc0_s34567`, box `simbox3` (run 82); estimators and
+`spy_share_vs_time.txt` in the run's folder; events in `logs/queue_events_simbox3_through_20261025.events`. The archive moved to the array
+over ssh at 20:41 (2,624 regular files both sides, dry-run clean, the local copy deleted). P35 (the twelfth patch at seed 23456) started
+15:16 on the same box as this run ended.
+
 ## 5. Pre-registered predictions
 
 
@@ -2358,6 +2390,9 @@ also that build's flag-off check. At this seed the ceiling is 0.1523 (243 honest
 1.005x); (c) both flag lines in every daemon log and the twelfth patch's start-up line in none; (d) users' share 0.06-0.10 and **12-20 of 40** users
 exposed, all among the 20 non-adopters (P31 15); (e) the four quarters within 8% and the latest-started relay quarter 0.7-1.3x the earliest.
 Prior 80%. Wall under 6 h (P30 took 4 h 27 m on this box).
+*Outcome, 2026-10-25 20:44:* **five of five clauses, and the wall.** Light **0.0792** (1.04x the half-list model 0.0759, 0.53x P30; hit), adopters 0.0000
+and the non-adopting relays 1.05x (hit), both flag lines in all 382 logs and the twelfth in none (hit), users 0.0723 and 17 of 40 exposed, all non-adopters
+(hit), quarters 4.5% apart and the start-order quarter 0.93x (hit). Wall 4 h 35 m. Three seeds: 1.00-1.04x the model, 0.49-0.53x the no-list cell. See E44.
 
 **P34, filed 2026-10-25 10:39, before the cell is queued (the twelfth patch: 20 random /24 candidates in place of the 20 newest, the stock cubic
 draw kept).** `lean_24_none_h300_k42_w13h_m1_n600_rc_s12345` on `zenith2alpha` behind P32 (md5 `14d453a7`; E27's stock spread-fleet cell plus
@@ -2572,6 +2607,8 @@ start-order quarter 0.89x (hit) but the window's quarters span 7.5% against 3% (
     for changed rules. The review of the plan (plan section 7, filed today) ranks what gates this finding's transfer to mainnet: the list age
     structure (open question 8), the honest cost of removing recency under churn (open question 11), and an adversary that keeps itself newest
     (open question 13, which also attacks the residual here). No further candidate-rule cell runs until those three are answered; `_rc_up` waits.
+    *2026-10-25 20:44, from E44 (P33).* (l) done: the half list with the cap lifted at a third seed reads **0.0792** (1.04x the half-list model,
+    0.53x the no-list cell); three seeds 1.00-1.04x and 0.49-0.53x, adopters zero, non-adopters at their share. The half-list line is closed.
 
 11. **The honest cost of the candidate rules is unmeasured** (added 2026-10-25 15:13, from the plan review). X2's cost metrics (time to a full
     outbound set, failed dials, outbound diversity, propagation, outage connectivity) have been scored for no cell. The 20-newest cap is a
