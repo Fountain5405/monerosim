@@ -34,7 +34,7 @@ fleet to **0.184** (0.55x, the same ratio as on the packed fleet), adopters to z
 of 40 (E29, P20 eight of eight): the list's effect does not depend on the layout, and half the network adopting recovers only what
 the stock rule's /24 counting gave the spread fleet. Eight spies per /24 at 26-30 h read 0.1497, below the 2-per-/24 cell's 0.1572 but still draining
 (-14% over hours 20-30; E30, P16b three of four): packing IPs into /24s dilutes a little and delays a lot, and the /24 count is what
-buys share. Running (08:40 10-25): `zenith2alpha`, the 256 GB Threadripper, validated by E31/P22 at 06:12 (0.0624 on the H=71 `legacy` cell), finished P23 at 09:36
+buys share. Running (09:00 10-25): `zenith2alpha`, the 256 GB Threadripper, validated by E31/P22 at 06:12 (0.0624 on the H=71 `legacy` cell), finished P23 at 09:36
 (E34: **0.3524**, the seed-23456 read of the 24 h spread fleet, 5% above P21's; four of seven), P24 at 12:01 (E35: **0.3207** with the white-list
 pick made uniform, 2.09x the ceiling, gradient intact: the recency draw is not the cause of the 2.2x; one of five) and P26 at 17:15 (E36: **0.1577**,
 1.03x the ceiling with the 20-candidate cap lifted, gradient gone: **the cap is the whole 2.2x**; five of six, the miss being exposed users up from 28 to
@@ -42,11 +42,11 @@ pick made uniform, 2.09x the ceiling, gradient intact: the recency draw is not t
 and the stock cubic draw kept: the draw's shape is worth 8%; two of five) and P28 at 21:53 (E38: **0.1557**, P26 replicated at seed 23456, 1.01x; three
 of five, the users at 0.139 just under their clause), sat idle until 00:35 (no watcher), finished P29 at 03:55 (E39: **0.1655**, the 24 h spread fleet
 with the cap lifted, 1.08x the ceiling, nothing accumulates over the day; recall 0.187 against the stock 24 h cells' 0.134 and 0.109; four of five) and P31 at 06:15 (E40: **0.0771**, E29's half ban list
-with the cap lifted, 0.49x the no-list cell and 1.01x the half-list model, adopters at zero and the non-adopters at exactly their ceiling; four of five), and is idle
-(queue empty since 06:15, nothing filed for it yet); `phantom` finished P21 at 07:19 (E32: **0.3354**, E27's number at a 24 h warmup, five of seven clauses) and P25 at 08:11
+with the cap lifted, 0.49x the no-list cell and 1.01x the half-list model, adopters at zero and the non-adopters at exactly their ceiling; four of five), and runs P32 (P31 at seed 23456,
+started 09:00 10-25, due ~11:30; the user, 08:50: "proceed with the twelfth patch, and queue P31 at seed 23456 meanwhile"); `phantom` finished P21 at 07:19 (E32: **0.3354**, E27's number at a 24 h warmup, five of seven clauses) and P25 at 08:11
 (E33: 0.0628, the ten-patch binary passes its flag-off check) and has left the lab (its 38 archives on the Threadripper's array, the pool's home since 10-24; the source deleted 18:26); `simbox3` drained at 09:49 (the `tail` seed-34567 filler read 0.1812, E10's third seed: 0.176-0.195 across three seeds; the `core` one 0.0348), its five archives moved to the array 10-25 00:35 (local copies deleted, 89 GB free), was rebuilt with the eleven patches at 00:46 10-25 and finished P30 at 07:56 (E41: **0.1482**, P26 at seed 34567, 0.97x the ceiling, flat to 0.3%; five of five; the rebuilt binary passes its gate; three seeds mean 1.005x), its archive moved to the array (91 GB free), and is idle;
 `simbox2` is handed over to the selfish-mining project (its 21 archives on the array, the source deleted 18:26, handover note written). Since 10-24 the session runs on the control box and cells are generated
-there (`make_cell.sh`, section 2 addendum). Entries E1-E41 below; predictions P1-P31 in section 5.
+there (`make_cell.sh`, section 2 addendum). Entries E1-E41 below; predictions P1-P32 in section 5.
 
 ## 1. How this journal works
 
@@ -2265,6 +2265,17 @@ cell should take about 4.5 h; the stock 13 h cells took 2.5 h on phantom's 32).
 gradient 1.08x (hit), both flag lines in all 382 logs (hit), users 0.1521 and 39 of 40 exposed (hit), three-seed mean 0.1539 and spread 0.0095 (hit, the
 spread at the edge). Wall 4 h 27 m. The rebuilt binary passes its gate. See E41.
 
+**P32, filed 2026-10-25 09:00, before the cell is queued (P31 at a second seed).** `lean_24_half_h300_k42_w13h_m1_n600_up_wc0_s23456` on
+`zenith2alpha` (md5 `75763cc9`; P31's cell with `simulation_seed: 23456`, the only differing line apart from the ban-list file's name; the 42-line
+list and the 165-node adopter set are identical to P31's, checked). P31's 0.49x and "non-adopters at exactly their ceiling" rest on one seed; the
+family's seed band is about 5% on aggregates (E27/E27b, P26/P28) and about 25% at the user level. At this seed the fleet's ceiling is 0.1539 (240
+honest /24s), so the half-list model gives the light nodes 0.1539 x 140/281 = 0.0767. (a) light-node share **0.070-0.095** (P31 0.0771); (b)
+adopters at **0.000** and the non-adopting relays' own share 0.92-1.10x the ceiling (P31 1.005x); (c) both flag lines in every daemon log; (d)
+users' share 0.06-0.10 and **12-20 of 40** users exposed, all among the 20 non-adopters (P31 15); (e) the four quarters of the window within 8%
+(P31 7.5%; the 3% clause of P31 was too tight for this share level, E40) and the latest-started relay quarter 0.7-1.3x the earliest (P31 0.89x; the
+quarters mix adopters and non-adopters). Prior 80%. Wall under 3 h (P31 2 h 18 m). The twelfth patch (20 random /24 candidates in place of the 20
+newest) is being written while this runs; its cell will be filed separately and queued behind this one.
+
 **P31, filed 2026-10-25 03:30, before the cell is queued (the half ban list with the cap lifted).** `lean_24_half_h300_k42_w13h_m1_n600_up_wc0_s12345`
 on `zenith2alpha` behind P29 (md5 `49e10cf7`; E29's cell, the full 42-/24 list on half the honest nodes, 165 adopters and 175 non-adopters with
 20 of the 40 users adopting, plus `sim-uniform-whitelist-pick: true` and `sim-whitelist-candidates: 0`, the only differing lines apart from the
@@ -2465,6 +2476,7 @@ in the conversation.
 | 10-25 04:20 | P29 scored on `zenith2alpha` (estimators and `spy_share_vs_time` detached under `nice`, P31 already running) and written up as E39 (run 77 in the register; outcome under P29, open question 10 (g), status). Its archive moved to the array: copied under `nice`/`ionice` while the scorer read it, verified by regular-file count (2,624 both sides) and a dry-run rsync that listed nothing to send, then the `/fast` copy deleted (548 GB free; P31's live run is the only folder left there; the array holds 71 runs). The events log snapshot in `logs/` now runs through P31's START | the standing plan (00:40 row): score, register, move the same day | re-copy from the array | agent |
 | 10-25 06:50 | P31 scored on `zenith2alpha` (detached estimators and `spy_share_vs_time`, the box otherwise idle) and written up as E40 (run 78 in the register; outcome under P31, open question 10 (h), status). Its archive moved to the array: copied under `nice`/`ionice`, verified by regular-file count (2,624 both sides) and a dry-run rsync that listed nothing to send, then the `/fast` copy deleted (`/fast` holds no run now, 548 GB free; the array holds 72 runs). The events snapshot in `logs/` runs through the 06:15 `QUEUE EMPTY`. Nothing queued on the Threadripper: the user's 03:20 "proceed with your recommendations" covered P30 and P31, and the next cell is a new decision | the standing plan for scoring and moves; queueing a cell the user has not chosen is not | re-copy from the array | agent |
 | 10-25 08:40 | P30 scored on `simbox3` (detached estimators and `spy_share_vs_time` there) and written up as E41 (run 79 in the register, box `simbox3`; outcome under P30, open question 10 (i), status). Its archive moved to the array over ssh into `antiproxy@192.168.1.33`: verified by regular-file count (2,624 both sides) and a dry-run rsync that listed nothing to send, then the local copy deleted (`simbox3` 91 GB free; the array holds 73 runs). simbox3's events snapshot added as `logs/queue_events_simbox3_through_20261025.events`. Both boxes idle with nothing queued: the next cells are the user's decision (recommended: the twelfth patch, 20 random /24 candidates in place of the 20 newest, for the Threadripper; P31 at a second seed as a no-code filler) | the standing plan for scoring and moves; queueing beyond the user's go is not | re-copy from the array | agent |
+| 10-25 09:00 | The user (08:50): "proceed with the twelfth patch, and queue P31 at seed 23456 meanwhile". P32 filed (P31's cell with `--seed 23456`; md5 `75763cc9`; the seed line alone differs, the list and the adopter set identical) and the Threadripper's driver restarted on it; it runs there rather than on the idle `simbox3` so the replicate shares P31's box and the ban-list paths need no rewriting (`make_cell.sh` writes this clone's absolute paths, which match `zenith2alpha`'s account but not simbox3's). The twelfth patch (`--sim-random-whitelist-candidates`: the N candidates drawn at random from the eligible white list instead of the N newest, the draw among them unchanged) is written next, with a Monte Carlo before its prediction, and built on `zenith2alpha` under `nice` while P32 runs | the user's decision; the replicate pins the 0.49x | remove the line from `q.txt`, or stop the driver by pid | user, agent |
 
 ## 8. Files
 
