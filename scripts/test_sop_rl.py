@@ -130,3 +130,26 @@ def test_cli_train_and_eval_smoke(tmp_path):
                         "--env", "mdp", "--a-max", "3", "--h-max", "3", "--d-max", "40", "--p-max", "12",
                         "--deficit", "12", "--days", "2", "--seeds", "1"], check=True, capture_output=True, text=True)
     assert "share" in r.stdout and "sim_stubborn" in r.stdout
+
+
+def test_train_with_stubborn_behaviour_learns_stubborns_own_values():
+    """Off-policy warm start: with behaviour = sim_stubborn at full weight the
+    tried actions are stubborn's, so the greedy policy IS stubborn and scores
+    what stubborn scores (the learner's values along deep hold chains are
+    then grounded in trajectories that actually reach reveals)."""
+    caps = M.Caps(3, 3, 40, 12, 12)
+    env = RL.MdpEnv(0.45, caps)
+    env.reset(1)
+    q = RL.train(env, 0.45, rho=0.3, budget=300_000, seed=1, behaviour=RL.sim_stubborn,
+                 beta_start=1.0, beta_end=1.0, eps_start=0.0, eps_end=0.0)
+    for k in list(q.q)[:200]:
+        legal = q.legal_of(k)
+        if q.visits[k] > 0:
+            assert q.greedy_tried(k, legal) == RL.legal_fallback(RL.sim_stubborn(k), legal)
+    e1 = RL.MdpEnv(0.45, caps)
+    e1.reset(2)
+    r_learned = RL.rollout(e1, RL.TablePolicy(q), 500_000)
+    e2 = RL.MdpEnv(0.45, caps)
+    e2.reset(2)
+    r_stub = RL.rollout(e2, RL.stubborn_fn, 500_000)
+    assert abs(r_learned["share"] - r_stub["share"]) < 0.01

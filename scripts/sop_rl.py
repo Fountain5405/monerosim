@@ -216,12 +216,22 @@ class QTable:
         return len(self.q)
 
 
+def legal_fallback(a: int, legal) -> int:
+    """A fallback action forced into the legal set: hold if allowed, else the
+    first legal action (at a cap only the forced ones are)."""
+    if legal[a]:
+        return a
+    return HOLD if legal[HOLD] else next(i for i in range(4) if legal[i])
+
+
+
 REF_REFRESH = 50_000   # steps between re-picking the reference key (the most visited one)
 
 
 def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None,
           lr: float = 0.02, eps_start: float = 0.3, eps_end: float = 0.02, seed: int = 1,
-          lr_min: float = 0.002) -> QTable:
+          lr_min: float = 0.002, behaviour: Optional[Callable[[Obs], int]] = None,
+          beta_start: float = 1.0, beta_end: float = 0.0) -> QTable:
     """Relative-value (RVI) Q-learning for the average reward
     r = fa - rho * (fa + fh):  Q(s,a) += a_n * (r - V(ref) + max_legal Q(s') - Q(s,a)),
     V(ref) = max_legal Q(ref). The step size decays per key with its visit
@@ -232,7 +242,15 @@ def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None
     one side, so a fixed START anchor let the values drift). Epsilon decays
     linearly over the budget; illegal actions are never chosen nor maximised
     over; the greedy choice is over actions already tried. Warm-startable
-    through `q`."""
+    through `q`.
+
+    `behaviour` (2026-10-25): an off-policy warm start. With probability
+    beta (linear from beta_start to beta_end over the budget) the step takes
+    behaviour(obs) (legality-guarded) instead of the eps-greedy choice.
+    Pure eps-greedy converged to honest mining even at alpha 0.50, where
+    sim_stubborn earns 0.57: it never holds a branch long enough to see a
+    deep reveal pay. Q-learning is off-policy, so learning along stubborn's
+    trajectories grounds those values; the greedy policy can then deviate."""
     q = q if q is not None else QTable()
     rng = random.Random(seed)
     o = env.obs()
@@ -242,10 +260,14 @@ def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None
     kref = max(q.visits, key=q.visits.get) if q.visits else k
     de = (eps_end - eps_start) / max(budget, 1)
     eps = eps_start
+    dbeta = (beta_end - beta_start) / max(budget, 1)
+    beta = beta_start if behaviour is not None else 0.0
     for t in range(budget):
         if env.done:
             break
-        if rng.random() < eps:
+        if behaviour is not None and rng.random() < beta:
+            a = legal_fallback(behaviour(o), legal)
+        elif rng.random() < eps:
             choices = [i for i in range(4) if legal[i]]
             a = choices[int(rng.random() * len(choices))]
         else:
@@ -269,17 +291,10 @@ def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None
         q.legal[k] |= 1 << (4 + a)
         o, legal, k, row = o2, legal2, k2, row2
         eps += de
+        beta += dbeta
         if t % REF_REFRESH == REF_REFRESH - 1:
             kref = max(q.visits, key=q.visits.get)
     return q
-
-
-def legal_fallback(a: int, legal) -> int:
-    """A fallback action forced into the legal set: hold if allowed, else the
-    first legal action (at a cap only the forced ones are)."""
-    if legal[a]:
-        return a
-    return HOLD if legal[HOLD] else next(i for i in range(4) if legal[i])
 
 
 def stubborn_fn(obs: Obs, legal) -> Tuple[int, bool]:
@@ -317,7 +332,9 @@ def _copy_table(q: QTable) -> QTable:
 def share_search(make_env: Callable[[int], object], alpha: float, budget: int, lo: float = 0.05,
                  hi: float = 0.80, tol: float = 1e-3, eval_objects: int = 23_040_000,
                  seeds: Tuple[int, ...] = (11, 12, 13), log=None,
-                 make_train_env: Optional[Callable[[int], object]] = None, max_steps: int = 12) -> dict:
+                 make_train_env: Optional[Callable[[int], object]] = None, max_steps: int = 12,
+                 behaviour: Optional[Callable[[Obs], int]] = None, beta_start: float = 1.0,
+                 beta_end: float = 0.0) -> dict:
     """Bisection on rho (Sapirshtein-Sompolinsky-Zohar): train at mid
     (warm-started from the previous table), roll the greedy policy out on
     `eval_objects` objects per seed with fresh envs from make_env(seed), and
@@ -334,7 +351,8 @@ def share_search(make_env: Callable[[int], object], alpha: float, budget: int, l
         t = time.time()
         env = make_train_env(1000 + step)
         env.reset(1000 + step)
-        q = train(env, alpha, mid, budget, q=q, seed=1000 + step)
+        q = train(env, alpha, mid, budget, q=q, seed=1000 + step, behaviour=behaviour,
+                  beta_start=beta_start, beta_end=beta_end)
         shares = []
         for sd in seeds:
             e = make_env(sd)
@@ -440,6 +458,10 @@ def main(argv=None) -> int:
     p.add_argument("--tol", type=float, default=1e-3)
     p.add_argument("--days-eval", type=float, default=2000.0, help="rollout length per seed at each rho")
     p.add_argument("--eval-seeds", type=int, nargs="+", default=[11, 12, 13])
+    p.add_argument("--behaviour", choices=["none", "stubborn"], default="stubborn",
+                   help="off-policy warm start: follow sim_stubborn with weight beta (default on)")
+    p.add_argument("--beta-start", type=float, default=1.0)
+    p.add_argument("--beta-end", type=float, default=0.0)
     p = sub.add_parser("eval", help="score a policy file (or 'none' for sim_stubborn alone)")
     _add_env_args(p)
     p.add_argument("--policy", required=True)
@@ -453,9 +475,12 @@ def main(argv=None) -> int:
         make_train = _env_factory(args, args.budget / (720 * M.W_SHARES) + 1)
         out = share_search(make_eval, args.alpha, args.budget, lo=args.lo, hi=args.hi, tol=args.tol,
                            eval_objects=int(args.days_eval * 720 * M.W_SHARES), seeds=tuple(args.eval_seeds),
-                           log=sys.stderr, make_train_env=make_train)
+                           log=sys.stderr, make_train_env=make_train,
+                           behaviour=sim_stubborn if args.behaviour == "stubborn" else None,
+                           beta_start=args.beta_start, beta_end=args.beta_end)
         meta = {"alpha": args.alpha, "env": args.env, "share": out["share"], "rho": out["rho"],
                 "converged": out["converged"], "history": out["history"], "budget": args.budget,
+                "behaviour": args.behaviour, "beta": [args.beta_start, args.beta_end],
                 "caps": vars(args) if args.env == "mdp" else {"cap_blocks": args.cap_blocks},
                 "trained": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "seconds": round(time.time() - t)}
         n = export_policy(out["q"], args.out, meta)
