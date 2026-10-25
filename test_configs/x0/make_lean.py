@@ -153,6 +153,14 @@ def scenario_text(a, ban):
         head = re.sub(r"(?m)^(    sim-subnet-dedup:)", rf"    sim-whitelist-candidates: {a.wl_cands}\n\1", head)
     if a.rand_cands:
         head = re.sub(r"(?m)^(    sim-subnet-dedup:)", r"    sim-random-whitelist-candidates: true\n\1", head)
+    if a.white_limit is not None:
+        head = re.sub(r"(?m)^(    sim-subnet-dedup:)", rf"    sim-white-peerlist-limit: {a.white_limit}\n\1", head)
+    if a.gray_limit is not None:
+        head = re.sub(r"(?m)^(    sim-subnet-dedup:)", rf"    sim-gray-peerlist-limit: {a.gray_limit}\n\1", head)
+    if a.turnover:
+        on, off = a.turnover.split(",")
+        head = re.sub(r"(?m)^(  simulation_seed:.*)$",
+                      rf"\1\n  turnover:\n    mean_session: {on}\n    mean_downtime: {off}\n    fraction: 1.0", head)
     head = re.sub(r"(?m)^(  stop_time:).*", rf"\1 {stop}s", head)
     head = re.sub(r"(?m)^(  bootstrap_end_time:).*", rf"\1 {bootstrap}s", head)
     n_spy = a.spies
@@ -219,6 +227,16 @@ def main():
                     help="every daemon gets --sim-random-whitelist-candidates (needs patches/monero-sim-random-whitelist-candidates.patch): "
                          "the N white-list candidates are a uniform random sample of the subnet-deduplicated list instead of its N "
                          "newest by last_seen; the draw among them is unchanged. Open question 10's defense variant; cell names get _rc.")
+    ap.add_argument("--white-limit", type=int, default=None, metavar="N",
+                    help="every daemon gets --sim-white-peerlist-limit N (needs patches/monero-sim-peerlist-limits.patch): the white "
+                         "list is trimmed to its N newest entries by last_seen instead of the compile-time 1000, so a lab network "
+                         "reproduces a list that cannot hold every peer (mainnet: 1000 of ~4600 reachable). Cell names get _wlN.")
+    ap.add_argument("--gray-limit", type=int, default=None, metavar="N",
+                    help="every daemon gets --sim-gray-peerlist-limit N (same patch; stock 5000). Cell names get _glN.")
+    ap.add_argument("--turnover", default=None, metavar="ON,OFF",
+                    help="peer turnover (churn) for every non-seed, non-miner, non-pinned daemon, users included: mean online "
+                         "session and mean offline gap, e.g. 1h,1h (general.turnover in the scenario; exponential sessions, "
+                         "fraction 1.0, the daemon restarts on its data dir). Cell names get _to<ON><OFF>.")
     ap.add_argument("--fixed-rx-seed", action="store_true",
                     help="every daemon gets --sim-fixed-randomx-seed (needs a monerod-sim built with "
                          "patches/monero-sim-fixed-randomx-seed.patch). Without it a cell that runs past chain height "
@@ -245,6 +263,8 @@ def main():
             + (f"_n{a.spy_node0}" if a.spy_node0 != SPY_NODE0 else "")
             + (f"_c{round(100 * a.ban_coverage)}" if a.list == "half" and a.ban_coverage != 1.0 else "")
             + ("_fx" if a.fixed_rx_seed else "") + ("_up" if a.uniform_pick else "") + ("_rc" if a.rand_cands else "")
+            + (f"_wl{a.white_limit}" if a.white_limit is not None else "") + (f"_gl{a.gray_limit}" if a.gray_limit is not None else "")
+            + (f"_to{a.turnover.replace(',', '')}" if a.turnover else "")
             + (f"_wc{a.wl_cands}" if a.wl_cands is not None else ""))
     stem = f"lean_{a.dedup}_{a.list}_h{a.reachable}_k{a.spy_subnets}{wtag}_s{a.seed}"
     out = OUT / f"{stem}.yaml"
