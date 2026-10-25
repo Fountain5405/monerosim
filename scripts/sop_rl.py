@@ -16,8 +16,18 @@ race_env builds the SopEnv the real policies are trained on.
 """
 from __future__ import annotations
 
+import argparse
+import gzip
+import json
+import os
 import random
+import sys
+import time
+from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
+
+if __name__ == "__main__":   # run as `python scripts/sop_rl.py`: make `scripts.` importable
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts import sop_mdp as M
 from scripts.sop_race_model import FAR_CAP, RULE_PRESETS, SimConfig, SopEnv
@@ -293,6 +303,19 @@ def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None
     return q
 
 
+def legal_fallback(a: int, legal) -> int:
+    """A fallback action forced into the legal set: hold if allowed, else the
+    first legal action (at a cap only the forced ones are)."""
+    if legal[a]:
+        return a
+    return HOLD if legal[HOLD] else next(i for i in range(4) if legal[i])
+
+
+def stubborn_fn(obs: Obs, legal) -> Tuple[int, bool]:
+    """sim_stubborn as a rollout policy (never stored)."""
+    return legal_fallback(sim_stubborn(obs), legal), False
+
+
 class TablePolicy:
     """Greedy over a QTable where the key was visited; `fallback(obs)`
     (sim_stubborn by default) elsewhere. Returns (action, stored)."""
@@ -305,7 +328,195 @@ class TablePolicy:
         a = self.q.greedy_tried(k, legal)
         if a >= 0:
             return a, True
-        a = self.fallback(obs)
-        if not legal[a]:
-            a = HOLD if legal[HOLD] else next(i for i in range(4) if legal[i])
-        return a, False
+        return legal_fallback(self.fallback(obs), legal), False
+
+
+# ---------------------------------------------------------------------------
+# Share bisection, policy files, CLI
+# ---------------------------------------------------------------------------
+
+def _copy_table(q: QTable) -> QTable:
+    c = QTable(q.d_clip, q.p_clip, q.d_bin)
+    c.q = {k: list(v) for k, v in q.q.items()}
+    c.visits = dict(q.visits)
+    c.legal = dict(q.legal)
+    return c
+
+
+def share_search(make_env: Callable[[int], object], alpha: float, budget: int, lo: float = 0.05,
+                 hi: float = 0.80, tol: float = 1e-3, eval_objects: int = 23_040_000,
+                 seeds: Tuple[int, ...] = (11, 12, 13), log=None,
+                 make_train_env: Optional[Callable[[int], object]] = None, max_steps: int = 12) -> dict:
+    """Bisection on rho (Sapirshtein-Sompolinsky-Zohar): train at mid
+    (warm-started from the previous table), roll the greedy policy out on
+    `eval_objects` objects per seed with fresh envs from make_env(seed), and
+    move lo up if the mean share exceeds mid (gain > 0), else hi down. Stops
+    at hi - lo <= tol or after max_steps. Returns rho, the best rollout share
+    seen with its table, converged, and the (rho, share, states) history."""
+    make_train_env = make_train_env or make_env
+    q: Optional[QTable] = None
+    best_share, best_q = -1.0, None
+    history: List[Tuple[float, float, int]] = []
+    step = 0
+    while hi - lo > tol and step < max_steps:
+        mid = 0.5 * (lo + hi)
+        t = time.time()
+        env = make_train_env(1000 + step)
+        env.reset(1000 + step)
+        q = train(env, alpha, mid, budget, q=q, seed=1000 + step)
+        shares = []
+        for sd in seeds:
+            e = make_env(sd)
+            e.reset(sd)
+            shares.append(rollout(e, TablePolicy(q), eval_objects)["share"])
+        share = sum(shares) / len(shares)
+        history.append((mid, share, len(q)))
+        if log:
+            print(f"  rho={mid:.5f} share={share:.5f} states={len(q):,} [{time.time() - t:.0f}s]",
+                  file=log, flush=True)
+        if share > best_share:
+            best_share, best_q = share, _copy_table(q)
+        if share > mid:
+            lo = mid
+        else:
+            hi = mid
+        step += 1
+    if best_q is None:   # budget 0 and no step: nothing learned
+        best_q = q if q is not None else QTable()
+    return {"rho": 0.5 * (lo + hi), "share": max(best_share, 0.0), "q": best_q,
+            "converged": hi - lo <= tol, "history": history}
+
+
+def export_policy(q: QTable, path: str, meta: dict) -> int:
+    """Write the greedy policy as gzip JSON, keeping only visited keys whose
+    greedy action (over tried, legal actions) differs from sim_stubborn(key);
+    the sim falls back to sim_stubborn elsewhere. Returns the entry count."""
+    entries = {}
+    for k in q.q:
+        a = q.greedy_tried(k, q.legal_of(k))
+        if a >= 0 and a != sim_stubborn(k):
+            entries[",".join(str(x) for x in k)] = M.ACTION_NAMES[a]
+    doc = {"meta": meta, "key_clip": {"d": q.d_clip, "p": q.p_clip, "d_bin": q.d_bin},
+           "fallback": "sim_stubborn", "policy": entries}
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    with gzip.open(path, "wt") as f:
+        json.dump(doc, f)
+    return len(entries)
+
+
+def load_policy(path: str) -> Tuple[Dict[Obs, int], dict]:
+    """(policy keyed by observation tuple -> action, meta with key_clip
+    merged in). Raises FileNotFoundError / ValueError on a bad file."""
+    if not os.path.exists(path):
+        raise FileNotFoundError(path)
+    try:
+        with gzip.open(path, "rt") as f:
+            doc = json.load(f)
+        names = {n: i for i, n in enumerate(M.ACTION_NAMES)}
+        policy = {tuple(int(x) for x in k.split(",")): names[v] for k, v in doc["policy"].items()}
+        meta = dict(doc["meta"])
+        meta["key_clip"] = doc["key_clip"]
+        meta["fallback"] = doc.get("fallback", "sim_stubborn")
+    except (OSError, KeyError, ValueError, TypeError) as e:
+        raise ValueError(f"not a policy file: {path}: {e}") from e
+    return policy, meta
+
+
+class FilePolicy:
+    """A policy file as a callable (obs, legal) -> (action, stored)."""
+
+    def __init__(self, path: str, fallback: Callable[[Obs], int] = sim_stubborn):
+        self.policy, self.meta = load_policy(path)
+        c = self.meta["key_clip"]
+        self.d_clip, self.p_clip, self.d_bin = int(c["d"]), int(c["p"]), int(c.get("d_bin", 1))
+        self.fallback = fallback
+
+    def key(self, obs: Obs) -> Obs:
+        return key_of(obs, self.d_clip, self.p_clip, self.d_bin)
+
+    def __call__(self, obs: Obs, legal) -> Tuple[int, bool]:
+        a = self.policy.get(self.key(obs))
+        if a is not None and legal[a]:
+            return a, True
+        return legal_fallback(self.fallback(obs), legal), False
+
+
+def _add_env_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--alpha", type=float, required=True)
+    p.add_argument("--env", choices=["race", "mdp"], default="race")
+    p.add_argument("--a-max", type=int, default=4)
+    p.add_argument("--h-max", type=int, default=4)
+    p.add_argument("--d-max", type=int, default=64)
+    p.add_argument("--p-max", type=int, default=24)
+    p.add_argument("--deficit", type=int, default=24)
+    p.add_argument("--own-pending", choices=["ignore", "count"], default="ignore")
+    p.add_argument("--cap-blocks", type=int, default=0)
+
+
+def _env_factory(args, days: float):
+    if args.env == "mdp":
+        caps = M.Caps(args.a_max, args.h_max, args.d_max, args.p_max, args.deficit)
+        return lambda seed: MdpEnv(args.alpha, caps, args.own_pending == "count")
+    return lambda seed: race_env(args.alpha, days, seed, args.cap_blocks)
+
+
+def _report(name: str, policy, make_env, days: float, seeds: List[int]) -> float:
+    n = int(days * 720 * M.W_SHARES)
+    rows = []
+    for sd in seeds:
+        e = make_env(sd)
+        e.reset(sd)
+        rows.append(rollout(e, policy, n))
+    mean = sum(r["share"] for r in rows) / len(rows)
+    print(f"{name}: share " + " ".join(f"{r['share']:.4f}" for r in rows) + f"  mean {mean:.4f}  "
+          f"reveals {sum(r['reveals'] for r in rows) / len(rows):.0f}/run  mean reorg "
+          f"{sum(r['mean_reorg'] for r in rows) / len(rows):.2f}  max reorg {max(r['max_reorg'] for r in rows)}  "
+          f"stored {sum(r['stored_hits'] for r in rows) / max(1, sum(r['decisions'] for r in rows)):.3f}")
+    return mean
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    p = sub.add_parser("train", help="bisection on the share with Q-learning at each rho; writes a policy file")
+    _add_env_args(p)
+    p.add_argument("--budget", type=int, default=200_000_000, help="Q-learning steps per rho")
+    p.add_argument("--out", required=True)
+    p.add_argument("--lo", type=float, default=0.05)
+    p.add_argument("--hi", type=float, default=0.80)
+    p.add_argument("--tol", type=float, default=1e-3)
+    p.add_argument("--days-eval", type=float, default=2000.0, help="rollout length per seed at each rho")
+    p.add_argument("--eval-seeds", type=int, nargs="+", default=[11, 12, 13])
+    p = sub.add_parser("eval", help="score a policy file (or 'none' for sim_stubborn alone)")
+    _add_env_args(p)
+    p.add_argument("--policy", required=True)
+    p.add_argument("--days", type=float, default=2000.0)
+    p.add_argument("--seeds", type=int, nargs="+", default=[1, 2, 3, 4, 5])
+    args = ap.parse_args(argv)
+
+    if args.cmd == "train":
+        t = time.time()
+        make_eval = _env_factory(args, args.days_eval)
+        make_train = _env_factory(args, args.budget / (720 * M.W_SHARES) + 1)
+        out = share_search(make_eval, args.alpha, args.budget, lo=args.lo, hi=args.hi, tol=args.tol,
+                           eval_objects=int(args.days_eval * 720 * M.W_SHARES), seeds=tuple(args.eval_seeds),
+                           log=sys.stderr, make_train_env=make_train)
+        meta = {"alpha": args.alpha, "env": args.env, "share": out["share"], "rho": out["rho"],
+                "converged": out["converged"], "history": out["history"], "budget": args.budget,
+                "caps": vars(args) if args.env == "mdp" else {"cap_blocks": args.cap_blocks},
+                "trained": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "seconds": round(time.time() - t)}
+        n = export_policy(out["q"], args.out, meta)
+        print(f"alpha={args.alpha} env={args.env}: share {out['share']:.4f} (rho {out['rho']:.4f}, "
+              f"converged={out['converged']}); {len(out['q']):,} states, {n:,} entries differ from "
+              f"sim_stubborn -> {args.out}  [{time.time() - t:.0f}s]")
+        return 0
+
+    make_env = _env_factory(args, args.days)
+    if args.policy != "none":
+        _report(f"policy {os.path.basename(args.policy)}", FilePolicy(args.policy), make_env, args.days, args.seeds)
+    _report("sim_stubborn", stubborn_fn, make_env, args.days, args.seeds)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
