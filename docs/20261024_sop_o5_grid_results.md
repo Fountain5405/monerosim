@@ -166,6 +166,45 @@ Round 5 (launched 2026-10-25 ~09:20Z): noown a046 s1/s2 + a047 s1/s2
 (phantom) to pin the crossing, noown a048 s3/s4 (box80) and a050 s3/s4
 (box82) for the spread, stock a033 s1/s2 (box81) to finish the control.
 
+## 3d. Round 5: the noown crossing and the last stock control (2026-10-25 09:06Z to 17:15Z)
+
+| cell | alpha | share (draws) | reveals (rejected) |
+|---|---|---|---|
+| share_sop2_noown_a046 | 0.46 | 0.344, 0.338 (mean 0.341) | 169, 152 (0, 0) |
+| share_sop2_noown_a047 | 0.47 | 0.382, 0.405 (mean 0.394) | 185, 192 (0, 2) |
+| share_sop2_noown_a048 s3, s4 | 0.48 | 0.467, 0.423 (all four: 0.495, 0.452, 0.467, 0.423, mean 0.459) | 204, 204 (1, 2) |
+| share_sop2_noown_a050 s3, s4 | 0.50 | 0.614, 0.628 (all four: 0.591, 0.582, 0.614, 0.628, mean 0.604) | 290, 301 (0, 1) |
+| share_stock_a033 | 0.33 | 0.224, 0.270 (mean 0.247) | 182, 195 (0, 1) |
+
+Stuck 0 h, oracle 0 mismatches, health ok in all ten.
+
+**The noown curve, complete** (honest mining = alpha; n = draws):
+
+| alpha | noown share (mean, n) | vs honest |
+|---|---|---|
+| 0.33 | 0.001 (2) | -0.33 |
+| 0.40 | 0.065 (4) | -0.34 |
+| 0.45 | 0.272 (4) | -0.18 |
+| 0.46 | 0.341 (2) | -0.12 |
+| 0.47 | 0.394 (2) | -0.08 |
+| 0.48 | 0.459 (4) | -0.02 |
+| 0.50 | 0.604 (4) | +0.10 |
+
+**Reading:** the hand-written noown attacker crosses honest mining between
+alpha 0.48 and 0.50, at about 0.483 by linear interpolation (-0.021 at
+0.48, +0.104 at 0.50); the curve is steep there (0.12 of share per 0.01
+of alpha between 0.47 and 0.50). The stock control at 0.33 (0.247, below
+honest) closes the control series: on stock this attacker family is
+unprofitable at 0.33, break-even at 0.40 and profitable at 0.45, so SoP
+moves its break-even from ~0.40 to ~0.48. Both numbers are for this
+hand-written attacker; the learned attacker
+(docs/20261026_sop_learned_attacker.md) will say how much lower the
+real crossing is.
+
+Round 5 ends the sweep: per the owner (2026-10-25), sims are now for
+calibration points, implementation-dependent questions and validation of
+model-derived attackers; sweeps and searches are model work.
+
 ## 4. Method notes
 
 - Each cell: `scripts/selfish_matrix.py <spec> --parallel 1 --cells <cell>`
