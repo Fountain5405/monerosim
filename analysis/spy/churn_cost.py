@@ -51,8 +51,11 @@ def parse_log(log_path):
             last_t = t
             if BANNER.search(line):
                 starts.append(t)
+            if PATTERNS["back_ping_failed"].search(line):
+                counts["back_ping_failed"] += 1  # the ping-back to an inbound peer, not an outbound dial
+                continue
             for key, rx in PATTERNS.items():
-                if rx.search(line):
+                if key != "back_ping_failed" and rx.search(line):
                     counts[key] += 1
     return starts, counts, last_t
 
