@@ -57,14 +57,38 @@ read it as WARN. The gate should skip the A3 test below ~10 reveals.
    0.45, 0.36-0.46 at 0.40, 0.23-0.31 at 0.30-0.33. Round 2 adds the d5
    stock control with this exact configuration.
 
-## 3. Round 2 (launched 2026-10-24 14:48-14:58Z, 12 cells, commit `9f711405`)
+## 3. Rounds 2 and 3 (2026-10-24 14:48Z to 2026-10-25 00:21Z, commits `9f711405`, `489b4cf4`)
 
-- `sop_v4_o5_stock_72h`: the stock control, alpha 0.33/0.40/0.45, two
-  draws (phantom, lithium).
-- `sop_v4_o5_alpha_72h`: alpha 0.48 and 0.50, two draws (lithium, box80).
-- `sop_v4_o5_72h`: a045 draws 3 and 4 (box82).
+Scored 2026-10-25 00:30Z from the pool; oracle 0 mismatches and stuck 0 h
+in every SoP cell.
 
-Given finding 2, a noown sweep (0.40, 0.48, 0.50) is the natural round 3.
+| cell | alpha | own tip shares | share (draws) | reveals (delivered) |
+|---|---|---|---|---|
+| share_sop2_a048 | 0.48 | yes | 0.343, 0.376 | 235 (168), 267 (180) |
+| share_sop2_a050 | 0.50 | yes | 0.460, 0.473 | 300 (221), 296 (220) |
+| share_sop2_a045 s3, s4 | 0.45 | yes | 0.246, 0.229 | 180 (122), 166 (114) |
+| share_sop2_noown_a040 | 0.40 | no | 0.056, 0.076 | 28 (28), 36 (36) |
+
+- **Own-counting curve, four points:** 0.000/0.002 (0.33), 0.055/0.059
+  (0.40), 0.209/0.210/0.246/0.229 (0.45; mean 0.224), 0.343/0.376 (0.48),
+  0.460/0.473 (0.50). Still below honest mining at a majority: the crossing,
+  if any, is above alpha 0.50 for this attacker.
+- **noown at 0.40** gains little (0.056/0.076 vs 0.055/0.059): with so few
+  reveals the rejected-reveal loss that noown avoids is small there. The
+  noown gain is concentrated where the attacker reveals often (0.45: +0.06).
+- **Stock control (`sop_v4_o5_stock_72h`, 6 cells): INVALID.** Every cell
+  gave share 0.000, 0 reveals in 72 h, 100% of attacker blocks orphaned,
+  36-40 h stuck at alpha 0.45, and the attacker wallet logged "reorg exceeds
+  maximum allowed depth 127" from day 3. Campaign 7 measured this attacker
+  family on stock at 0.46-0.54 (alpha 0.45, d1-d3). The attacker parsed its
+  attributes correctly (weigh difficulty, window_objects 0, give_up_objects
+  -1, window_rule 20261020); the failure is in how the 2026-10-21
+  window_rule code path behaves without SoP data. Under investigation
+  2026-10-25; the six runs are kept in the pool as evidence. Do not quote
+  them as a stock measurement.
+
+Round 4 (launched 2026-10-25 00:28-00:32Z): noown a048 (box80), a050 (box82),
+a033 + a045 draws 3-4 (phantom), a040 draws 3-4 (box81).
 
 ## 4. Method notes
 
