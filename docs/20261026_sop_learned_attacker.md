@@ -114,15 +114,35 @@ carried that table into the next step. The one-step runs' second step,
 at rho 0.6125, was the same waste. Fix: every step now trains from the
 best table so far (a failed probe's table is dropped; unit-tested).
 
-Fourth attempt (22:10Z, alpha 0.50, bracket 0.50-0.60 so the first step
+Fourth attempt (21:57Z, alpha 0.50, bracket 0.50-0.60 so the first step
 asks for a share above 0.55, under `sim_stubborn`'s 0.5715): four runs on
 lithium, all warm-started from `sim_stubborn`: one-step targets (the
 control), race returns, D binned by 2, race returns with D and pending
 counts binned by 2. The one-step runs at 0.45 and 0.48 were stopped: a
 one-step learner that cannot reproduce stubborn at 0.50 has nothing to
 show at alphas where honest mining already beats stubborn; those alphas
-are trained later with whichever configuration passes at 0.50. Result:
-(pending).
+are trained later with whichever configuration passes at 0.50.
+
+First steps at rho 0.55 (22:47Z and 23:08Z): race returns with bins 2/2
+collapsed to 0.129 (1.57 M keys, 42 min), a policy that holds in
+hopeless states and loses its blocks; D bins 2 with one-step targets gave
+0.488 (4.39 M keys, 67 min), honest-level like every one-step run, so the
+bins are not what collapsed the first. The unbinned pair (23:18Z, 77
+min each) completed the picture: one-step targets 0.485 (5.24 M keys),
+race returns 0.320 (4.89 M keys). So one-step targets drift to honest
+mining and full returns collapse, with or without bins. The common
+mechanism of both failures is a max over actions whose values rest on
+one or two samples:
+one-step targets make an early publish or give-up look safe, full
+returns make a lucky hold look brilliant. Fifth attempt (23:18Z, three
+more runs beside the four): a confidence gate on the table, where an
+action can be the greedy one at a key only after n_min updates there and
+the policy plays `sim_stubborn` elsewhere (so the learned policy is
+stubborn plus the deviations the data supports), with a faster step-size
+decay (1/(1 + 0.1 n) instead of 1/(1 + 0.02 n), under which the step
+stayed above 0.5 for a key's first 50 updates): one-step targets with
+n_min 30, race returns with n_min 30, race returns with n_min 100.
+Result: (pending).
 
 ### 4. Smoke cell (6 h)
 
