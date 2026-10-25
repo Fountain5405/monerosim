@@ -1703,7 +1703,20 @@ pub fn process_user_agents(ctx: UserAgentProcessContext<'_>) -> color_eyre::eyre
             // a wedged wallet-rpc ignores SIGTERM (docs/UPGRADE_WALLET_SIGKILL.md),
             // which would turn rare wallet hangs into false run-failures.
             // Skipped for agents that start inside that window.
-            let agent_shutdown_time: Option<String> = {
+            //
+            // Also skipped when this agent's own daemon cycles under peer
+            // turnover: with the daemon offline (or just restarted), every
+            // wallet-rpc call blocks for the full 180 s read timeout, so the
+            // cleanup's store + close cannot finish inside the 120 s margin
+            // and Shadow reports the agent as StoppedByShadow (run 86,
+            // 2026-10-25: 15 of 40 cycling users, 13 of them with the
+            // daemon offline at the SIGTERM). The wallet cache of a cycling
+            // user is not worth a false run failure; the agent then runs to
+            // simulation end with expected_final_state running.
+            let agent_cycles = turnover_params.is_some() && turnover_set.contains(agent_id.as_str());
+            let agent_shutdown_time: Option<String> = if agent_cycles {
+                None
+            } else {
                 let start_secs = parse_duration_to_seconds(&agent_start_time).unwrap_or(0);
                 simulation_stop_secs
                     .checked_sub(120)
