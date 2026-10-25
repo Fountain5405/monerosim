@@ -118,6 +118,54 @@ Under SoP the same hashrate earns 0.057 (own) / 0.066 (noown) at 0.40 and
 -0.17 to -0.23 loss at 0.45, and the 0.40 attacker loses 0.34 of its
 revenue. The a033 stock cells (s1/s2) re-run when a box frees.
 
+## 3c. Round 4: the noown curve (2026-10-25 00:28Z to 08:55Z, 12 cells on box80/81/82/phantom)
+
+| cell | alpha | own tip shares counted | share (draws) | reveals (rejected) |
+|---|---|---|---|---|
+| share_sop2_noown_a033 | 0.33 | no | 0.000, 0.002 | 0, 1 |
+| share_sop2_noown_a040 s3, s4 | 0.40 | no | 0.068, 0.059 | 32, 29 |
+| share_sop2_noown_a045 s3, s4 | 0.45 | no | 0.269, 0.253 | 124 (1), 119 (1) |
+| share_sop2_noown_a048 | 0.48 | no | 0.495, 0.452 | 227 (2), 219 (1) |
+| share_sop2_noown_a050 | 0.50 | no | 0.591, 0.582 | 272 (1), 277 (0) |
+
+Stuck 0 h, oracle 0 mismatches, health ok in all twelve. The gate's
+Eyal-Sirer verdicts FAIL as on every SoP cell (not SM1).
+
+**The two curves, all draws (honest mining = alpha):**
+
+| alpha | own-counting o5 (mean) | noown o5 (mean) | stock network (mean) |
+|---|---|---|---|
+| 0.33 | 0.000, 0.002 (0.001) | 0.000, 0.002 (0.001) | pending |
+| 0.40 | 0.055, 0.059 (0.057) | 0.056, 0.076, 0.068, 0.059 (0.065) | 0.414, 0.381 (0.398) |
+| 0.45 | 0.209, 0.210, 0.246, 0.229 (0.224) | 0.288, 0.279, 0.269, 0.253 (0.272) | 0.516, 0.540 (0.528) |
+| 0.48 | 0.343, 0.376 (0.360) | 0.495, 0.452 (0.474) | - |
+| 0.50 | 0.460, 0.473 (0.467) | 0.591, 0.582 (0.587) | - |
+
+**Reading:**
+
+- **The noown attacker crosses honest mining at about alpha 0.48** (0.474 vs
+  0.48 at n=2) **and profits at 0.50** (0.587, +0.09 over honest). The
+  own-counting attacker is still below honest at 0.50 (0.467). So under the
+  2026-10-20 rule, SoP concedes to this hand-written attacker only at or
+  above ~48 % of the hashrate; below 0.45 it loses heavily (0.065 at 0.40,
+  i.e. one sixth of honest revenue).
+- **The noown gain grows with alpha:** +0.008 (0.40), +0.05 (0.45), +0.11
+  (0.48), +0.12 (0.50). Rejected reveals are 0-2 per noown cell against
+  ~60 per own-counting cell at 0.45: the own-counting attacker keeps losing
+  branches to reveals the network refuses, and that cost is largest where
+  it reveals most.
+- **Against stock:** at 0.45 the stock network concedes 0.528 and SoP 0.272
+  (noown); at 0.40 stock 0.398 vs SoP 0.065.
+- All of these are lower bounds on what SoP concedes (hand-written
+  strategy, o5, one network topology). The MDP line
+  (`docs/20261025_sop_mdp_notes.md`) says the exact optimum is out of reach
+  at faithful block caps; the capped 85 M-state solve on lithium gives a
+  lower bound only.
+
+Round 5 (launched 2026-10-25 ~09:20Z): noown a046 s1/s2 + a047 s1/s2
+(phantom) to pin the crossing, noown a048 s3/s4 (box80) and a050 s3/s4
+(box82) for the spread, stock a033 s1/s2 (box81) to finish the control.
+
 ## 4. Method notes
 
 - Each cell: `scripts/selfish_matrix.py <spec> --parallel 1 --cells <cell>`

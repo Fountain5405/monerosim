@@ -58,6 +58,14 @@ axes:
     a045:
       attacker: {hashrate: 4.5}
       honest: {hashrate: [2.75, 2.75]}
+    # 2026-10-25: round 4 put noown at 0.495/0.452 (a048) and 0.591/0.582
+    # (a050): the crossing with honest mining sits near 0.48. a046/a047 pin it.
+    a046:
+      attacker: {hashrate: 4.6}
+      honest: {hashrate: [2.7, 2.7]}
+    a047:
+      attacker: {hashrate: 4.7}
+      honest: {hashrate: [2.65, 2.65]}
     a048:
       attacker: {hashrate: 4.8}
       honest: {hashrate: [2.6, 2.6]}
