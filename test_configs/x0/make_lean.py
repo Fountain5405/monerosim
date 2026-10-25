@@ -74,6 +74,8 @@ def agents_yaml(a, ban):
         for rng, adopter in (("001..008", True), ("009..016", False)):
             w(f"  medium-{letter}-{{{rng}}}:")
             w("    daemon: monerod-sim\n    start_time: 0s\n    start_time_stagger: auto")
+            if a.turnover_reachable:
+                w("    turnover: true")
             w("    daemon_options: " + opts({"out-peers": out, "hide-my-port": "false"}, ban if adopter else ""))
     w("")
 
@@ -104,6 +106,8 @@ def agents_yaml(a, ban):
             w(f"  relay-r-{tag}-{{{lo:03d}..{hi:03d}}}:")
             w("    daemon: monerod-sim")
             w(f"    start_time: {1200 + off + (lo - 1) * 2 * T}s\n    start_time_stagger: {2 * T}s")
+            if a.turnover_reachable:
+                w("    turnover: true")
             extra = {"hide-my-port": "false"}
             if probe:
                 extra["peerlist-dump-file"] = "peerlist_dump.jsonl"
@@ -114,6 +118,8 @@ def agents_yaml(a, ban):
     for rng, adopter in (("001..004", True), ("005..008", False)):
         w(f"  observer-{{{rng}}}:")
         w("    daemon: monerod-sim\n    start_time: 0s\n    start_time_stagger: 3s")
+        if a.turnover_reachable:
+            w("    turnover: true")
         w("    daemon_options: " + opts({"hide-my-port": "false", "peerlist-dump-file": "peerlist_dump.jsonl"},
                                          ban if adopter else ""))
     w("  monero-seed-{001..006}:\n    daemon: monerod-sim\n    start_time: 0s\n    start_time_stagger: 1s\n")
@@ -236,7 +242,13 @@ def main():
     ap.add_argument("--turnover", default=None, metavar="ON,OFF",
                     help="peer turnover (churn) for every non-seed, non-miner, non-pinned daemon, users included: mean online "
                          "session and mean offline gap, e.g. 1h,1h (general.turnover in the scenario; exponential sessions, "
-                         "fraction 1.0, the daemon restarts on its data dir). Cell names get _to<ON><OFF>.")
+                         "fraction 1.0, the daemon restarts on its data dir). Cell names get _to<ON><OFF>. Every reachable "
+                         "daemon in these cells sets hide-my-port false, which the generator reads as a pinned supernode and "
+                         "keeps up, so on its own this cycles the users only (journal E48).")
+    ap.add_argument("--turnover-reachable", action="store_true",
+                    help="with --turnover, also cycle the reachable honest daemons (relays, medium nodes, observers) through a "
+                         "per-agent turnover: true; miners, seeds and spies stay up. Cell names get _tor<ON><OFF> in place "
+                         "of _to<ON><OFF>.")
     ap.add_argument("--fixed-rx-seed", action="store_true",
                     help="every daemon gets --sim-fixed-randomx-seed (needs a monerod-sim built with "
                          "patches/monero-sim-fixed-randomx-seed.patch). Without it a cell that runs past chain height "
@@ -257,6 +269,8 @@ def main():
         a.spies = a.spies_per_subnet * a.spy_subnets
     if a.spies is None:
         a.spies = round(0.1765 * a.reachable)
+    if a.turnover_reachable and not a.turnover:
+        ap.error("--turnover-reachable needs --turnover ON,OFF")
     OUT.mkdir(exist_ok=True)
     wtag = (("" if a.warmup == 3600 else f"_w{a.warmup // 3600}h") + (f"_p{a.probe}" if a.probe else "")
             + (f"_m{a.spies_per_subnet}" if a.spies_per_subnet is not None else "")
@@ -264,7 +278,7 @@ def main():
             + (f"_c{round(100 * a.ban_coverage)}" if a.list == "half" and a.ban_coverage != 1.0 else "")
             + ("_fx" if a.fixed_rx_seed else "") + ("_up" if a.uniform_pick else "") + ("_rc" if a.rand_cands else "")
             + (f"_wl{a.white_limit}" if a.white_limit is not None else "") + (f"_gl{a.gray_limit}" if a.gray_limit is not None else "")
-            + (f"_to{a.turnover.replace(',', '')}" if a.turnover else "")
+            + (f"_to{'r' if a.turnover_reachable else ''}{a.turnover.replace(',', '')}" if a.turnover else "")
             + (f"_wc{a.wl_cands}" if a.wl_cands is not None else ""))
     stem = f"lean_{a.dedup}_{a.list}_h{a.reachable}_k{a.spy_subnets}{wtag}_s{a.seed}"
     out = OUT / f"{stem}.yaml"
