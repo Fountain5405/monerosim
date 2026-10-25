@@ -82,10 +82,17 @@ in every SoP cell.
   maximum allowed depth 127" from day 3. Campaign 7 measured this attacker
   family on stock at 0.46-0.54 (alpha 0.45, d1-d3). The attacker parsed its
   attributes correctly (weigh difficulty, window_objects 0, give_up_objects
-  -1, window_rule 20261020); the failure is in how the 2026-10-21
-  window_rule code path behaves without SoP data. Under investigation
-  2026-10-25; the six runs are kept in the pool as evidence. Do not quote
-  them as a stock measurement.
+  -1, window_rule 20261020). **Root cause (2026-10-25, fixed in `eb070be4`):**
+  `agents/selfish_strategy.py`'s 20261020 window test read the per-branch
+  window counts from positions 3 and 4 of the weights tuple, but the
+  difficulty weigh returns a 3-tuple, so `past` was never True and the
+  strategy held on every tick; only the 5-block give-up ever fired (126
+  concessions per run, branches popped at up to 65 blocks, 0 reveal lines).
+  The strategy logs nothing when it holds, which is why this looked like
+  stranding. The tuple-length test now falls back to the v3 window test;
+  unit test added (329 pass). The six invalid runs stay in the pool under
+  `_invalid/stock_20261024/`; the control re-runs from 2026-10-25 00:36Z
+  (a045 and a040 on lithium first, a033 when a box frees).
 
 Round 4 (launched 2026-10-25 00:28-00:32Z): noown a048 (box80), a050 (box82),
 a033 + a045 draws 3-4 (phantom), a040 draws 3-4 (box81).
