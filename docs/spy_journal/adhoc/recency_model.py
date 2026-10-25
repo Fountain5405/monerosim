@@ -11,7 +11,9 @@ def run(entries, spy, mode, rng, slots=12):
         # modes (2026-10-24, E35): "24" stock (20 newest /24s, cubic draw); "24u" the same 20, uniform draw
         # (--sim-uniform-whitelist-pick); "24all" every unconnected /24, uniform draw (the cap lifted); "24allc" every
         # unconnected /24, cubic draw (the cap lifted, stock draw); "legacy".
-        if mode in ("24", "24u", "24all", "24allc"):
+        # (2026-10-25, the twelfth patch) "24r": 20 /24s drawn at random from every unconnected /24, put back into recency order,
+        # cubic draw (--sim-random-whitelist-candidates); "24ru": the same 20, uniform draw.
+        if mode in ("24", "24u", "24all", "24allc", "24r", "24ru"):
             order = entries[:]; rng.shuffle(order)
             seen = set(conn); cand = []
             for ip, ls in order:
@@ -19,11 +21,13 @@ def run(entries, spy, mode, rng, slots=12):
                 if s not in seen: seen.add(s); cand.append((ip, ls))
             if not cand: break
             cand.sort(key=lambda e: -e[1])
-            if mode not in ("24all", "24allc"): cand = cand[:20]
+            if mode in ("24r", "24ru"):
+                if len(cand) > 20: cand = sorted(rng.sample(cand, 20), key=lambda e: -e[1])
+            elif mode not in ("24all", "24allc"): cand = cand[:20]
         else:  # legacy: every IP a candidate, skip connected subnets, recency order
             cand = [e for e in sorted(entries, key=lambda e: (-e[1], rng.random())) if sub(e[0]) not in conn][:20]
             if not cand: break
-        idx = rng.randrange(len(cand)) if mode in ("24u", "24all") else cubic(len(cand)-1, rng)
+        idx = rng.randrange(len(cand)) if mode in ("24u", "24all", "24ru") else cubic(len(cand)-1, rng)
         ip, _ = cand[idx]
         conn.add(sub(ip)); n_spy += ip in spy
     return n_spy

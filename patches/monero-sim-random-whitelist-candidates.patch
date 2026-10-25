@@ -1,0 +1,86 @@
+diff --git a/src/p2p/net_node.cpp b/src/p2p/net_node.cpp
+index c2fd916..5c3483f 100644
+--- a/src/p2p/net_node.cpp
++++ b/src/p2p/net_node.cpp
+@@ -163,6 +163,7 @@ namespace nodetool
+     const command_line::arg_descriptor<std::string> arg_sim_log_txrelay = {"sim-log-txrelay", "Simulation only (measurement): append a JSONL line for every Dandelion++ relay event (tx received, stem send, fluff, epoch, stem change, pool re-relay) to this file. Off by default; read-only w.r.t. relay.", ""};
+     const command_line::arg_descriptor<std::string> arg_sim_subnet_dedup = {"sim-subnet-dedup", "Simulation only: outbound peer grouping. 24 (stock): one candidate per /24, skipping /24s already connected. 16: the same at /16. none: no subnet grouping (ports still collapsed). legacy: v0.18.4.2's selection, before #9939 (skip /16s already connected).", "24"};
+     const command_line::arg_descriptor<size_t> arg_sim_whitelist_candidates = {"sim-whitelist-candidates", "Simulation only: how many of the newest (by last_seen) subnet-deduplicated white-list peers are candidates for an outbound pick. Stock monero uses 20; 0 = every unconnected subnet is a candidate.", 20};
++    const command_line::arg_descriptor<bool> arg_sim_random_whitelist_candidates = {"sim-random-whitelist-candidates", "Simulation only: the white-list candidates for an outbound pick (--sim-whitelist-candidates of them, stock 20) are a uniform random sample of the subnet-deduplicated white list instead of its newest entries by last_seen; the draw among them (stock cubic by recency, or --sim-uniform-whitelist-pick) is unchanged. Off = stock behaviour.", false};
+     const command_line::arg_descriptor<bool> arg_sim_uniform_whitelist_pick = {"sim-uniform-whitelist-pick", "Simulation only: pick white-list peers uniformly instead of the stock recency-biased cubic draw (get_random_index_with_fixed_probability). Off = stock behaviour.", false};
+     const command_line::arg_descriptor<std::string> arg_peerlist_dump_file = {"peerlist-dump-file", "MEASUREMENT ONLY (Shadow eclipse reproduction): if set, periodically append the full white+gray peer list as JSONL to this file. Off by default; read-only w.r.t. peering.", ""};
+ 
+diff --git a/src/p2p/net_node.h b/src/p2p/net_node.h
+index 0b44651..fe7865d 100644
+--- a/src/p2p/net_node.h
++++ b/src/p2p/net_node.h
+@@ -454,6 +454,7 @@ namespace nodetool
+     bool m_require_ipv4;
+     uint32_t m_sim_subnet_mask = ntohl(0xffffff00);  // --sim-subnet-dedup; 0 = no subnet dedup
+     size_t m_sim_whitelist_candidates = 20;  // --sim-whitelist-candidates: stock 20, 0 = no cap (open question 10 probe)
++    bool m_sim_random_whitelist_candidates = false;  // --sim-random-whitelist-candidates: candidates sampled at random, not the newest (open question 10 defense variant)
+     bool m_sim_uniform_whitelist_pick = false;  // --sim-uniform-whitelist-pick: uniform white-list pick (open question 10 probe)
+     bool m_sim_legacy_selection = false;              // --sim-subnet-dedup=legacy
+     std::atomic<bool> is_closing;
+@@ -555,6 +556,7 @@ namespace nodetool
+     extern const command_line::arg_descriptor<std::string> arg_sim_log_txrelay;
+     extern const command_line::arg_descriptor<std::string> arg_sim_subnet_dedup;
+     extern const command_line::arg_descriptor<size_t> arg_sim_whitelist_candidates;
++    extern const command_line::arg_descriptor<bool> arg_sim_random_whitelist_candidates;
+     extern const command_line::arg_descriptor<bool> arg_sim_uniform_whitelist_pick;
+ }
+ 
+diff --git a/src/p2p/net_node.inl b/src/p2p/net_node.inl
+index 2262465..ddae0e9 100644
+--- a/src/p2p/net_node.inl
++++ b/src/p2p/net_node.inl
+@@ -126,6 +126,7 @@ namespace nodetool
+     command_line::add_arg(desc, arg_sim_log_txrelay);
+     command_line::add_arg(desc, arg_sim_subnet_dedup);
+     command_line::add_arg(desc, arg_sim_whitelist_candidates);
++    command_line::add_arg(desc, arg_sim_random_whitelist_candidates);
+     command_line::add_arg(desc, arg_sim_uniform_whitelist_pick);
+     command_line::add_arg(desc, arg_no_igd);
+     command_line::add_arg(desc, arg_igd);
+@@ -461,6 +462,9 @@ namespace nodetool
+       m_sim_whitelist_candidates = command_line::get_arg(vm, arg_sim_whitelist_candidates);
+       if (m_sim_whitelist_candidates != 20)
+         MGINFO("--sim-whitelist-candidates " << m_sim_whitelist_candidates << ": white-list candidates per pick (stock 20, 0 = every unconnected subnet)");
++      m_sim_random_whitelist_candidates = command_line::get_arg(vm, arg_sim_random_whitelist_candidates);
++      if (m_sim_random_whitelist_candidates)
++        MGINFO("--sim-random-whitelist-candidates: white-list candidates are a random sample of the deduplicated list, not its newest entries");
+       m_sim_uniform_whitelist_pick = command_line::get_arg(vm, arg_sim_uniform_whitelist_pick);
+       if (m_sim_uniform_whitelist_pick)
+         MGINFO("--sim-uniform-whitelist-pick: white-list peer pick is uniform (stock recency bias off)");
+@@ -1767,7 +1771,18 @@ namespace nodetool
+         // Take as many candidates as we need and care about stripes if pruning
+         // --sim-whitelist-candidates replaces the stock 20 (0 = no cap).
+         const size_t limit = use_white_list && m_sim_whitelist_candidates ? m_sim_whitelist_candidates : std::numeric_limits<size_t>::max();
+-        for (const peerlist_entry &peer : candidate_peers) {
++        // --sim-random-whitelist-candidates: walk the candidates in a random order, so the 'limit' taken are a uniform
++        // sample of the eligible peers rather than the newest by last_seen; they go back into last_seen order below so
++        // the draw among them is the stock one.
++        std::vector<peerlist_entry> sampled_order;
++        const bool sample_candidates = m_sim_random_whitelist_candidates && use_white_list && limit < candidate_peers.size();
++        if (sample_candidates)
++        {
++          sampled_order = candidate_peers;
++          std::shuffle(sampled_order.begin(), sampled_order.end(), crypto::random_device{});
++        }
++        const std::vector<peerlist_entry> &pick_order = sample_candidates ? sampled_order : candidate_peers;
++        for (const peerlist_entry &peer : pick_order) {
+           if (filtered.size() >= limit)
+             break;
+           if (tried_peers.count(peer.id))
+@@ -1780,6 +1795,11 @@ namespace nodetool
+             filtered.insert(filtered.begin(), peer);
+           // else wrong stripe, skip
+         }
++        if (sample_candidates && next_needed_pruning_stripe == 0)
++          std::sort(filtered.begin(), filtered.end(), [](const peerlist_entry &a, const peerlist_entry &b)
++          {
++            return a.last_seen > b.last_seen;
++          });
+ 
+         if (!filtered.empty())
+           break;
