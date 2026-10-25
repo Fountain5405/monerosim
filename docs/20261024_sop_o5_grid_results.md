@@ -97,6 +97,27 @@ in every SoP cell.
 Round 4 (launched 2026-10-25 00:28-00:32Z): noown a048 (box80), a050 (box82),
 a033 + a045 draws 3-4 (phantom), a040 draws 3-4 (box81).
 
+## 3b. Stock control, fixed code (2026-10-25 00:36Z to 07:03Z on lithium, commit `eb070be4`)
+
+Same attacker family on a stock network (weigh difficulty, window_objects 0,
+give_up_objects -1, so the block-depth give-up), 12 daemons, 72 h.
+
+| cell | alpha | share (draws) | reveals | attacker orphan frac | health |
+|---|---|---|---|---|---|
+| share_stock_a040 | 0.40 | 0.414, 0.381 (mean 0.398) | 288, 246 | 0.27, 0.32 | ok |
+| share_stock_a045 | 0.45 | 0.516, 0.540 (mean 0.528) | 319, 355 | 0.19, 0.16 | s1: 2 invalid-chain log lines, else ok |
+
+Stuck time 0 h in all four (was 36-40 h in the invalid runs); oracle 0
+mismatches. The check gate's Eyal-Sirer verdicts FAIL as expected (this is
+the o5 window_stubborn family, not SM1) and a040 s2 sits just under alpha.
+
+**Reading:** on stock, this attacker is roughly break-even at alpha 0.40
+(0.398 vs 0.40) and clearly profitable at 0.45 (0.528, +0.08 over honest).
+Under SoP the same hashrate earns 0.057 (own) / 0.066 (noown) at 0.40 and
+0.224 (own) / 0.284 (noown) at 0.45: SoP turns a +0.08 profit into a
+-0.17 to -0.23 loss at 0.45, and the 0.40 attacker loses 0.34 of its
+revenue. The a033 stock cells (s1/s2) re-run when a box frees.
+
 ## 4. Method notes
 
 - Each cell: `scripts/selfish_matrix.py <spec> --parallel 1 --cells <cell>`
