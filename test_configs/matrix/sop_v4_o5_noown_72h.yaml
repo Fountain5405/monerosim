@@ -49,6 +49,9 @@ axes:
     # 2026-10-24: noown measured 0.288/0.279 at a045 vs 0.209/0.210 with own
     # tip shares counted (docs/20261024_sop_o5_grid_results.md): the stronger
     # attacker, so the sweep is repeated with it (round 3; a040 first on box81).
+    a033:
+      attacker: {hashrate: 3.3}
+      honest: {hashrate: [3.35, 3.35]}
     a040:
       attacker: {hashrate: 4}
       honest: {hashrate: [3, 3]}
@@ -70,5 +73,14 @@ axes:
       attacker:
         attributes:
           sample: '2'
+    # 2026-10-25: draws 3-4 for the headline noown a045 (0.288/0.279 at n=2).
+    s3:
+      attacker:
+        attributes:
+          sample: '3'
+    s4:
+      attacker:
+        attributes:
+          sample: '4'
 ksm: true
 bootfast: true
