@@ -3,7 +3,7 @@ what agents/selfish_strategy.py needs at decision time inside a Shadow run,
 where the lane boxes' venvs have no numpy. sop_rl re-exports these.
 
 Observation (scripts/sop_mdp.py State): (a, D, xa, pa, h, xh, ph).
-Policy file: gzip JSON {"meta": {...}, "key_clip": {"d", "p", "d_bin"},
+Policy file: gzip JSON {"meta": {...}, "key_clip": {"d", "p", "d_bin", "p_bin"},
 "fallback": "sim_stubborn", "policy": {"a,D,xa,pa,h,xh,ph": action name}},
 holding only the keys where the learned action differs from sim_stubborn.
 """
@@ -20,15 +20,18 @@ ACTION_NAMES = ["hold", "publish", "reveal", "give_up"]
 WINDOW = 32   # either_window: K - w objects past a branch's first block (scripts/sop_mdp.py)
 
 
-def key_of(obs: Obs, d_clip: int = 128, p_clip: int = 48, d_bin: int = 1) -> Obs:
+def key_of(obs: Obs, d_clip: int = 128, p_clip: int = 48, d_bin: int = 1, p_bin: int = 1) -> Obs:
     """The Q-table key: the observation with |D| clipped (then binned,
-    truncating toward zero) and the pending counts clipped. The game itself
-    is never clipped; only the table's view of it."""
+    truncating toward zero) and the pending counts clipped (then binned).
+    The game itself is never clipped; only the table's view of it."""
     a, D, xa, pa, h, xh, ph = obs
     D = max(-d_clip, min(d_clip, D))
     if d_bin > 1:
         D = int(D / d_bin)
-    return (a, D, min(xa, WINDOW), min(pa, p_clip), h, min(xh, WINDOW), min(ph, p_clip))
+    pa, ph = min(pa, p_clip), min(ph, p_clip)
+    if p_bin > 1:
+        pa, ph = pa // p_bin, ph // p_bin
+    return (a, D, min(xa, WINDOW), pa, h, min(xh, WINDOW), ph)
 
 
 def sim_stubborn(obs: Obs, G: int = 5) -> int:

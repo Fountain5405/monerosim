@@ -564,14 +564,28 @@ def test_give_up_objects_then_reveals_when_past_window_and_heavier():
 
 # ---- learned strategy (docs/superpowers/plans/2026-10-25-sop-rl-attacker.md, Task 5) ----
 
-def _policy_file(tmp_path, entries, alpha=0.45):
+def _policy_file(tmp_path, entries, alpha=0.45, key_clip=None):
     import gzip
     import json
     p = tmp_path / "p.json.gz"
     with gzip.open(p, "wt") as f:
-        json.dump({"meta": {"alpha": alpha, "env": "race"}, "key_clip": {"d": 128, "p": 48, "d_bin": 1},
+        json.dump({"meta": {"alpha": alpha, "env": "race"},
+                   "key_clip": key_clip or {"d": 128, "p": 48, "d_bin": 1},
                    "fallback": "sim_stubborn", "policy": entries}, f)
     return str(p)
+
+
+def test_learned_keys_through_the_policy_files_pending_bins(tmp_path):
+    # key_clip p_bin 2: the observation (1, 2, 32, 5, 1, 32, 1) keys as (1, 2, 32, 2, 1, 32, 0),
+    # where the file says hold; sim_stubborn (and an unbinned lookup) would reveal
+    pf = _policy_file(tmp_path, {"1,2,32,2,1,32,0": "hold"},
+                      key_clip={"d": 128, "p": 48, "d_bin": 1, "p_bin": 2})
+    s = SelfishStrategy("learned", start_height=0, window_objects=32, window_rule="20261020",
+                        give_up_objects=5, policy_file=pf)
+    s.fork = 100
+    d = s.update(pub_height=101, priv_height=101, branch_weights=lambda f, p, q: (3, 3, 1, 32, 0, 8, 2, 1))
+    assert d.release_to is None and s.learned_decisions == 1 and s.fallback_decisions == 0
+    assert s.last_learned[0] == (1, 2, 32, 5, 1, 32, 1) and s.last_learned[1] == (1, 2, 32, 2, 1, 32, 0)
 
 
 def test_learned_requires_a_loadable_policy_file(tmp_path):

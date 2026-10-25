@@ -143,14 +143,14 @@ class QTable:
     """Q rows (4 floats, Python lists: the inner loop is per object) keyed by
     key_of(obs), created on first visit; `visits` counts updates per key."""
 
-    def __init__(self, d_clip: int = 128, p_clip: int = 48, d_bin: int = 1):
-        self.d_clip, self.p_clip, self.d_bin = d_clip, p_clip, d_bin
+    def __init__(self, d_clip: int = 128, p_clip: int = 48, d_bin: int = 1, p_bin: int = 1):
+        self.d_clip, self.p_clip, self.d_bin, self.p_bin = d_clip, p_clip, d_bin, p_bin
         self.q: Dict[Obs, List[float]] = {}
         self.visits: Dict[Obs, int] = {}
         self.legal: Dict[Obs, int] = {}      # bits 0-3: legal actions as first seen; bits 4-7: actions tried
 
     def key(self, obs: Obs) -> Obs:
-        return key_of(obs, self.d_clip, self.p_clip, self.d_bin)
+        return key_of(obs, self.d_clip, self.p_clip, self.d_bin, self.p_bin)
 
     def row(self, k: Obs, legal=None) -> List[float]:
         r = self.q.get(k)
@@ -226,12 +226,13 @@ def legal_fallback(a: int, legal) -> int:
 
 
 REF_REFRESH = 50_000   # steps between re-picking the reference key (the most visited one)
+MAX_RACE = 4096        # race_returns: a race longer than this (objects) is flushed with a bootstrap
 
 
 def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None,
           lr: float = 0.02, eps_start: float = 0.3, eps_end: float = 0.02, seed: int = 1,
           lr_min: float = 0.002, behaviour: Optional[Callable[[Obs], int]] = None,
-          beta_start: float = 1.0, beta_end: float = 0.0) -> QTable:
+          beta_start: float = 1.0, beta_end: float = 0.0, race_returns: bool = False) -> QTable:
     """Relative-value (RVI) Q-learning for the average reward
     r = fa - rho * (fa + fh):  Q(s,a) += a_n * (r - V(ref) + max_legal Q(s') - Q(s,a)),
     V(ref) = max_legal Q(ref). The step size decays per key with its visit
@@ -250,7 +251,19 @@ def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None
     Pure eps-greedy converged to honest mining even at alpha 0.50, where
     sim_stubborn earns 0.57: it never holds a branch long enough to see a
     deep reveal pay. Q-learning is off-policy, so learning along stubborn's
-    trajectories grounds those values; the greedy policy can then deviate."""
+    trajectories grounds those values; the greedy policy can then deviate.
+
+    `race_returns` (2026-10-25): the steps of a race (any state with a
+    branch: a > 0 or h > 0) are buffered until the fork settles (a == h == 0)
+    and then updated backward with the race's full return, cut at
+    exploratory actions as in Watkins' Q(lambda): a step whose action was
+    not its key's greedy one makes the earlier steps bootstrap from that
+    key's max instead of the sampled return. One-step targets valued every
+    hold of a race off its (untried) successor, i.e. off the reference
+    value, so a reveal's payoff reached the race's first hold only after as
+    many revisits as the race is long; over millions of keys seen a few
+    times each, the first warm-started trainings (20:45Z) still ended at
+    honest mining at every alpha. Settled steps flush at once (one-step)."""
     q = q if q is not None else QTable()
     rng = random.Random(seed)
     o = env.obs()
@@ -262,16 +275,37 @@ def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None
     eps = eps_start
     dbeta = (beta_end - beta_start) / max(budget, 1)
     beta = beta_start if behaviour is not None else 0.0
+    buf: List[tuple] = []   # race_returns: (row, k, a, r, k2, legal2, exploratory) since the last settled state
+
+    def flush() -> None:
+        vref = q.value(kref)
+        G = 0.0
+        cut = True            # the race's last step bootstraps from its settled successor
+        for row_t, k_t, a_t, r_t, k2_t, legal2_t, expl_t in reversed(buf):
+            if cut:
+                G = q.value_tried(k2_t, legal2_t, vref)
+            G = r_t - vref + G
+            n = q.visits[k_t]
+            st = 1.0 / (1.0 + lr * n)
+            if st < lr_min:
+                st = lr_min
+            row_t[a_t] += st * (G - row_t[a_t])
+            q.visits[k_t] = n + 1
+            q.legal[k_t] |= 1 << (4 + a_t)
+            cut = expl_t
+        buf.clear()
+
     for t in range(budget):
         if env.done:
             break
+        g = -2    # the greedy action at k, when computed (race_returns cuts the return at a deviation)
         if behaviour is not None and rng.random() < beta:
             a = legal_fallback(behaviour(o), legal)
         elif rng.random() < eps:
             choices = [i for i in range(4) if legal[i]]
             a = choices[int(rng.random() * len(choices))]
         else:
-            a = q.greedy_tried(k, legal)
+            g = a = q.greedy_tried(k, legal)
             if a < 0:
                 choices = [i for i in range(4) if legal[i]]
                 a = choices[int(rng.random() * len(choices))]
@@ -280,20 +314,29 @@ def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None
         legal2 = env.legal()
         k2 = q.key(o2)
         row2 = q.row(k2, legal2)
-        vref = q.value(kref)
-        m2 = q.value_tried(k2, legal2, vref)
-        n = q.visits[k]
-        step = 1.0 / (1.0 + lr * n)
-        if step < lr_min:
-            step = lr_min
-        row[a] += step * (r - vref + m2 - row[a])
-        q.visits[k] = n + 1
-        q.legal[k] |= 1 << (4 + a)
+        if race_returns:
+            if g == -2:
+                g = q.greedy_tried(k, legal)
+            buf.append((row, k, a, r, k2, legal2, g >= 0 and a != g))
+            if (o2[0] == 0 and o2[4] == 0) or len(buf) >= MAX_RACE:
+                flush()
+        else:
+            vref = q.value(kref)
+            m2 = q.value_tried(k2, legal2, vref)
+            n = q.visits[k]
+            step = 1.0 / (1.0 + lr * n)
+            if step < lr_min:
+                step = lr_min
+            row[a] += step * (r - vref + m2 - row[a])
+            q.visits[k] = n + 1
+            q.legal[k] |= 1 << (4 + a)
         o, legal, k, row = o2, legal2, k2, row2
         eps += de
         beta += dbeta
         if t % REF_REFRESH == REF_REFRESH - 1:
             kref = max(q.visits, key=q.visits.get)
+    if buf:
+        flush()
     return q
 
 
@@ -322,7 +365,7 @@ class TablePolicy:
 # ---------------------------------------------------------------------------
 
 def _copy_table(q: QTable) -> QTable:
-    c = QTable(q.d_clip, q.p_clip, q.d_bin)
+    c = QTable(q.d_clip, q.p_clip, q.d_bin, q.p_bin)
     c.q = {k: list(v) for k, v in q.q.items()}
     c.visits = dict(q.visits)
     c.legal = dict(q.legal)
@@ -334,7 +377,7 @@ def share_search(make_env: Callable[[int], object], alpha: float, budget: int, l
                  seeds: Tuple[int, ...] = (11, 12, 13), log=None,
                  make_train_env: Optional[Callable[[int], object]] = None, max_steps: int = 12,
                  behaviour: Optional[Callable[[Obs], int]] = None, beta_start: float = 1.0,
-                 beta_end: float = 0.0) -> dict:
+                 beta_end: float = 0.0, race_returns: bool = False, d_bin: int = 1, p_bin: int = 1) -> dict:
     """Bisection on rho (Sapirshtein-Sompolinsky-Zohar): train at mid
     (warm-started from the previous table), roll the greedy policy out on
     `eval_objects` objects per seed with fresh envs from make_env(seed), and
@@ -342,7 +385,7 @@ def share_search(make_env: Callable[[int], object], alpha: float, budget: int, l
     at hi - lo <= tol or after max_steps. Returns rho, the best rollout share
     seen with its table, converged, and the (rho, share, states) history."""
     make_train_env = make_train_env or make_env
-    q: Optional[QTable] = None
+    q: Optional[QTable] = QTable(d_bin=d_bin, p_bin=p_bin)
     best_share, best_q = -1.0, None
     history: List[Tuple[float, float, int]] = []
     step = 0
@@ -352,7 +395,7 @@ def share_search(make_env: Callable[[int], object], alpha: float, budget: int, l
         env = make_train_env(1000 + step)
         env.reset(1000 + step)
         q = train(env, alpha, mid, budget, q=q, seed=1000 + step, behaviour=behaviour,
-                  beta_start=beta_start, beta_end=beta_end)
+                  beta_start=beta_start, beta_end=beta_end, race_returns=race_returns)
         shares = []
         for sd in seeds:
             e = make_env(sd)
@@ -385,7 +428,7 @@ def export_policy(q: QTable, path: str, meta: dict) -> int:
         a = q.greedy_tried(k, q.legal_of(k))
         if a >= 0 and a != sim_stubborn(k):
             entries[",".join(str(x) for x in k)] = M.ACTION_NAMES[a]
-    doc = {"meta": meta, "key_clip": {"d": q.d_clip, "p": q.p_clip, "d_bin": q.d_bin},
+    doc = {"meta": meta, "key_clip": {"d": q.d_clip, "p": q.p_clip, "d_bin": q.d_bin, "p_bin": q.p_bin},
            "fallback": "sim_stubborn", "policy": entries}
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     with gzip.open(path, "wt") as f:
@@ -399,11 +442,12 @@ class FilePolicy:
     def __init__(self, path: str, fallback: Callable[[Obs], int] = sim_stubborn):
         self.policy, self.meta = load_policy(path)
         c = self.meta["key_clip"]
-        self.d_clip, self.p_clip, self.d_bin = int(c["d"]), int(c["p"]), int(c.get("d_bin", 1))
+        self.d_clip, self.p_clip = int(c["d"]), int(c["p"])
+        self.d_bin, self.p_bin = int(c.get("d_bin", 1)), int(c.get("p_bin", 1))
         self.fallback = fallback
 
     def key(self, obs: Obs) -> Obs:
-        return key_of(obs, self.d_clip, self.p_clip, self.d_bin)
+        return key_of(obs, self.d_clip, self.p_clip, self.d_bin, self.p_bin)
 
     def __call__(self, obs: Obs, legal) -> Tuple[int, bool]:
         a = self.policy.get(self.key(obs))
@@ -462,6 +506,10 @@ def main(argv=None) -> int:
                    help="off-policy warm start: follow sim_stubborn with weight beta (default on)")
     p.add_argument("--beta-start", type=float, default=1.0)
     p.add_argument("--beta-end", type=float, default=0.0)
+    p.add_argument("--returns", choices=["step", "race"], default="step",
+                   help="one-step targets, or each race's full return applied backward when it settles")
+    p.add_argument("--d-bin", type=int, default=1, help="bin D (objects) in the table key")
+    p.add_argument("--p-bin", type=int, default=1, help="bin the pending counts in the table key")
     p = sub.add_parser("eval", help="score a policy file (or 'none' for sim_stubborn alone)")
     _add_env_args(p)
     p.add_argument("--policy", required=True)
@@ -477,10 +525,12 @@ def main(argv=None) -> int:
                            eval_objects=int(args.days_eval * 720 * M.W_SHARES), seeds=tuple(args.eval_seeds),
                            log=sys.stderr, make_train_env=make_train,
                            behaviour=sim_stubborn if args.behaviour == "stubborn" else None,
-                           beta_start=args.beta_start, beta_end=args.beta_end)
+                           beta_start=args.beta_start, beta_end=args.beta_end,
+                           race_returns=args.returns == "race", d_bin=args.d_bin, p_bin=args.p_bin)
         meta = {"alpha": args.alpha, "env": args.env, "share": out["share"], "rho": out["rho"],
                 "converged": out["converged"], "history": out["history"], "budget": args.budget,
                 "behaviour": args.behaviour, "beta": [args.beta_start, args.beta_end],
+                "returns": args.returns, "bins": [args.d_bin, args.p_bin],
                 "caps": vars(args) if args.env == "mdp" else {"cap_blocks": args.cap_blocks},
                 "trained": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "seconds": round(time.time() - t)}
         n = export_policy(out["q"], args.out, meta)

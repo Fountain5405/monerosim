@@ -132,7 +132,8 @@ class SelfishStrategy:
             if alpha is not None and pa is not None and abs(float(pa) - float(alpha)) > 1e-9:
                 raise ValueError(f"learned: policy_file {policy_file} was trained for alpha {pa}, cell has {alpha}")
             c = self.policy_meta.get("key_clip", {})
-            self._key_clip = (int(c.get("d", 128)), int(c.get("p", 48)), int(c.get("d_bin", 1)))
+            self._key_clip = (int(c.get("d", 128)), int(c.get("p", 48)), int(c.get("d_bin", 1)),
+                              int(c.get("p_bin", 1)))
 
     def update(self, pub_height: int, priv_height: int,
                branch_weights: Optional[Callable[[int, int, int], Optional[tuple]]] = None) -> ReleaseDecision:

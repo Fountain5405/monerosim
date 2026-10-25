@@ -81,8 +81,31 @@ beta decaying from 1 to 0 over the budget, so the table's values along
 stubborn's trajectories are grounded before the greedy policy takes over.
 Pass bar: the greedy policy's mean over 5 seeds exceeds `sim_stubborn`'s
 (0.2558 at 0.45, 0.5715 at 0.50) by 0.01; reported next to honest mining
-(alpha) as well, since honest beats stubborn below ~0.48. Result:
-(pending).
+(alpha) as well, since honest beats stubborn below ~0.48.
+
+Result of the first bisection step (20:16-20:44Z, rho 0.425, 2e8 objects
+per step, 52-80 min, tables of 2.3 M to 5.1 M keys): honest mining again
+at every alpha: 0.397 (0.40), 0.447 (0.45), 0.478 (0.48), 0.498 (0.50).
+The warm start grounds stubborn's values one step at a time: a hold is
+valued off its successor, untried on the first pass (so it takes the
+reference value), and a reveal's payoff reaches the race's first hold
+only after as many revisits as the race is long. With millions of keys
+seen a few times each that never happens within the budget, and the
+greedy policy settles for publishing and giving up early.
+
+Third attempt (launched ~21:15Z, alpha 0.50 only, bisection bracket
+0.45-0.70 so the first step asks for a share above 0.575): (a)
+`--returns race`: each race's full return is applied backward when its
+fork settles, cut at exploratory actions as in Watkins' Q(lambda), so a
+reveal credits every hold of its race in one pass (unit test: a 3-hold
+chain ending in a 3-block reveal values its first hold at 3 after one
+race, where one-step targets leave it at 0); (b) the design's fallback,
+D binned by 2 (`--d-bin 2`); (c) both, with the pending counts binned by
+2 as well (`--p-bin 2`). Pass bar unchanged. The one-step runs at
+0.45/0.48/0.50 continue (the bisection warm-starts each step from the
+previous table, so later steps may still climb); the 0.40 run was
+stopped (stubborn earns 0.06 there against honest's 0.40: nothing to
+learn or to simulate). Result: (pending).
 
 ### 4. Smoke cell (6 h)
 

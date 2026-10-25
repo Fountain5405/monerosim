@@ -11,8 +11,9 @@ docs/superpowers/plans/2026-10-25-sop-rl-attacker.md.
 
 - `policy_noown_a0XX.json.gz`: the policy for attacker hashrate share 0.XX.
   gzip JSON: `meta` (alpha, env, share from the race-model rollout, rho,
-  converged, history, budget, settings, trained timestamp), `key_clip`
-  (`d`, `p`, `d_bin`: how an observation is clipped into a table key),
+  converged, history, budget, settings incl. `returns` and `bins`, trained
+  timestamp), `key_clip` (`d`, `p`, `d_bin`, `p_bin`: how an observation
+  is clipped and binned into a table key),
   `fallback` (`sim_stubborn`), and `policy`: `"a,D,xa,pa,h,xh,ph": action`.
 - `check_mdp_*.json.gz`: learner-correctness runs on the exact solver's
   capped game (ladder step 2), not for the sims.
@@ -37,5 +38,12 @@ venv/bin/python scripts/sop_rl.py train --alpha 0.45 --env race --budget 2000000
 venv/bin/python scripts/sop_rl.py eval --policy data/sop_rl/policy_noown_a045.json.gz \
     --alpha 0.45 --env race --days 2000 --seeds 1 2 3 4 5
 ```
+
+`--behaviour stubborn` (default) follows the sim's stubborn rule with a
+weight decaying 1 -> 0 over each rho's budget (off-policy warm start).
+`--returns race` applies each race's full return backward when its fork
+settles instead of one-step targets (a reveal's payoff then reaches the
+race's first hold in one pass). `--d-bin N` / `--p-bin N` coarsen the
+table key (the design's fallback when the learner cannot beat stubborn).
 
 Never on the control box (owner rule 2026-10-25): lithium or phantom.
