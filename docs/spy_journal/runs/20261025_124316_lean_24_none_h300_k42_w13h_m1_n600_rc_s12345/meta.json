@@ -1,0 +1,30 @@
+{
+ "run_id": "20261025_124316_lean_24_none_h300_k42_w13h_m1_n600_rc_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_m1_n600_rc_s12345",
+ "archived_at": "2026-10-25T12:43:54Z",
+ "monerod_sim_sha": "7534279c29d3",
+ "wall": "2h 15m",
+ "exit_code": 0,
+ "min_avail_mb": 155935,
+ "txs_created": 1089,
+ "txs_in_blocks": 1073,
+ "note": "P34 (E43): the twelfth patch, 20 white-list candidates drawn at random from the deduplicated list instead of the 20 newest, stock cubic draw kept, spread fleet seed 12345, 13 h warmup, window 15-19 h; light 0.1657 = 1.08x the ceiling, the same as the cap lifted with the cubic draw (P27 0.1705) and 0.49x the stock cell (E27 0.3369); relays 0.166, users 0.1623, start-order quarters 0.148/0.149/0.173/0.190 (latest 1.28x earliest, P27 1.28x); sp_r recall 0.135, 31 of 40 exposed; the twelfth patch's line in all 382 logs, the other two in none; Monte Carlo said 1.53x; wall 2 h 16 m",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.1657,
+ "light_out_quarters": [
+  0.1695,
+  0.167,
+  0.1636,
+  0.1628
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.196,
+ "stem_txs": 1095,
+ "stem_hops_implied": 5.1,
+ "embargo_rate": 0.0
+}
