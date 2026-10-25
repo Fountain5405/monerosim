@@ -1,0 +1,30 @@
+{
+ "run_id": "20261025_103748_lean_24_half_h300_k42_w13h_m1_n600_up_wc0_s34567",
+ "box": "simbox3",
+ "cell": "lean_24_half_h300_k42_w13h_m1_n600_up_wc0_s34567",
+ "archived_at": "2026-10-25T10:38:56Z",
+ "monerod_sim_sha": "7a7a32b3c26f",
+ "wall": "4h 33m",
+ "exit_code": 0,
+ "min_avail_mb": 80894,
+ "txs_created": 1065,
+ "txs_in_blocks": 1056,
+ "note": "P33 (E44): P31 at a third seed (34567) on simbox3's twelve-patch binary with the twelfth flag off (the full 42-/24 ban list on half the nodes with the cap lifted and the uniform draw), 13 h warmup, window 15-19 h; light 0.0792 = 1.04x the half-list model 0.0759 and 0.53x the cap-lifted no-list cell at this seed (P30 0.1482); adopters 0.0000, non-adopters 0.1575 = 1.03x the ceiling; users 0.0723; quarters 0.0791-0.0809 (4.5% span); both flag lines in all 382 logs, the twelfth in none; three seeds 0.0771/0.0764/0.0792; wall 4 h 35 m",
+ "scored_cell": "24/half",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 243,
+ "light_out": 0.0792,
+ "light_out_quarters": [
+  0.0791,
+  0.0774,
+  0.0809,
+  0.0795
+ ],
+ "model_out": 0.1523,
+ "fluff_per_hop": 0.204,
+ "stem_txs": 1087,
+ "stem_hops_implied": 4.9,
+ "embargo_rate": 0.0
+}
