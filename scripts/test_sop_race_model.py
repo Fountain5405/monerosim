@@ -518,3 +518,102 @@ def test_attacker_pending_helps_the_attacker():
     without = simulate(SimConfig(**base)).attacker_revenue_share
     with_ = simulate(SimConfig(**base, count_attacker_pending=True)).attacker_revenue_share
     assert with_ >= without
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-25: step API (SopEnv). simulate()'s results are pinned here from the
+# loop as it stood before the refactor (plan docs/superpowers/plans/
+# 2026-10-25-sop-rl-attacker.md, Task 1): 60 d runs, every rule preset, with and
+# without the honest-shares slot rule, with and without cap_blocks, d-mode and
+# stock, and one tie_win_prob run. Row: [variant, flag, cap, seed, att_final,
+# hon_final, reveals, att_orphaned, sum(reorg_depths), max_reorg].
+# ---------------------------------------------------------------------------
+PINNED = [
+    ["20261015", False, 0, 1, 4449, 19978, 1128, 14840, 3831, 11],
+    ["20261015", False, 0, 2, 4506, 20145, 1118, 14831, 3834, 11],
+    ["20261015", False, 3, 1, 2469, 23494, 202, 16820, 315, 2],
+    ["20261015", False, 3, 2, 2510, 23641, 211, 16827, 338, 2],
+    ["20261015", True, 0, 1, 8740, 16109, 2896, 10548, 7699, 11],
+    ["20261015", True, 0, 2, 8742, 16209, 2936, 10595, 7770, 12],
+    ["20261015", True, 3, 1, 5994, 21728, 1496, 13294, 2080, 2],
+    ["20261015", True, 3, 2, 6001, 21752, 1549, 13336, 2227, 2],
+    ["20261020", False, 0, 1, 5391, 18692, 1604, 13898, 5117, 9],
+    ["20261020", False, 0, 2, 5254, 18854, 1579, 14083, 5125, 10],
+    ["20261020", False, 3, 1, 2686, 23161, 324, 16603, 648, 3],
+    ["20261020", False, 3, 2, 2697, 23328, 331, 16640, 651, 3],
+    ["20261020", True, 0, 1, 8684, 15323, 2634, 10604, 8485, 10],
+    ["20261020", True, 0, 2, 8449, 15517, 2573, 10888, 8462, 11],
+    ["20261020", True, 3, 1, 4289, 22571, 616, 14999, 1237, 3],
+    ["20261020", True, 3, 2, 4307, 22711, 627, 15030, 1268, 3],
+    ["20261020_noown", False, 0, 1, 4194, 20426, 1086, 15095, 3383, 12],
+    ["20261020_noown", False, 0, 2, 4151, 20527, 1062, 15186, 3452, 11],
+    ["20261020_noown", False, 3, 1, 2548, 23438, 224, 16741, 371, 3],
+    ["20261020_noown", False, 3, 2, 2540, 23635, 216, 16797, 344, 3],
+    ["20261020_noown", True, 0, 1, 6895, 18068, 1781, 12393, 5740, 14],
+    ["20261020_noown", True, 0, 2, 6833, 18168, 1761, 12504, 5811, 12],
+    ["20261020_noown", True, 3, 1, 3994, 23162, 396, 15294, 646, 3],
+    ["20261020_noown", True, 3, 2, 4017, 23342, 391, 15320, 637, 3],
+    ["sop", 1, 0, 3, 376, 25648, 80, 16757, 153, 6],
+    ["stock", 1, 0, 3, 13972, 20011, 5791, 3164, 5791, 1],
+    ["sop", 2, 0, 3, 365, 25614, 82, 16768, 187, 6],
+    ["stock", 2, 0, 3, 14247, 19332, 5686, 2889, 6470, 6],
+    ["tie", True, 0, 4, 7717, 16418, 2373, 11846, 7636, 11],
+]
+
+
+def _cfg_from(row):
+    tag, flag, cap, seed = row[:4]
+    if tag in RULE_PRESETS:
+        hs = bool(flag)
+        return SimConfig(alpha=0.45, d=1, rule="sop", attacker_embeds=True, days=60, seed=seed,
+                         give_up_objects=5, equal_start=hs, early_honest_shares=hs,
+                         positional_shares=hs, cap_blocks=cap, **RULE_PRESETS[tag])
+    if tag == "tie":
+        return SimConfig(alpha=0.45, d=1, rule="sop", attacker_embeds=True, days=60, seed=seed,
+                         give_up_objects=5, tie_win_prob=0.5, equal_start=True, **RULE_PRESETS["20261020"])
+    d = int(flag)   # d-mode rows: tag is the rule, flag is d
+    return SimConfig(alpha=0.4, d=d, rule=tag, attacker_embeds=(tag == "sop"), days=60, seed=seed,
+                     **(RULE_PRESETS["20261020"] if tag == "sop" else {}))
+
+
+def _fields(s):
+    return [s.att_final_blocks, s.hon_final_blocks, s.reveals, s.att_orphaned_blocks,
+            sum(s.reorg_depths), s.max_reorg_depth]
+
+
+def test_simulate_results_are_pinned_across_the_step_api_refactor():
+    for row in PINNED:
+        assert _fields(simulate(_cfg_from(row))) == row[4:], row
+
+
+def test_step_api_with_stubborn_policy_equals_simulate():
+    from scripts.sop_race_model import SopEnv, stubborn_policy
+    for row in PINNED:
+        cfg = _cfg_from(row)
+        env = SopEnv(cfg)
+        env.reset(cfg.seed)
+        while not env.done:
+            env.step(stubborn_policy(env))
+        assert _fields(env.stats) == row[4:], row
+
+
+def test_observation_matches_sop_mdp_definition():
+    from scripts.sop_race_model import observation
+    assert observation([], [], 0, 0) == (0, 0, 0, 0, 0, 0, 0)
+    assert observation([3], [], 2, 5) == (1, 4, 0, 2, 0, 0, 5)          # D = 1+3; x skips the first block
+    assert observation([3, 1], [0], 0, 0) == (2, 6 - 1, 2, 0, 1, 0, 0)   # xa = 1+1
+    assert observation([0] + [40], [], 0, 0)[2] == 32                   # capped
+    assert observation([0, 40], [0, 0], 0, 0)[5] == 32                   # collapsed once either passes
+
+
+def test_env_legal_mask_and_illegal_action_raises():
+    import pytest
+    from scripts.sop_race_model import SopEnv, HOLD, PUBLISH, REVEAL, GIVE_UP
+    env = SopEnv(SimConfig(alpha=0.45, d=1, rule="sop", attacker_embeds=True, days=1, seed=1,
+                           give_up_objects=5, **RULE_PRESETS["20261020_noown"]))
+    env.reset(1)
+    while env.obs()[0] == 0 or env.obs()[4] != 0:   # reach a state with a >= 1 and h == 0
+        env.step(HOLD)
+    assert env.legal() == (True, True, False, True)
+    with pytest.raises(ValueError):
+        env.step(REVEAL)

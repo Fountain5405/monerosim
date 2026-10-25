@@ -293,6 +293,11 @@ class SimConfig:
                                           # side holds this many blocks since the fork the attacker is
                                           # forced to act: publish if honest has none, reveal if the
                                           # network accepts, else give up. 0 = no cap (Model B).
+    d_cap: int = 0                        # SopEnv far truncation for a learned policy (2026-10-25):
+                                          # |attacker weight - honest weight| >= d_cap makes HOLD
+                                          # illegal. 0 = none. (With equal_start the old loop reaches
+                                          # |D| > 200 in 60 d, so the default must stay 0.)
+    deficit_cap: int = 0                  # same, for honest objects ahead since the fork. 0 = none.
 
 
 # MRL #146 rule versions for the SoP rule (the stock rule ignores them).
@@ -364,151 +369,302 @@ class SimStats:
         return self.att_orphaned_blocks / total_att if total_att else 0.0
 
 
-def simulate(cfg: SimConfig) -> SimStats:
-    if cfg.positional_shares and not cfg.equal_start:
-        raise ValueError("positional_shares needs equal_start (his share IDs assume a level start)")
-    rng = random.Random(cfg.seed)
-    rate = cfg.w / T_BLOCK_S  # objects/sec total
-    n_objects = int(cfg.days * SECONDS_PER_DAY * rate)
+# ---------------------------------------------------------------------------
+# Step API (2026-10-25): the Model B loop as an environment an attacker policy
+# drives one object at a time. simulate() below runs it with stubborn_policy
+# and reproduces the pre-refactor loop bit for bit (scripts/test_sop_race_model
+# PINNED). Used by scripts/sop_rl.py to train a policy; design in
+# docs/superpowers/specs/2026-10-25-sop-rl-attacker-design.md.
+# ---------------------------------------------------------------------------
 
-    stats = SimStats(sim_days=cfg.days)
+HOLD, PUBLISH, REVEAL, GIVE_UP = 0, 1, 2, 3        # same values as scripts/sop_mdp.py
+ACTION_NAMES = ["hold", "publish", "reveal", "give_up"]
+WINDOW_OBS = K_DEFAULT * W_DEFAULT - W_DEFAULT     # 32: the observation's window-counter cap
+FAR_CAP = 200        # the d_cap / deficit_cap a learned policy's environment uses (sop_rl.race_env)
+Obs = Tuple[int, int, int, int, int, int, int]     # a, D, xa, pa, h, xh, ph (scripts/sop_mdp.py State)
 
-    hon_blocks: List[int] = []  # embedded-share count per honest block since fork
-    att_blocks: List[int] = []  # embedded-share count per attacker block since fork
-    hon_pending = 0
-    att_pending = 0
 
-    def reset_fork():
-        hon_blocks.clear()
-        att_blocks.clear()
+def observation(att_blocks: List[int], hon_blocks: List[int], att_pending: int, hon_pending: int) -> Obs:
+    """The exact-MDP state of a fork: blocks per side, weight difference in
+    objects (blocks plus embedded shares; honest pending NOT included), the
+    window counters (objects a branch holds past its FIRST block, capped at
+    32 and both collapsed to 32 once either passes) and the pending shares."""
+    a, h = len(att_blocks), len(hon_blocks)
+    d = sum(1 + n for n in att_blocks) - sum(1 + m for m in hon_blocks)
+    xa = min(sum(1 + n for n in att_blocks[1:]), WINDOW_OBS)
+    xh = min(sum(1 + m for m in hon_blocks[1:]), WINDOW_OBS)
+    if xa >= WINDOW_OBS or xh >= WINDOW_OBS:
+        xa = xh = WINDOW_OBS
+    return (a, d, xa, att_pending, h, xh, hon_pending)
 
-    obj_mode = cfg.give_up_objects >= 0
-    att_fork = hon_fork = 0   # objects found since the fork (obj_mode only)
 
-    for _ in range(n_objects):
-        is_attacker = rng.random() < cfg.alpha
-        is_block = rng.random() < (1.0 / cfg.w)
+class SopEnv:
+    """Model B as reset()/step(): after every object the attacker chooses
+    hold, publish (its blocks become final; only with no honest block),
+    reveal (only when the network accepts) or give up. Nothing is forced
+    except the truncations: cfg.cap_blocks and the far caps cfg.d_cap /
+    cfg.deficit_cap make HOLD illegal (GIVE_UP stays legal everywhere;
+    the old loop gives up on the objects deficit even at a cap). The objects give-up (give_up_objects) is
+    NOT an environment rule here: it is part of stubborn_policy.
 
-        if obj_mode:
-            if is_attacker:
-                att_fork += 1
-            else:
-                hon_fork += 1
+    Acceptance (and the tie draw of tie_win_prob) is evaluated lazily, at
+    most once per decision point and only when asked for (REVEAL legality),
+    so the RNG stream equals the old loop's as long as the policy asks
+    exactly where the old loop decided (stubborn_policy does)."""
 
-        if not is_block:
-            if is_attacker:
-                att_pending += 1
-            else:
-                # tevador: the attacker embeds it too; with positional IDs only if it
-                # lacks this share's position (hon_pending before the increment)
-                if cfg.early_honest_shares and not att_blocks and not hon_blocks \
-                        and (not cfg.positional_shares or hon_pending >= att_pending):
-                    att_pending += 1
-                    att_fork += 1
-                hon_pending += 1
-            if obj_mode and hon_fork - att_fork > cfg.give_up_objects:
-                stats.hon_final_blocks += len(hon_blocks)
-                stats.att_orphaned_blocks += len(att_blocks)
-                reset_fork()
-                att_pending = hon_pending if cfg.equal_start else 0
-                att_fork, hon_fork = att_pending, hon_pending
-            continue
+    def __init__(self, cfg: SimConfig):
+        if cfg.positional_shares and not cfg.equal_start:
+            raise ValueError("positional_shares needs equal_start (his share IDs assume a level start)")
+        self.cfg = cfg
+        self.n_objects = int(cfg.days * SECONDS_PER_DAY * (cfg.w / T_BLOCK_S))
+        self.obj_mode = cfg.give_up_objects >= 0
+        self.rng = random.Random(cfg.seed)
+        self.stats = SimStats(sim_days=cfg.days)
+        self.att_blocks: List[int] = []
+        self.hon_blocks: List[int] = []
+        self.att_pending = 0
+        self.hon_pending = 0
+        self.att_fork = self.hon_fork = 0
+        # running sums so every decision is O(1): objects per branch (blocks +
+        # embedded shares) and objects past each branch's first block
+        self.att_w = self.hon_w = self.att_x = self.hon_x = 0
+        self.objects = 0
+        self.done = True
+        self.last_is_block = False
+        self.last_is_attacker = False
+        self.tie_lost = False
+        self._acc: Optional[bool] = None
 
-        if is_attacker:
-            embed = att_pending if cfg.attacker_embeds else 0
-            att_blocks.append(embed)
-            att_pending = 0
-        else:
-            hon_blocks.append(hon_pending)
-            hon_pending = 0
+    # -- lifecycle -----------------------------------------------------------
+    def reset(self, seed: int) -> Obs:
+        self.rng = random.Random(seed)
+        self.stats = SimStats(sim_days=self.cfg.days)
+        self.att_blocks, self.hon_blocks = [], []
+        self.att_pending = self.hon_pending = 0
+        self.att_fork = self.hon_fork = 0
+        self.att_w = self.hon_w = self.att_x = self.hon_x = 0
+        self.objects = 0
+        self.done = self.n_objects == 0
+        if not self.done:
+            self._draw()
+        return self.obs()
 
-        a = len(att_blocks)
-        h = len(hon_blocks)
+    def obs(self) -> Obs:
+        xa, xh = min(self.att_x, WINDOW_OBS), min(self.hon_x, WINDOW_OBS)
+        if xa >= WINDOW_OBS or xh >= WINDOW_OBS:
+            xa = xh = WINDOW_OBS
+        return (len(self.att_blocks), self.att_w - self.hon_w, xa, self.att_pending,
+                len(self.hon_blocks), xh, self.hon_pending)
 
-        # Decision, only evaluated after a block event (honest or attacker).
-        if obj_mode:
-            give_up = hon_fork - att_fork > cfg.give_up_objects
-        else:
-            give_up = (a == 0 and h > 0) or (h - a >= cfg.d)
-        if give_up:
-            # give up: attacker suffix orphaned, honest suffix final
-            stats.hon_final_blocks += h
-            stats.att_orphaned_blocks += a
-            reset_fork()
-            att_pending = hon_pending if cfg.equal_start else 0
-            att_fork, hon_fork = att_pending, hon_pending
-            # hon_pending carries on (not reset)
-            continue
+    # -- the decision point --------------------------------------------------
+    def _a_h(self) -> Tuple[int, int]:
+        return len(self.att_blocks), len(self.hon_blocks)
 
-        forced = cfg.cap_blocks > 0 and (a >= cfg.cap_blocks or h >= cfg.cap_blocks)
-        if h == 0:
-            if forced:
-                # publish: the attacker's blocks become final as honest mining
-                # would; both sides' pending shares carry on (sop_mdp do_publish)
-                stats.att_final_blocks += a
-                reset_fork()
-                att_fork, hon_fork = att_pending, hon_pending
-            continue  # withhold
-        if h < cfg.release_depth and not forced:
-            continue  # deep_hunt: hold until the honest branch is deep enough
+    def forced(self) -> bool:
+        """HOLD is illegal here: at cfg.cap_blocks or at a far cap."""
+        a, h = self._a_h()
+        cfg = self.cfg
+        if cfg.cap_blocks > 0 and (a >= cfg.cap_blocks or h >= cfg.cap_blocks):
+            return True
+        if cfg.d_cap > 0 and abs(self.att_w - self.hon_w) >= cfg.d_cap:
+            return True
+        return cfg.deficit_cap > 0 and (self.hon_fork - self.att_fork) > cfg.deficit_cap
 
+    def accepted(self) -> bool:
+        """Would the network accept a reveal now (past the window and the
+        attacker's weight wins)? Evaluated once per decision point; a tie
+        (tie_win_prob > 0) draws the RNG here and sets tie_lost."""
+        if self._acc is not None:
+            return self._acc
+        cfg = self.cfg
+        a, h = self._a_h()
         if cfg.rule == "sop":
-            att_objects = sum(1 + n for n in att_blocks)
+            att_objects = self.att_w
             att_weight = att_objects
-            hon_weight = sum(1 + m for m in hon_blocks)
+            hon_weight = self.hon_w
             if cfg.count_honest_pending:
-                hon_weight += hon_pending
+                hon_weight += self.hon_pending
             K = cfg.K_objects
         else:  # stock
             att_objects = a
             att_weight = a
             hon_weight = h
             K = 0
-
         past_window = att_objects >= K
         if cfg.either_window and cfg.rule == "sop":
-            past_window = max(sum(1 + n for n in att_blocks[1:]),
-                              sum(1 + m for m in hon_blocks[1:])) >= cfg.K_objects - cfg.w
+            past_window = max(self.att_x, self.hon_x) >= cfg.K_objects - cfg.w
         if cfg.count_attacker_pending and cfg.rule == "sop" and past_window:
-            att_weight += att_pending
+            att_weight += self.att_pending
         wins = att_weight > hon_weight
         if past_window and not wins and att_weight == hon_weight and cfg.tie_win_prob > 0:
-            wins = rng.random() < cfg.tie_win_prob
-            if not wins:
-                # tevador: a lost tie ends the attack
-                stats.hon_final_blocks += h
-                stats.att_orphaned_blocks += a
-                reset_fork()
-                att_pending = hon_pending if cfg.equal_start else 0
-                att_fork, hon_fork = att_pending, hon_pending
-                continue
-        if past_window and wins:
-            # reveal: attacker suffix final, honest suffix orphaned
-            stats.reveals += 1
-            stats.reorg_depths.append(h)
-            stats.att_final_blocks += a
-            stats.att_orphaned_blocks += 0  # attacker blocks became final, not orphaned
-            reset_fork()
-            hon_pending = 0
-            att_fork, hon_fork = att_pending, 0
-            # att_pending carries on
-            continue
+            wins = self.rng.random() < cfg.tie_win_prob
+            self.tie_lost = not wins
+        self._acc = past_window and wins
+        return self._acc
 
-        if forced:
-            # at the cap and the network would not accept a reveal: give up
-            stats.hon_final_blocks += h
-            stats.att_orphaned_blocks += a
-            reset_fork()
-            att_pending = hon_pending if cfg.equal_start else 0
-            att_fork, hon_fork = att_pending, hon_pending
-            continue
+    def legal(self) -> Tuple[bool, bool, bool, bool]:
+        a, h = self._a_h()
+        forced = self.forced()
+        return (not forced,
+                a >= 1 and h == 0,
+                h >= 1 and self.accepted(),     # a == 0 can win under count_attacker_pending + equal_start
+                True)
 
-        # else: hold
+    def _check(self, action: int) -> None:
+        a, h = self._a_h()
+        if action == HOLD:
+            ok = not self.forced()
+        elif action == PUBLISH:
+            ok = a >= 1 and h == 0
+        elif action == REVEAL:
+            ok = h >= 1 and self.accepted()
+        elif action == GIVE_UP:
+            ok = True
+        else:
+            raise ValueError(f"unknown action {action}")
+        if not ok:
+            raise ValueError(f"illegal action {ACTION_NAMES[action]} at a={a} h={h} obs={self.obs()}")
 
+    # -- settlements (verbatim from the old loop) ----------------------------
+    def _reset_fork(self) -> None:
+        self.hon_blocks.clear()
+        self.att_blocks.clear()
+        self.att_w = self.hon_w = self.att_x = self.hon_x = 0
+
+    def _give_up(self) -> Tuple[int, int]:
+        a, h = self._a_h()
+        self.stats.hon_final_blocks += h
+        self.stats.att_orphaned_blocks += a
+        self._reset_fork()
+        self.att_pending = self.hon_pending if self.cfg.equal_start else 0
+        self.att_fork, self.hon_fork = self.att_pending, self.hon_pending
+        return 0, h
+
+    def _reveal(self) -> Tuple[int, int]:
+        a, h = self._a_h()
+        self.stats.reveals += 1
+        self.stats.reorg_depths.append(h)
+        self.stats.att_final_blocks += a
+        self._reset_fork()
+        self.hon_pending = 0
+        self.att_fork, self.hon_fork = self.att_pending, 0
+        return a, 0
+
+    def _publish(self) -> Tuple[int, int]:
+        a, _ = self._a_h()
+        self.stats.att_final_blocks += a
+        self._reset_fork()
+        self.att_fork, self.hon_fork = self.att_pending, self.hon_pending
+        return a, 0
+
+    def step(self, action: int) -> Tuple[Obs, int, int]:
+        if self.done:
+            raise ValueError("episode is over; call reset()")
+        self._check(action)
+        fa, fh = self._apply(action)
+        return self.obs(), fa, fh
+
+    def _apply(self, action: int) -> Tuple[int, int]:
+        """step() without the legality check and the observation: the fast
+        path simulate() uses with stubborn_policy (legal by construction)."""
+        if action == HOLD:
+            fa, fh = 0, 0
+        elif action == GIVE_UP:
+            fa, fh = self._give_up()
+        elif action == REVEAL:
+            fa, fh = self._reveal()
+        else:
+            fa, fh = self._publish()
+        if self.objects < self.n_objects:
+            self._draw()
+        else:
+            self.done = True
+        return fa, fh
+
+    # -- the per-object draw (verbatim from the old loop) ---------------------
+    def _draw(self) -> None:
+        cfg = self.cfg
+        is_attacker = self.rng.random() < cfg.alpha
+        is_block = self.rng.random() < (1.0 / cfg.w)
+        self.objects += 1
+        self.last_is_block, self.last_is_attacker = is_block, is_attacker
+        self._acc = None
+        self.tie_lost = False
+        if self.obj_mode:
+            if is_attacker:
+                self.att_fork += 1
+            else:
+                self.hon_fork += 1
+        if not is_block:
+            if is_attacker:
+                self.att_pending += 1
+            else:
+                # tevador: the attacker embeds it too; with positional IDs only if it
+                # lacks this share's position (hon_pending before the increment)
+                if cfg.early_honest_shares and not self.att_blocks and not self.hon_blocks \
+                        and (not cfg.positional_shares or self.hon_pending >= self.att_pending):
+                    self.att_pending += 1
+                    self.att_fork += 1
+                self.hon_pending += 1
+            return
+        if is_attacker:
+            embed = self.att_pending if cfg.attacker_embeds else 0
+            if self.att_blocks:
+                self.att_x += 1 + embed
+            self.att_blocks.append(embed)
+            self.att_w += 1 + embed
+            self.att_pending = 0
+        else:
+            if self.hon_blocks:
+                self.hon_x += 1 + self.hon_pending
+            self.hon_blocks.append(self.hon_pending)
+            self.hon_w += 1 + self.hon_pending
+            self.hon_pending = 0
+
+
+def stubborn_policy(env: SopEnv) -> int:
+    """The old loop's decisions, as a policy over SopEnv: the objects give-up
+    at every event (also with no block held, where it drops the attacker's
+    pending shares), the d-mode give-up after blocks, withhold while there is
+    no honest block (publish only when cap_blocks forces it), release_depth,
+    reveal when the network accepts, a lost tie ends the attack, and at
+    cap_blocks give up when the network would not accept."""
+    cfg = env.cfg
+    a, h = len(env.att_blocks), len(env.hon_blocks)
+    if not env.last_is_block:
+        if env.obj_mode and env.hon_fork - env.att_fork > cfg.give_up_objects:
+            return GIVE_UP
+        return HOLD
+    if env.obj_mode:
+        give_up = env.hon_fork - env.att_fork > cfg.give_up_objects
+    else:
+        give_up = (a == 0 and h > 0) or (h - a >= cfg.d)
+    if give_up:
+        return GIVE_UP
+    forced = cfg.cap_blocks > 0 and (a >= cfg.cap_blocks or h >= cfg.cap_blocks)
+    if h == 0:
+        return PUBLISH if forced else HOLD
+    if h < cfg.release_depth and not forced:
+        return HOLD
+    accepted = env.accepted()
+    if env.tie_lost:
+        return GIVE_UP
+    if accepted:
+        return REVEAL
+    if forced:
+        return GIVE_UP
+    return HOLD
+
+
+def simulate(cfg: SimConfig) -> SimStats:
+    env = SopEnv(cfg)
+    env.reset(cfg.seed)
+    while not env.done:
+        env._apply(stubborn_policy(env))
     # end of run: whatever is left in-flight is neither final nor orphaned;
     # it is dropped from the accounting (boundary effect, negligible for
     # long enough runs).
-    return stats
+    return env.stats
 
 
 def invariant_ok(stats: SimStats, total_att_blocks: int, total_hon_blocks: int) -> bool:
