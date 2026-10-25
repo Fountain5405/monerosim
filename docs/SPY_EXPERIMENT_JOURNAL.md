@@ -34,7 +34,7 @@ fleet to **0.184** (0.55x, the same ratio as on the packed fleet), adopters to z
 of 40 (E29, P20 eight of eight): the list's effect does not depend on the layout, and half the network adopting recovers only what
 the stock rule's /24 counting gave the spread fleet. Eight spies per /24 at 26-30 h read 0.1497, below the 2-per-/24 cell's 0.1572 but still draining
 (-14% over hours 20-30; E30, P16b three of four): packing IPs into /24s dilutes a little and delays a lot, and the /24 count is what
-buys share. Running (12:51 10-25): `zenith2alpha`, the 256 GB Threadripper, validated by E31/P22 at 06:12 (0.0624 on the H=71 `legacy` cell), finished P23 at 09:36
+buys share. Running (15:13 10-25): `zenith2alpha`, the 256 GB Threadripper, validated by E31/P22 at 06:12 (0.0624 on the H=71 `legacy` cell), finished P23 at 09:36
 (E34: **0.3524**, the seed-23456 read of the 24 h spread fleet, 5% above P21's; four of seven), P24 at 12:01 (E35: **0.3207** with the white-list
 pick made uniform, 2.09x the ceiling, gradient intact: the recency draw is not the cause of the 2.2x; one of five) and P26 at 17:15 (E36: **0.1577**,
 1.03x the ceiling with the 20-candidate cap lifted, gradient gone: **the cap is the whole 2.2x**; five of six, the miss being exposed users up from 28 to
@@ -42,10 +42,10 @@ pick made uniform, 2.09x the ceiling, gradient intact: the recency draw is not t
 and the stock cubic draw kept: the draw's shape is worth 8%; two of five) and P28 at 21:53 (E38: **0.1557**, P26 replicated at seed 23456, 1.01x; three
 of five, the users at 0.139 just under their clause), sat idle until 00:35 (no watcher), finished P29 at 03:55 (E39: **0.1655**, the 24 h spread fleet
 with the cap lifted, 1.08x the ceiling, nothing accumulates over the day; recall 0.187 against the stock 24 h cells' 0.134 and 0.109; four of five) and P31 at 06:15 (E40: **0.0771**, E29's half ban list
-with the cap lifted, 0.49x the no-list cell and 1.01x the half-list model, adopters at zero and the non-adopters at exactly their ceiling; four of five), P32 at 12:43 (E42: **0.0764**, the half list with the cap lifted at seed 23456, 1.00x the half-list model and 0.49x the no-list cell again; five of five; the user, before 10:20: "proceed with the twelfth patch, and queue P31 at seed 23456 meanwhile"), and runs P34 (the twelfth patch, 20 random /24 candidates with the stock cubic draw, seed 12345, started 12:43, due ~15:05); `phantom` finished P21 at 07:19 (E32: **0.3354**, E27's number at a 24 h warmup, five of seven clauses) and P25 at 08:11
+with the cap lifted, 0.49x the no-list cell and 1.01x the half-list model, adopters at zero and the non-adopters at exactly their ceiling; four of five), P32 at 12:43 (E42: **0.0764**, the half list with the cap lifted at seed 23456, 1.00x the half-list model and 0.49x the no-list cell again; five of five; the user, before 10:20: "proceed with the twelfth patch, and queue P31 at seed 23456 meanwhile"), P34 at 15:01 (E43: **0.1657**, the twelfth patch, 20 random /24 candidates with the stock cubic draw, 1.08x the ceiling, the same as the lifted cap with that draw; six of six), rebuilt with the thirteenth patch (runtime peer-list limits) at 15:09 and is idle until the white-list-limit cells are filed; the plan was reviewed against its three questions on 10-25 (plan section 7: the cap finding's transfer to mainnet is gated by the list age structure, the honest cost under churn and an active-recency adversary; revised order there); `phantom` finished P21 at 07:19 (E32: **0.3354**, E27's number at a 24 h warmup, five of seven clauses) and P25 at 08:11
 (E33: 0.0628, the ten-patch binary passes its flag-off check) and has left the lab (its 38 archives on the Threadripper's array, the pool's home since 10-24; the source deleted 18:26); `simbox3` drained at 09:49 (the `tail` seed-34567 filler read 0.1812, E10's third seed: 0.176-0.195 across three seeds; the `core` one 0.0348), its five archives moved to the array 10-25 00:35 (local copies deleted, 89 GB free), was rebuilt with the eleven patches at 00:46 10-25 and finished P30 at 07:56 (E41: **0.1482**, P26 at seed 34567, 0.97x the ceiling, flat to 0.3%; five of five; the rebuilt binary passes its gate; three seeds mean 1.005x), its archive moved to the array (91 GB free), was rebuilt with the twelve patches at 10:37 (3 min, ccache) and runs P33 (P31 at seed 34567, started 10:37, due ~15:10; the user, 10:30: "is there anything that could be running on .176? its idle") with P35 (the twelfth patch at seed 23456) queued behind it;
 `simbox2` is handed over to the selfish-mining project (its 21 archives on the array, the source deleted 18:26, handover note written). Since 10-24 the session runs on the control box and cells are generated
-there (`make_cell.sh`, section 2 addendum). Entries E1-E42 below; predictions P1-P35 in section 5.
+there (`make_cell.sh`, section 2 addendum). Entries E1-E43 below; predictions P1-P35 in section 5.
 
 ## 1. How this journal works
 
@@ -1819,7 +1819,40 @@ with the non-adopters' +10% (E29) was the cap's doing, like the relays' 2.2x. P3
 (2,624 regular files both sides, dry-run clean with P34's live run excluded, the `/fast` copy deleted). P34 (the twelfth patch, seed 12345) started
 12:43 on the same box as this run ended.
 
+### E43. The twelfth patch: 20 random /24 candidates with the stock cubic draw read 0.1657, 1.08x the ceiling, the same as the lifted cap with the same draw; a bounded random sample is worth what lifting the cap is worth (2026-10-25 12:43-15:01, `zenith2alpha`)
+
+**Cell.** `lean_24_none_h300_k42_w13h_m1_n600_rc_s12345` (P34): E27's stock spread-fleet cell plus `sim-random-whitelist-candidates: true`, the only
+differing line; the stock cap of 20 candidates and the stock cubic draw kept. Twelve-patch binary (sha `7534279c`); the twelfth patch's start-up
+line in all 382 daemon logs, the uniform-pick and candidates-0 lines in none. Wall 2 h 16 m, exit 0, all checks passed, 382 nodes at 100% sync,
+height 2069 (533 blocks in 18.93 h), lowest free RAM 156 GB, 1,095 stem txs, 0.196 fluff per hop.
+
+**Reading.** Light-node outbound share **0.1657**, **1.08x** the 0.1531 ceiling (stock, E27: 0.3369 = 2.20x; the cap lifted with the cubic draw,
+P27: 0.1705 = 1.11x; the cap lifted with the uniform draw, P26: 0.1577 = 1.03x), by quarter 0.1695, 0.1670, 0.1636, 0.1628 (a 4.1% span, easing).
+By class: relays **0.166** (1.08x), users **0.1623** (1.06x; P27 0.1406, P26 0.165), observers 0.1713, medium 0.1547, miners 0.1654, seeds 0.1137.
+Relays by start-order quarter over hours 15-19: 0.1481, 0.1493, 0.1731, 0.1900, the latest **1.28x** the earliest and monotone from the second
+quarter on: P27's residual gradient exactly (1.28x), where the uniform-draw cells have none (1.02-1.10x). The cubic draw's preference for the
+newest of the 20 leaves it, whichever 20 they are. Over the run: 0.365 in the first half hour, 0.17 by hour 2, means 0.244 over hours 0-3, 0.225
+over 3-6, 0.182 over 6-12, 0.168 over 12-15, 0.165 over 15-19, a slower settle than the uniform-draw cells (at the ceiling by hour 6) and still
+easing 2% into the window. Exposure: `sp_r` recall **0.135** [0.10, 0.17], precision 1.00, **31 of 40** users attributed (P27 28, P26 37; stock
+27-28); 97.5% of users had a spy stem peer in the window, all had a spy outbound peer; stem-peer medians 0.16 for users and reachable nodes alike,
+outbound 0.172 and 0.163.
+
+**P34: six of six clauses hit, and the wall.** (a) 0.1657 in 0.160-0.210 (hit); (b) relays 1.08x in 1.0-1.45x and the gradient 1.28x under 1.4x
+(hit); (c) the twelfth line in all 382 logs and the other two in none (hit); (d) users 0.1623 in 0.10-0.19 and 31 of 40 exposed in 28-38 (hit);
+(e) the quarters 4.1% apart under 5% (hit); (f) within 0.005 of P27's 0.1705 against 0.025 (hit). Wall 2 h 16 m under 3 h. **A bounded random
+sample is worth exactly what lifting the cap is worth with the same draw**: 1.08x against 1.11x, the same residual gradient, the same users'
+share within the seed band. So a defense can keep a bounded candidate set; what stays above the ceiling (8-11%) is the cubic draw's recency
+preference, which the uniform draw removes (P26/P28/P30, 1.005x) and which an adversary that keeps itself newest could exploit (plan section 7,
+threat 3). The Monte Carlo's 1.53x was wrong for the reason E37 gave for its 1.51x: its lists come from the stock regime and overstate the spies'
+recency edge once the rule changes; the model is retired for predicting changed rules. The completion of this line, the random sample with the
+uniform draw (`_rc_up`), is deferred behind the review's items 1-3 (plan section 7). P35, this cell at seed 23456, is queued on `simbox3`.
+
+**Register.** `20261025_124316_lean_24_none_h300_k42_w13h_m1_n600_rc_s12345`, box `zenith2alpha` (run 81); estimators and `spy_share_vs_time.txt`
+in the run's folder; events in `logs/queue_events_tr_through_20261024.events` (through the 15:01 `QUEUE EMPTY`). The archive moved to the array at
+15:10 (2,624 regular files both sides, dry-run clean, the `/fast` copy deleted). The Threadripper rebuilt with the thirteenth patch at 15:09.
+
 ## 5. Pre-registered predictions
+
 
 Filed before the results; the time is when this section was written.
 
@@ -2341,6 +2374,9 @@ start-up line in every daemon log and neither of the other two `--sim-*` lines i
 what the lifted cap is worth. Prior 65% on (a), 70% on (f). Above 0.215 means the model is right and a random sample does not remove the recency
 edge, because the newest of any 20 is still a spy often enough; at or below 0.160 the sample alone reaches the ceiling and the draw's shape is worth
 nothing here. Wall under 3 h.
+*Outcome, 2026-10-25 15:13:* **six of six clauses, and the wall.** Light **0.1657** (1.08x; hit), relays 1.08x and gradient 1.28x (hit), the twelfth
+line in all 382 logs and the others in none (hit), users 0.1623 and 31 of 40 exposed (hit), quarters 4.1% apart (hit), within 0.005 of P27 (hit). Wall
+2 h 16 m. The random sample is worth what the lifted cap is worth; the Monte Carlo's 1.53x was wrong again. See E43.
 
 **P35, filed 2026-10-25 10:39, before the cell is queued (P34 at a second seed, on simbox3).** `lean_24_none_h300_k42_w13h_m1_n600_rc_s23456` on
 `simbox3` behind P33 (md5 `ed53b8cb`; P34's cell with `simulation_seed: 23456`, the only differing line; this seed's ceiling 0.1539). The same
@@ -2404,6 +2440,11 @@ start-order quarter 0.89x (hit) but the window's quarters span 7.5% against 3% (
    drain is only a lab effect, either lengthen the warmup (P7), cap the white list in the
    simulator to the lab's ratio, or restart the relays after the drain and clear the gray
    list. Any of the three changes the experiment, so it is the user's call.
+   *2026-10-25 15:13, from the plan review (plan section 7, threat 1):* ranked the top threat to the whole cap finding. The owner's action: a
+   `print_pl` dump from a long-running mainnet node, read for the spies' rank in `last_seen` order and their share of the 20 newest /24s. The lab's
+   counterpart: the thirteenth patch, `--sim-white-peerlist-limit N` / `--sim-gray-peerlist-limit N` (runtime limits in place of the compile-time
+   1000 / 5000, trimmed oldest-`last_seen` first; built on zenith2alpha 15:09, sha `ab6646d7`), and `make_lean.py --white-limit N` (`_wlN`); the stock
+   and cap-lifted spread-fleet cells at N about 70 (mainnet's 1,000 of ~4,600 reachable, scaled to the lab's 342) are the next cells to file.
 9. **The `half` list's tie-break is seeded by the simulation seed** (added 2026-10-23 14:40, from the review).
    `make_lean.py` passes `--seed <simulation seed>` to `spy_ban_list.py`, which orders equally dense /24s by a shuffle
    with that seed. In `tail` every /24 holds 2 spies, so all 21 are ties, and a seed-23456 replicate of the
@@ -2462,6 +2503,27 @@ start-order quarter 0.89x (hit) but the window's quarters span 7.5% against 3% (
     rule's 0.55x with the non-adopters' +10% was the cap's doing. The twelfth patch (20 random /24 candidates, the cubic draw kept) runs as P34 on
     zenith2alpha since 12:43 and P35 on `simbox3` behind P33; the Monte Carlo puts it at 1.53x, the same as the cap lifted with the cubic draw,
     which the sim read at 1.11x.
+    *2026-10-25 15:13, from E43 (P34).* (k) done: 20 random /24 candidates with the cubic draw read **0.1657**, 1.08x, with P27's 1.28x residual
+    gradient: a bounded random sample is worth what lifting the cap is worth; the Monte Carlo's 1.53x was wrong again and the model is retired
+    for changed rules. The review of the plan (plan section 7, filed today) ranks what gates this finding's transfer to mainnet: the list age
+    structure (open question 8), the honest cost of removing recency under churn (open question 11), and an adversary that keeps itself newest
+    (open question 13, which also attacks the residual here). No further candidate-rule cell runs until those three are answered; `_rc_up` waits.
+
+11. **The honest cost of the candidate rules is unmeasured** (added 2026-10-25 15:13, from the plan review). X2's cost metrics (time to a full
+    outbound set, failed dials, outbound diversity, propagation, outage connectivity) have been scored for no cell. The 20-newest cap is a
+    liveness filter where peers churn, and the lab has none, so lifting the cap or sampling candidates at random costs nothing here by
+    construction. Needs: a turnover cell (`make_lean.py --turnover 1h,1h`, `general.turnover`, built today; users cycle too, which cuts their
+    transactions, so the cell is read for connectivity, not exposure) under the stock rule against `_up_wc0` and `_rc`, and a scorer for time to
+    12 outbound slots after each restart and for failed dials from the daemon logs. Neither new rule is recommended before this is read.
+12. **The reachable sender classes are unmeasured** (added 2026-10-25 15:13, from the plan review). The lean cells have no reachable home
+    senders (the estimators' reachable row is n = 0) and run users at ~150x mainnet's rate, which decides the relayed-stem cover of reachable
+    senders. Needs: a cell with reachable senders at a mainnet-like rate over a 24 h window, and N4 (the fluff-epoch leak) computed from the
+    existing relay logs first.
+13. **An adversary that keeps itself newest** (added 2026-10-25 15:13, from the plan review; open question 10 (c) made a cell). Every spy run so
+    far is passive variant R. A fleet that re-handshakes with honest nodes periodically keeps its `last_seen` fresh everywhere, which under the
+    stock rule makes the 2.2x a floor and removes the users' accidental 0.75x, and under the random-sample rule with the cubic draw still buys
+    the newest-of-20 preference (E43's 1.28x residual). Needs: an agent on the py-Levin tooling or a `--sim-*` flag on the variant-R spies that
+    dials, handshakes and disconnects on a timer; two seeds under the stock rule, with user-side peer-list dumps so the cell also answers (d).
 
 ## 7. Decisions log
 
@@ -2555,6 +2617,9 @@ in the conversation.
 | 10-25 10:35 | The twelfth patch written: `patches/monero-sim-random-whitelist-candidates.patch` (`--sim-random-whitelist-candidates`: the N white-list candidates, N = `--sim-whitelist-candidates`, stock 20, are a uniform random sample of the subnet-deduplicated list instead of its N newest by `last_seen`, put back into `last_seen` order so the draw among them, stock cubic or `--sim-uniform-whitelist-pick`, is unchanged; off = stock), wired into `setup.sh` and `make_lean.py --rand-cands` (`_rc`), with `recency_model.py` modes `24r`/`24ru` (commit `6d54bd32`). Built on `zenith2alpha` at 10:29 (twelve patches, sha `7534279c`, `git apply --check` clean on the eleven-patch tree) while P32 runs, which is safe because the running daemons keep the replaced binary's inode and P32's provenance was captured at its start; the same rebuild started on `simbox3` at 10:34, and P33 (filed above) waits for it so that no daemon starts across the binary swap. The Monte Carlo over E21's relay lists (`recency_relays.py <E21 archive> 24,24u,24all,24allc,24r,24ru`) runs on zenith2alpha (its first launch failed: `python -I` with a bare script name leaves the script's own directory off `sys.path`; relaunched as `./recency_relays.py`). Two `_rc` cells generated and copied with md5 checks (seed 12345 `14d453a7` to zenith2alpha for behind P32, seed 23456 `ed53b8cb` to simbox3 for behind P33); each is E27's stock cell plus the one flag line. Their predictions wait for the Monte Carlo | the user: "proceed with the twelfth patch" and, at 10:30, use the idle .176 | revert `6d54bd32`; rebuild with `run_install_sim.sh` from the previous commit | user, agent |
 | 10-25 10:39 | simbox3's twelve-patch rebuild installed at 10:37 (`EXIT 0`, sha `7a7a32b3`, the new flag in `--help`, twelve patches in the provenance) and its driver started on P33 at 10:37. The Monte Carlo for the twelfth patch is in (P34's text): 20 random /24s with the cubic draw 1.53x, the same as the cap lifted with the cubic draw, which the sim read at 1.11x (E37); 20 random /24s drawn uniformly 0.97x. P34 (`_rc` seed 12345, md5 `14d453a7`) and P35 (`_rc` seed 23456, md5 `ed53b8cb`) filed and appended to `q.txt` on zenith2alpha (behind P32) and simbox3 (behind P33); each driver reads its next line when its run ends | the user's "proceed with the twelfth patch"; two seeds in parallel give the patch's answer by about 16:00 | remove the lines from `q.txt` before the running cells end | user, agent |
 | 10-25 12:51 | P32 scored on `zenith2alpha` (detached under `nice`, P34 running) and written up as E42 (run 80 in the register; outcome under P32, open question 10 (j), status). Its archive moved to the array: copied under `nice`/`ionice`, verified by regular-file count (2,624 both sides) and a dry-run rsync excluding P34's live run that listed nothing to send, then the `/fast` copy deleted (548 GB free; the array holds 74 runs). The events snapshot in `logs/` runs through P34's START. (Commit `9b280e63` carried the register row, the run folder and the snapshot alone: the journal edit script had stopped on a stray anchor check before writing; this row and E42 are in the next commit) | the standing plan | re-copy from the array | agent |
+| 10-25 15:13 | **The plan reviewed against its three questions** at the user's request ("can you do a deep review of the current plan to check that our proposed work will actually answer these questions?", then "proceed with those changes you recommend"): plan section 7 written (per-question assessment, seven ranked threats to validity, a revised order, what is settled), with dated notes at 3.3 (adopters' indirect protection not observed in the lab), 3.4 (the candidate-cap finding and its transfer caveat), X6 (needs the splice spy), 5.4 (order revised) and 6 (#9496 not landed on master at `3fd0f88c2`, checked today: `get_block_complete_entry` still uses `relay_category::all`). Open questions 11-13 added (honest cost under churn, the reachable sender classes, the active-recency adversary) and dated lines under 8 and 10. An independent reviewer with a fresh context read the same documents and reached the same ranking. Standing rule from the review: no further candidate-rule cell (including `_rc_up`) until the list-age, churn-cost and active-recency items are answered | the lab's main finding is a mechanism until its transfer and cost are measured; the recommendation must survive the developers' scrutiny | the section and notes are dated additions; nothing was deleted | user, agent |
+| 10-25 15:13 | The thirteenth patch written and built: `patches/monero-sim-peerlist-limits.patch` (`--sim-white-peerlist-limit N`, `--sim-gray-peerlist-limit N`: `peerlist_manager::set_limits` replaces the compile-time 1000 / 5000 in `trim_white_peerlist` / `trim_gray_peerlist`, applied after `init` per zone; 0 = stock), `git apply --check` clean on the twelve-patch tree, wired into `setup.sh`; `make_lean.py --white-limit N` (`_wlN`), `--gray-limit N` (`_glN`) and `--turnover ON,OFF` (`general.turnover`, `_to<ON><OFF>`; a test cell with both passed the generator's Rust validation and was deleted). Commit `d8ba5f3e`; rebuilt on zenith2alpha 15:09 (sha `ab6646d7`, 13 patches, queue empty, nothing live); simbox3's rebuild waits until P35 has started there, so no daemon starts across the swap | the review's items 1 and 3 need both; the patch is the lab half of open question 8 | revert `d8ba5f3e`, rebuild | agent |
+| 10-25 15:13 | P34 scored on `zenith2alpha` and written up as E43 (run 81 in the register; outcome under P34, open question 10 (k), status). Archive moved to the array (2,624 regular files both sides, dry-run clean, the `/fast` copy deleted; the array holds 75 runs). The events snapshot in `logs/` runs through the 15:01 `QUEUE EMPTY`. (Commit `6acae24c` carried the register row, the run folder and the snapshot alone: the edit script stopped on an anchor before writing; the review, E43 and these rows are in the next commit) | the standing plan | re-copy from the array | agent |
 
 ## 8. Files
 
