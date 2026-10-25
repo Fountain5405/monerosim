@@ -144,15 +144,21 @@ def test_share_search_trains_each_step_from_the_best_table_so_far(monkeypatch):
         return t
 
     monkeypatch.setattr(RL, "train", fake_train)
-    monkeypatch.setattr(RL, "rollout", lambda env, policy, n: {"share": next(shares)})
+    monkeypatch.setattr(RL, "rollout", lambda env, policy, n: {"share": next(shares), "reveals": 7, "mean_reorg": 2.5,
+                                                               "max_reorg": 9, "decisions": 100, "stored_hits": 40})
 
     class E:
         def reset(self, seed):
             pass
 
-    out = RL.share_search(lambda seed: E(), 0.5, budget=1, lo=0.5, hi=0.6, tol=0.01, eval_objects=1, seeds=(1,))
+    import io
+    log = io.StringIO()
+    out = RL.share_search(lambda seed: E(), 0.5, budget=1, lo=0.5, hi=0.6, tol=0.01, eval_objects=1, seeds=(1,),
+                          log=log)
     assert seen == [[], [(1,)], [(1,)], [(1,)]]     # steps 3 and 4 start from step 1's table (0.60)
     assert out["share"] == 0.60 and sorted(out["q"].q) == [(1,)]
+    # the log line says what the greedy rollout did, not only its share
+    assert "reveals=7" in log.getvalue() and "reorg=2.50/9" in log.getvalue() and "stored=0.400" in log.getvalue()
 
 
 def test_share_search_terminates_and_reports_best_when_nothing_learns():

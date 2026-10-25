@@ -399,16 +399,20 @@ def share_search(make_env: Callable[[int], object], alpha: float, budget: int, l
         env.reset(1000 + step)
         q = train(env, alpha, mid, budget, q=q, seed=1000 + step, behaviour=behaviour,
                   beta_start=beta_start, beta_end=beta_end, race_returns=race_returns)
-        shares = []
+        rows = []
         for sd in seeds:
             e = make_env(sd)
             e.reset(sd)
-            shares.append(rollout(e, TablePolicy(q), eval_objects)["share"])
-        share = sum(shares) / len(shares)
+            rows.append(rollout(e, TablePolicy(q), eval_objects))
+        n = len(rows)
+        share = sum(r["share"] for r in rows) / n
         history.append((mid, share, len(q)))
-        if log:
-            print(f"  rho={mid:.5f} share={share:.5f} states={len(q):,} [{time.time() - t:.0f}s]",
-                  file=log, flush=True)
+        if log:   # what the greedy rollout did, not only its share (per seed means; stored = table hits)
+            print(f"  rho={mid:.5f} share={share:.5f} states={len(q):,} "
+                  f"reveals={sum(r.get('reveals', 0) for r in rows) / n:.0f} "
+                  f"reorg={sum(r.get('mean_reorg', 0.0) for r in rows) / n:.2f}/{max(r.get('max_reorg', 0) for r in rows)} "
+                  f"stored={sum(r.get('stored_hits', 0) for r in rows) / max(1, sum(r.get('decisions', 0) for r in rows)):.3f} "
+                  f"[{time.time() - t:.0f}s]", file=log, flush=True)
         if share > best_share:
             best_share, best_q = share, _copy_table(q)
         else:
