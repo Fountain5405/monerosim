@@ -187,10 +187,15 @@ def stubborn_action(s: State, caps: Caps, G: int, own_test: bool, own_net: bool)
     if a == 0 and h == 0:
         return (HOLD, s, 0, 0)
     acc = accepted(s, own_net)
-    if deficit(s) > G or (at_cap(s, caps) and not acc):
+    if deficit(s) > G:
         return (GIVE_UP, *do_give_up(s))
     if h == 0:
+        # at a cap with no honest block the truncation publishes (as actions()
+        # does); checking "cap and not accepted" first here threw the blocks
+        # away and cost 2/3 of the revenue at 3-block caps (2026-10-25)
         return (PUBLISH, *do_publish(s)) if at_cap(s, caps) else (HOLD, s, 0, 0)
+    if at_cap(s, caps) and not acc:
+        return (GIVE_UP, *do_give_up(s))
     if past_window(s) and D + (pa if own_test else 0) > ph:
         return (REVEAL, *do_reveal(s)) if acc else (GIVE_UP, *do_give_up(s))
     if at_cap(s, caps):
@@ -310,7 +315,7 @@ def v_stubborn_masks(cols, caps: Caps, G: int, own_test: bool, own_net: bool):
     idle, past, acc, dfc, cap = _common(cols, caps, own_net)
     test_wins = past & ((D + (pa if own_test else 0)) > ph)
     act = np.full(len(a), HOLD, dtype=np.int64)
-    give = ~idle & ((dfc > G) | (cap & ~acc))
+    give = ~idle & ((dfc > G) | (cap & ~acc & (h >= 1)))   # h == 0 at a cap publishes
     act[give] = GIVE_UP
     rest = ~idle & ~give
     act[rest & (h == 0) & cap] = PUBLISH
@@ -463,9 +468,9 @@ class Compact:
         else:
             best += np.where(m, q, 0.0)
 
-    def gain(self, rho, optimise, iters=5000, tol=1e-7):
+    def gain(self, rho, optimise, iters=5000, tol=1e-7, V0=None):
         N = len(self.keys)
-        V = np.zeros(N)
+        V = np.zeros(N) if V0 is None else V0.copy()   # warm start: the gain is V0-independent
         g = 0.0
         for it in range(iters):
             Vn = self.sweep(V, rho, optimise)
@@ -477,12 +482,14 @@ class Compact:
                 break
         return g, V, it + 1
 
-    def share(self, alpha, optimise, verbose=False):
+    def share(self, alpha, optimise, verbose=False, lo=0.0, hi=1.0, tol=1e-5):
+        """Binary search on rho for zero gain; each step's VI starts from the
+        previous step's V (2026-10-25: 320 cold sweeps per step at mid caps)."""
         self.alpha = alpha
-        lo, hi, V = 0.0, 1.0, None
-        while hi - lo > 1e-5:
+        V = None
+        while hi - lo > tol:
             mid = 0.5 * (lo + hi)
-            g, V, it = self.gain(mid, optimise)
+            g, V, it = self.gain(mid, optimise, V0=V)
             if verbose:
                 print(f"  rho={mid:.5f} gain={g:+.3e} ({it} sweeps)", file=sys.stderr, flush=True)
             if g > 0:
@@ -592,10 +599,29 @@ def add_common(p):
     p.add_argument("--p-max", type=int, default=48)
     p.add_argument("--deficit", type=int, default=48, help="forced give-up once honest leads by this many objects")
     p.add_argument("--verbose", action="store_true")
+    p.add_argument("--rho-lo", type=float, default=0.0, help="bisection bracket for the share")
+    p.add_argument("--rho-hi", type=float, default=1.0)
+    p.add_argument("--rho-tol", type=float, default=1e-5)
+
+
+def window_reach(caps: Caps) -> Tuple[int, int]:
+    """Most window progress each branch can make under the caps. x advances only
+    on that branch's own blocks after its first, by 1 + the pending shares the
+    block embeds (race model: sum(1 + n for n in blocks[1:])), so with a_max
+    blocks and p_max pending shares it is (a_max - 1) * (1 + p_max)."""
+    return (caps.a_max - 1) * (1 + caps.p_max), (caps.h_max - 1) * (1 + caps.p_max)
 
 
 def caps_of(args):
-    return Caps(args.a_max, args.h_max, args.d_max, args.p_max, args.deficit)
+    caps = Caps(args.a_max, args.h_max, args.d_max, args.p_max, args.deficit)
+    ra, rh = window_reach(caps)
+    if max(ra, rh) < WINDOW:
+        print(f"WARNING: under these caps neither branch can reach the {WINDOW}-object window "
+              f"(attacker at most {ra}, honest {rh}): no reveal is ever accepted, every withheld "
+              f"block is lost, so the stubborn chain scores ~0 and the optimum is honest mining. "
+              f"Raise --a-max/--h-max or --p-max so (blocks - 1) * (1 + p_max) >= {WINDOW}.",
+              file=sys.stderr, flush=True)
+    return caps
 
 
 def cmd_enumerate(args):
@@ -631,7 +657,8 @@ def cmd_evaluate(args):
     keys = enumerate_keys(caps, own_net, stubborn=stub, verbose=args.verbose)
     print(f"chain states: {len(keys):,}  [enumerated in {time.time() - t:.0f}s]", file=sys.stderr, flush=True)
     C = Compact(keys, caps, own_net, stubborn=stub)
-    rho, _ = C.share(args.alpha, optimise=False, verbose=args.verbose)
+    rho, _ = C.share(args.alpha, optimise=False, verbose=args.verbose,
+                     lo=args.rho_lo, hi=args.rho_hi, tol=args.rho_tol)
     print(f"window_stubborn give_up_objects={args.give_up_objects} test_own_pending={args.test_own_pending} "
           f"network_own_pending={args.own_pending} alpha={args.alpha}")
     print(f"chain states: {len(keys):,}  attacker revenue share: {rho:.4f}  [{time.time() - t:.1f}s]")
@@ -645,7 +672,8 @@ def cmd_solve(args):
     print(f"alpha={args.alpha} own_pending={args.own_pending} caps: {caps}  states: {len(keys):,}  "
           f"[enumerated in {time.time() - t:.0f}s]", file=sys.stderr, flush=True)
     C = Compact(keys, caps, own_net)
-    rho, V = C.share(args.alpha, optimise=True, verbose=args.verbose)
+    rho, V = C.share(args.alpha, optimise=True, verbose=args.verbose,
+                     lo=args.rho_lo, hi=args.rho_hi, tol=args.rho_tol)
     pol = C.policy(V, rho)
     multi = pol >= 0
     counts = {n: int(((pol == i) & multi).sum()) for i, n in enumerate(ACTION_NAMES)}

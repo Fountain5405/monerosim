@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 sys.path.insert(0, os.path.dirname(__file__))
+import random                                          # noqa: E402
 import sop_mdp as M                                   # noqa: E402
 import sop_race_model as R                            # noqa: E402
 
@@ -127,20 +128,58 @@ def test_enumeration_grows_with_caps():
     assert 10 < n_small < n_big
 
 
-def _mc_share(alpha, own, days=400, seed=3):
-    cfg = R.SimConfig(alpha=alpha, d=5, rule="sop", attacker_embeds=True, days=days, seed=seed,
-                      give_up_objects=5, **R.RULE_PRESETS["20261020" if own else "20261020_noown"])
-    return R.simulate(cfg).attacker_revenue_share
+def _mc_chain(alpha, caps, own_test, own_net, days, seed, idle_drop=False):
+    """Monte Carlo of the scalar chain (event + stubborn_action), G = 5."""
+    rng = random.Random(seed)
+    s = M.START
+    att = hon = 0
+    for _ in range(int(days * 720 * M.W_SHARES)):
+        s = M.event(s, rng.random() < alpha, rng.random() < 1.0 / M.W_SHARES, caps)
+        _, s, fa, fh = M.stubborn_action(s, caps, 5, own_test, own_net)
+        att += fa
+        hon += fh
+        if idle_drop and s[0] == 0 and s[4] == 0 and M.deficit(s) > 5:
+            s = (0, 0, 0, 0, 0, 0, s[6])    # the race model's objects give-up fires while idle
+    return att / (att + hon)
 
 
 @pytest.mark.parametrize("own", [True, False])
-def test_stubborn_chain_matches_race_model_monte_carlo(own):
-    """The chain with the race model's own policy and the race model's own
-    acceptance (network counts own pending iff the test does) reproduces the
-    Monte Carlo share within its noise."""
+def test_stubborn_chain_matches_capped_race_model_monte_carlo(own):
+    """The chain with 3-block caps and no share caps against sop_race_model
+    Model B with cap_blocks=3 (same forced publish/reveal/give-up at the cap).
+    The race model's objects give-up also fires while the attacker holds no
+    block and then drops its pending shares; the chain keeps them (idle_drop
+    mirrors the race model; without it the chain is ~5 % higher: 0.107 vs
+    0.1025 own, 0.1007 vs 0.096 noown at 2000 d, 2026-10-25)."""
     alpha = 0.45
-    caps = M.Caps(a_max=5, h_max=5, d_max=96, p_max=32, deficit=32)
-    keys = M.enumerate_keys(caps, own, stubborn=(5, own, own))
-    rho, _ = M.Compact(keys, caps, own, stubborn=(5, own, own)).share(alpha, optimise=False)
-    mc = sum(_mc_share(alpha, own, seed=s) for s in range(1, 4)) / 3
-    assert abs(rho - mc) < 0.03, (rho, mc)
+    caps = M.Caps(3, 3, 100000, 100000, 100000)
+    cfg = R.SimConfig(alpha=alpha, d=1, rule="sop", attacker_embeds=True, days=500, seed=2,
+                      give_up_objects=5, cap_blocks=3,
+                      **R.RULE_PRESETS["20261020" if own else "20261020_noown"])
+    race = R.simulate(cfg).attacker_revenue_share
+    chain = _mc_chain(alpha, caps, own, own, 500, 2, idle_drop=True)
+    assert abs(chain - race) < 0.004, (chain, race)
+
+
+def test_value_iteration_matches_chain_monte_carlo():
+    """Compact relative VI on the stubborn chain (3/3/40/12/12, count/count)
+    against a Monte Carlo of the same chain: 0.1334 vs 0.1343 on 2026-10-25.
+    (Those caps cannot reach the window, so all the revenue is forced
+    publishes at a == 3, which is exactly the cap rule being checked.)"""
+    caps = M.Caps(3, 3, 40, 12, 12)
+    stub = (5, True, True)
+    keys = M.enumerate_keys(caps, True, stubborn=stub)
+    rho, _ = M.Compact(keys, caps, True, stubborn=stub).share(0.45, optimise=False)
+    mc = _mc_chain(0.45, caps, True, True, 500, 1)
+    assert abs(rho - mc) < 0.006, (rho, mc)
+
+
+def test_window_reach_matches_race_model_counting():
+    """x advances only on a branch's own blocks after its first, by 1 + embedded
+    shares (race model either_window: sum(1 + n for n in blocks[1:])). Caps that
+    cannot reach the window make every withheld block a loss (2026-10-25: the
+    3/3/40/12/12 timing run scored the stubborn chain 0.0000 for that reason)."""
+    assert M.window_reach(M.Caps(3, 3, 40, 12, 12)) == (26, 26)
+    assert max(M.window_reach(M.Caps(3, 3, 40, 12, 12))) < M.WINDOW
+    assert M.window_reach(M.Caps(4, 4, 64, 24, 24)) == (75, 75)
+    assert M.window_reach(M.Caps(3, 3, 48, 20, 20)) == (42, 42)

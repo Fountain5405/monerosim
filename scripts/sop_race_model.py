@@ -289,6 +289,10 @@ class SimConfig:
     count_attacker_pending: bool = False  # MRL #146 2026-10-20: the attacker's own shares on its
                                           # tip count for it under the objective score (it publishes
                                           # them at the reveal)
+    cap_blocks: int = 0                   # scripts/sop_mdp.py truncation (2026-10-25): once either
+                                          # side holds this many blocks since the fork the attacker is
+                                          # forced to act: publish if honest has none, reveal if the
+                                          # network accepts, else give up. 0 = no cap (Model B).
 
 
 # MRL #146 rule versions for the SoP rule (the stock rule ignores them).
@@ -436,9 +440,16 @@ def simulate(cfg: SimConfig) -> SimStats:
             # hon_pending carries on (not reset)
             continue
 
+        forced = cfg.cap_blocks > 0 and (a >= cfg.cap_blocks or h >= cfg.cap_blocks)
         if h == 0:
+            if forced:
+                # publish: the attacker's blocks become final as honest mining
+                # would; both sides' pending shares carry on (sop_mdp do_publish)
+                stats.att_final_blocks += a
+                reset_fork()
+                att_fork, hon_fork = att_pending, hon_pending
             continue  # withhold
-        if h < cfg.release_depth:
+        if h < cfg.release_depth and not forced:
             continue  # deep_hunt: hold until the honest branch is deep enough
 
         if cfg.rule == "sop":
@@ -481,6 +492,15 @@ def simulate(cfg: SimConfig) -> SimStats:
             hon_pending = 0
             att_fork, hon_fork = att_pending, 0
             # att_pending carries on
+            continue
+
+        if forced:
+            # at the cap and the network would not accept a reveal: give up
+            stats.hon_final_blocks += h
+            stats.att_orphaned_blocks += a
+            reset_fork()
+            att_pending = hon_pending if cfg.equal_start else 0
+            att_fork, hon_fork = att_pending, hon_pending
             continue
 
         # else: hold
@@ -622,9 +642,9 @@ def _give_up_token(s: str) -> str:
 
 def _hunt(alphas: List[float], rules: List[str], give_ups: List[str], release_depth: int,
           days: float, seed: int, honest_shares: bool = False,
-          rule_version: str = "20261015") -> None:
+          rule_version: str = "20261015", cap_blocks: int = 0) -> None:
     print(f"# Model B deep-reorg hunter: release_depth={release_depth}, days={days} "
-          f"(fixed-rate), seed={seed}")
+          f"(fixed-rate), seed={seed}" + (f", cap_blocks={cap_blocks}" if cap_blocks else ""))
     print(f"# rule version: {rule_version}")
     if honest_shares:
         print("# SoP attacker uses honest shares as the slot rule allows: its first block embeds the "
@@ -646,6 +666,7 @@ def _hunt(alphas: List[float], rules: List[str], give_ups: List[str], release_de
                                 give_up_objects=n if kind == "o" else -1,
                                 release_depth=release_depth, equal_start=slot,
                                 early_honest_shares=slot, positional_shares=slot,
+                                cap_blocks=cap_blocks,
                                 **(RULE_PRESETS[rule_version] if rule == "sop" else {}))
                 s = simulate(cfg)
                 n10 = s.count_ge(10)
@@ -695,6 +716,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                              "(SimConfig.equal_start, early_honest_shares, positional_shares)")
 
     p_hunt.add_argument("--rule-version", choices=list(RULE_PRESETS), default="20261015")
+    p_hunt.add_argument("--cap-blocks", type=int, default=0,
+                        help="sop_mdp.py truncation: forced publish/reveal/give-up once a side holds "
+                             "this many blocks since the fork (0 = none)")
 
     p_rec = sub.add_parser("reconcile", help="Model B against tevador's deep-reorg simulator")
     p_rec.add_argument("--alpha", type=float, default=1 / 3)   # his ATTACK_HR 3 of 9
@@ -715,7 +739,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         _reconcile(args.alpha, args.days, args.seed, args.give_up_objects, args.release_depth)
     elif args.cmd == "hunt":
         _hunt(args.alphas, args.rules, args.give_ups, args.release_depth, args.days, args.seed,
-              args.honest_shares, args.rule_version)
+              args.honest_shares, args.rule_version, cap_blocks=args.cap_blocks)
     print(f"\n(elapsed: {time.time() - t0:.1f}s)")
     return 0
 
