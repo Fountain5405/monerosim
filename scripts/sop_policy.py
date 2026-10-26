@@ -52,6 +52,29 @@ def sim_stubborn(obs: Obs, G: int = 5) -> int:
     return HOLD
 
 
+def param_stubborn(obs: Obs, G: int = 5, L: int = 0, M: int = 1, R: int = 1, B: int = 0, Z: int = 0) -> int:
+    """sim_stubborn with knobs (2026-10-26, scripts/sop_attacker_search.py):
+    G the objects give-up; L publish an unopposed lead of L blocks (0: never,
+    hold as the sim's rule does); M reveal only with a margin of M objects
+    over the honest branch (1: as soon as the network accepts); R reveal only
+    once the honest branch holds R blocks; B give up when behind by B blocks
+    (0: off); Z hold a pending-shares-only branch against an honest block
+    instead of giving up (the race model's own rule, +0.025 at alpha 0.45
+    over the sim's). The defaults are exactly sim_stubborn."""
+    a, D, xa, pa, h, xh, ph = obs
+    if a == 0 and h > 0 and not Z:
+        return GIVE_UP
+    if h == 0:
+        return PUBLISH if (L > 0 and a >= L) else HOLD
+    if -D + ph - pa > G:
+        return GIVE_UP
+    if B > 0 and h - a >= B:
+        return GIVE_UP
+    if max(xa, xh) >= WINDOW and D - ph >= M and h >= R:
+        return REVEAL
+    return HOLD
+
+
 def load_policy(path: str) -> Tuple[Dict[Obs, int], dict]:
     """(policy keyed by observation tuple -> action, meta with key_clip and
     fallback merged in). Raises FileNotFoundError / ValueError on a bad file."""
