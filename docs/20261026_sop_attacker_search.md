@@ -302,19 +302,23 @@ attacker orphan rate of 0.003 and the health flag "REORG 839/840; SPLIT
 sim time 00:04:50 on day 1 at height 997 (no crash text, the process just
 stops), and 2810 - 997 = 1813. So that run had one honest miner (2.6 of
 7.4 units, an effective alpha of 0.65) for 45 h, and after honest-002's
-daemon died too (sim 21:22 on day 2, the attacker's log shows
-honest_weight 0 at all 702 later publishes) the attacker mined alone. The
+daemon died too (its log ends at sim 21:22 on day 2; the attacker made no
+concession after 20:39, a 27.3 h stuck gap) the attacker mined alone. The
 box's dmesg has the kills (09:03Z and 11:09Z on box80; 04:25Z, at launch,
 and 10:50Z on box82), and each of the three still-running first-round
-cells had 11 of 12 daemons alive when stopped. Cause: a lane of this
-attacker's cells holds about 10 GB of daemon memory (4,000 forks and
-4,500 alternative blocks per run, against 3.5 GB per lane in the stubborn
-campaigns), and two lanes on a 16 GB box leave nothing (memory_alerts.log:
-"RAM 100% used" from 04:51Z on). The campaign's gate (check_run.py) passed
-the run because it does not read the matrix health field; the first-round
-0.47 cell ran alone on box81 and was healthy. Rule from here: one lane per
-16 GB box for this spec; the first-round cell JSONs are kept in
-data/sop_search/sim_round1/ as the record.
+cells had 11 of 12 daemons alive when stopped. Cause: the run's own
+memory_samples.csv puts one lane's daemons at about 6.5 GB (this attacker
+forks far more: 4,008 forks and 4,457 alternative blocks in the a048 s1
+run; the lane driver budgets 3.5 GB per lane from the stubborn
+campaigns), so two lanes on a 16 GB box ran at "RAM 100% used" from
+04:51Z on (memory_alerts.log). The lane gate passed the run because it
+never checked that every daemon stayed alive; it does now (check_run.py
+`dead_daemons`: a daemon whose log ends more than 2 h before the run's
+latest daemon line fails the gate; on the archived runs it flags
+honest-001 and honest-002 in a048 s1 and nothing in the healthy a047 s1).
+The first-round 0.47 cell ran alone on box81 and was healthy. Rule from
+here: one lane per 16 GB box for this spec; the first-round cell JSONs are
+kept in data/sop_search/sim_round1/ as the record.
 
 Second round (the fix 61969161, one lane per box):
 
