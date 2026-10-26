@@ -1,0 +1,30 @@
+{
+ "run_id": "20261026_040527_lean_24_none_h300_k42_w13h_p3_m1_n600_tor1h1h_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_tor1h1h_s12345",
+ "archived_at": "2026-10-26T04:06:08Z",
+ "monerod_sim_sha": "ab6646d74725",
+ "wall": "3h 38m",
+ "exit_code": 0,
+ "min_avail_mb": 161922,
+ "txs_created": 580,
+ "txs_in_blocks": 569,
+ "note": "P42, the relay-churn cell (tor1h1h, stock): exit 0 (5115b02b holds), h 2078, wall 219 m. Light 0.3936 = 1.64x the online-/24 ceiling (~0.24); absolute exposure rises over the no-churn 0.3369. Four of four: (a) hit; (b) hit; (c) hit - churn_cost session counts equal the config (relays 9.7 mean, 2267 sessions/233 nodes); (e) hit. Baselines: restart fill 1.6 m med / 5.0 p90, 2.85 connect + 1.77 handshake failures per relay-hour, 32/2267 unfilled. First precision below 1.0: sp 0.859. E51; run 91.",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.3936,
+ "light_out_quarters": [
+  0.3908,
+  0.4111,
+  0.3899,
+  0.3827
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.188,
+ "stem_txs": 584,
+ "stem_hops_implied": 5.32,
+ "embargo_rate": 0.0034
+}
