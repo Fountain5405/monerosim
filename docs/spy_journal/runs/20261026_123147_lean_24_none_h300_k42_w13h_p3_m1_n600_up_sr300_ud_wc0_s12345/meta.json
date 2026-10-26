@@ -1,0 +1,30 @@
+{
+ "run_id": "20261026_123147_lean_24_none_h300_k42_w13h_p3_m1_n600_up_sr300_ud_wc0_s12345",
+ "box": "simbox3",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_up_sr300_ud_wc0_s12345",
+ "archived_at": "2026-10-26T12:32:52Z",
+ "monerod_sim_sha": "c1a4e6708ac3",
+ "wall": "4h 28m",
+ "exit_code": 0,
+ "min_avail_mb": 81988,
+ "txs_created": 1105,
+ "txs_in_blocks": 1078,
+ "note": "P46, the uniform draw against the active adversary: light 0.5994 = 3.9x - above the 0.30 reading-rule threshold, nothing in the candidate set survives. The draw cuts the eclipse by a third (0.9083 -> 0.5994) and restores direct attribution to the passive level (sp 0.181 at precision 1.000, 28/40 exposed) but cannot hold the subnet share: the fronts' immortal connections accumulate slots under any draw (users p_out 0.449, reachable 0.615). Two of four: (a) missed above, (b) missed (combined 0.391), (c) hit, (d) hit (269 m). E55; run 95.",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.5994,
+ "light_out_quarters": [
+  0.6136,
+  0.6324,
+  0.64,
+  0.5319
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.245,
+ "stem_txs": 1105,
+ "stem_hops_implied": 4.08,
+ "embargo_rate": 0.7303
+}
