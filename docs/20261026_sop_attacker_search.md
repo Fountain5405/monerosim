@@ -332,7 +332,19 @@ Second round (the fix 61969161, one lane per box):
 | a047 s3 | box81 | 10-26 16:35 | 0.472 | (running) | | | | |
 | a048 s1 | box80 | 10-26 11:07 | 0.525 | 0.535 | 0.318 | 0.387 | 173 | 20261026_110702 |
 | a048 s2 | box80 | 10-26 17:48 | 0.525 | (running) | | | | |
-| a050 s1 | box82 | 10-26 11:14 | 0.725 | (running) | | | | |
+| a050 s1 | box82 | 10-26 11:14 | 0.725 | 0.724 (a) | 0.231 | 0.475 | 248 | 20261026_111408 |
+| a050 s2 | box82 | 10-26 19:25 | 0.725 | (running) | | | | |
+
+(a) Health flag "INVALID-CHAIN 1": one 'Sent invalid chain' at
+monero-seed-006 from relay-002 at sim 22:18:09 on day 2. seed-006 had
+asked relay-002 for four blocks from height 2069, synced to 2073 through
+another peer 0.35 s before relay-002's answer arrived, and rejected that
+answer: a sync race during one of this attacker's deep reveals. No ban
+followed, the stale-id count is 0 (the miner bug that flag was built
+for), the non-attacker nodes' chains agree (no split), the oracle has 0
+mismatches over 12 nodes and all 12 daemons ran to the end. Cell
+accepted. Its 35 h of stuck time is the withholding strategy's long
+private runs, not a stall.
 
 The fix is confirmed live in the a047 s1 rerun: in its first 3.7 sim
 hours the attacker's 279 race-start observations all carried a nonzero
