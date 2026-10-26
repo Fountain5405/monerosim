@@ -110,7 +110,46 @@ R=2 0.4688, R=3 0.4695; the sim's rule 0.4862.
 
 ### Stage 3: the curve and the crossing
 
-(pending)
+04:20Z, 2000 d x 3 seeds, alphas 0.40 to 0.50 in steps of 0.01, seven
+configurations and the sim's rule (seed noise ~0.001). Share of the best
+no-withholding attacker (publish_lead 1, Z=1; G=6 to 0.47, G=8 at 0.48,
+G=10 above), the best withholding attacker (L=0: G=8 R=1 to 0.48, G=12
+R=3 at 0.49, G=20 R=3 at 0.50) and the sim's rule:
+
+| alpha | honest | sim's rule | best, no withholding | best, withholding | best overall |
+|---|---|---|---|---|---|
+| 0.40 | 0.40 | 0.0553 | 0.2808 | 0.0570 | 0.2808 |
+| 0.41 | 0.41 | 0.0803 | 0.2933 | 0.0834 | 0.2933 |
+| 0.42 | 0.42 | 0.1124 | 0.3095 | 0.1180 | 0.3095 |
+| 0.43 | 0.43 | 0.1529 | 0.3304 | 0.1622 | 0.3304 |
+| 0.44 | 0.44 | 0.2015 | 0.3566 | 0.2162 | 0.3566 |
+| 0.45 | 0.45 | 0.2562 | 0.3892 | 0.2796 | 0.3892 |
+| 0.46 | 0.46 | 0.3171 | 0.4278 | 0.3520 | 0.4278 |
+| 0.47 | 0.47 | 0.3810 | 0.4724 | 0.4320 | 0.4724 |
+| 0.48 | 0.48 | 0.4467 | 0.5249 | 0.5159 | 0.5249 |
+| 0.49 | 0.49 | 0.5108 | 0.5882 | 0.6172 | 0.6172 |
+| 0.50 | 0.50 | 0.5714 | 0.6553 | 0.7253 | 0.7253 |
+
+Crossings (share passes alpha, interpolated on the 0.01 grid): G=6 L=1
+M=1 R=1 Z=1 0.4693, G=8 L=1 0.4703, G=10 L=1 0.4719, G=8 L=0 0.4751,
+G=12 L=0 R=3 0.4763, G=20 L=0 R=3 0.4804, the sim's rule 0.4861.
+
+Findings. (1) The strongest hand-written attacker found moves SoP's
+profitability threshold from 0.486 to 0.469 in the race model (the sims
+run about 0.003-0.01 lower than the model for the same rule, so expect
+about 0.46 there): still far above the stock network's, where selfish
+mining pays from about 0.40 on this network (0.414/0.381 measured at
+0.40, 0.516/0.540 at 0.45). (2) Below the crossing the no-withholding
+attacker extracts several times what the stubborn rule does (0.28
+against 0.06 at alpha 0.40) by contesting honest blocks with share
+weight, while orphaning half as many blocks (0.19 of all blocks found
+against 0.39); it still earns less than honest mining there, so it is
+irrational, but it is the attack a rational miner would keep in reserve.
+(3) Classic withholding only pays from 0.49, and then with deep reveals
+(three honest blocks orphaned at a time, 20-object patience at 0.50).
+(4) No configuration in the family beats the no-withholding one between
+0.40 and 0.48 and the search was exhaustive over its six knobs at the
+grid resolution used; a tighter G grid around 6 could add a few thousandths.
 
 ## Validation in the sims
 

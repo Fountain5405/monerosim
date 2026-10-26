@@ -47,7 +47,14 @@ axes:
     # (publish_lead 1) and wins by contesting honest blocks with its share
     # weight (hold_shares 1); at 0.50 it withholds (publish_lead 0) and reveals
     # only against three honest blocks (reveal_depth 3). Model predictions
-    # (1000 d x 2 seeds): 0.526 at 0.48, 0.727 at 0.50.
+    # (1000 d x 2 seeds): 0.526 at 0.48, 0.727 at 0.50. a047 (stage 3, 2000 d
+    # x 3 seeds): the publish-lead family with give-up 6 scores 0.472 right at
+    # the model's crossing (0.469), the cell that tests the headline number.
+    a047:
+      attacker:
+        hashrate: 4.7
+        attributes: {give_up_objects: '6', hold_shares: '1', publish_lead: '1', reveal_margin: '1', reveal_depth: '1', block_deficit: '0'}
+      honest: {hashrate: [2.65, 2.65]}
     a048:
       attacker:
         hashrate: 4.8
