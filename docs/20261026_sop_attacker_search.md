@@ -159,6 +159,39 @@ within the seed noise; the best give-up drifts up with alpha (5 at
 thousandths. At alpha 0.47 the best attacker earns 0.4724, 0.0024 above
 honest.
 
+### The stock network in the same model
+
+For the comparison point, the model's stock stubborn attacker (no window,
+no shares; withhold while unopposed, reveal once ahead by a block after
+an honest block, give up when behind by d blocks) over d and alpha,
+2000 d x 3 seeds (05:45Z; `scripts/sop_stock_crossing.py`,
+data/sop_search/stock_crossing.jsonl):
+
+| alpha | d=1 | d=2 | d=3 |
+|---|---|---|---|
+| 0.30 | 0.2575 | 0.2620 | 0.2504 |
+| 0.34 | 0.3166 | 0.3243 | 0.3147 |
+| 0.36 | 0.3474 | 0.3569 | 0.3489 |
+| 0.38 | 0.3785 | 0.3901 | 0.3842 |
+| 0.40 | 0.4104 | 0.4239 | 0.4206 |
+| 0.42 | 0.4425 | 0.4580 | 0.4576 |
+| 0.44 | 0.4745 | 0.4920 | 0.4950 |
+
+Crossings: d=2 0.3648, d=3 0.3746, d=1 0.3825. The sims' stock cells
+(window_stubborn on the stock network) measured 0.398 at 0.40 and 0.528
+at 0.45, i.e. a crossing near 0.40 there; the model's stock attacker is
+a little stronger than the sims' at 0.40 (0.424), the opposite sign to
+the SoP case, which is consistent with propagation effects favouring
+whichever side is revealing against the slower network. The textbook
+optimum for a zero-propagation-advantage selfish miner is 1/3; this
+family is not optimal and lands at 0.365.
+
+**The headline, all in one model and one attacker family:** SoP moves the
+profitability threshold from 0.365 (stock, best d) to 0.469 (the
+strongest SoP attacker found) and 0.486 (the sims' stubborn rule). The
+attacker that sets the SoP figure does not withhold blocks below 0.49;
+it contests honest blocks with share weight.
+
 ## Experiment 2: the countermeasure's K and w
 
 K is the window depth in blocks and w the shares per block; the window a
