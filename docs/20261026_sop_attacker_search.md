@@ -325,7 +325,8 @@ Second round (the fix 61969161, one lane per box):
 | cell | box | start (UTC) | model | sims share | att. orphan | net. orphan | reveals/72 h | run |
 |---|---|---|---|---|---|---|---|---|
 | a045 s1 | lithium | 10-26 16:10 | 0.389 | (running) | | | | |
-| a046 s1 | phantom | 10-26 10:29 | 0.428 | (running) | | | | |
+| a046 s1 | phantom | 10-26 10:29 | 0.428 | 0.450 | 0.348 | 0.339 | 127 | 20261026_102909 |
+| a046 s2 | phantom | 10-26 16:20 | 0.428 | (running) | | | | |
 | a047 s1 | box81 | 10-26 10:03 | 0.472 | (running) | | | | |
 | a047 s2 | lithium | 10-26 10:29 | 0.472 | 0.514 | 0.308 | 0.368 | 160 | 20261026_102904 |
 | a048 s1 | box80 | 10-26 11:07 | 0.525 | (running) | | | | |
