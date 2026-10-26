@@ -148,6 +148,7 @@ class QTable:
         self.n_min = n_min                   # updates an action needs at a key before it can be the greedy one
         self.q: Dict[Obs, List[float]] = {}
         self.n: Dict[Obs, List[int]] = {}    # updates per action
+        self.ref: Optional[Obs] = None       # the reference key train() used last (the most visited one)
         self.visits: Dict[Obs, int] = {}
         self.legal: Dict[Obs, int] = {}      # bits 0-3: legal actions as first seen; bits 4-7: actions tried
 
@@ -242,7 +243,6 @@ def legal_fallback(a: int, legal) -> int:
 
 
 
-REF_REFRESH = 50_000   # steps between re-picking the reference key (the most visited one)
 MAX_RACE = 4096        # race_returns: a race longer than this (objects) is flushed with a bootstrap
 
 
@@ -256,9 +256,11 @@ def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None
     V(ref) = max_legal Q(ref). The step size decays per key with its visit
     count n: a_n = max(lr_min, 1 / (1 + lr * n)) (the first update takes the
     full target, so a new row's zeros never linger). The reference key is
-    the most visited one so far, re-picked every REF_REFRESH steps (START
-    itself is almost never visited: a settled fork leaves pending shares on
-    one side, so a fixed START anchor let the values drift). Epsilon decays
+    the most visited one so far, tracked at every update (START itself is
+    almost never visited: a settled fork leaves pending shares on one side,
+    so a fixed START anchor let the values drift; re-picking it by a scan
+    of the visits dict every 50k steps cost a third of each rho's wall time
+    at millions of keys, 2026-10-26). Epsilon decays
     linearly over the budget; illegal actions are never chosen nor maximised
     over; the greedy choice is over actions already tried. Warm-startable
     through `q`.
@@ -302,6 +304,7 @@ def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None
     buf: List[tuple] = []   # race_returns: (row, k, a, r, k2, legal2, exploratory, fb2) since the last settled state
 
     def flush() -> None:
+        nonlocal kref
         vref = q.value(kref)
         G = 0.0
         cut = True            # the race's last step bootstraps from its settled successor
@@ -315,6 +318,8 @@ def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None
                 st = lr_min
             row_t[a_t] += st * (G - row_t[a_t])
             q.visits[k_t] = n + 1
+            if n + 1 > q.visits[kref]:
+                kref = k_t
             q.n[k_t][a_t] += 1
             q.legal[k_t] |= 1 << (4 + a_t)
             cut = expl_t
@@ -358,15 +363,16 @@ def train(env, alpha: float, rho: float, budget: int, q: Optional[QTable] = None
                 step = lr_min
             row[a] += step * (r - vref + m2 - row[a])
             q.visits[k] = n + 1
+            if n + 1 > q.visits[kref]:
+                kref = k
             q.n[k][a] += 1
             q.legal[k] |= 1 << (4 + a)
         o, legal, k, row = o2, legal2, k2, row2
         eps += de
         beta += dbeta
-        if t % REF_REFRESH == REF_REFRESH - 1:
-            kref = max(q.visits, key=q.visits.get)
     if buf:
         flush()
+    q.ref = kref
     return q
 
 
@@ -396,6 +402,7 @@ class TablePolicy:
 
 def _copy_table(q: QTable) -> QTable:
     c = QTable(q.d_clip, q.p_clip, q.d_bin, q.p_bin, q.n_min)
+    c.ref = q.ref
     c.q = {k: list(v) for k, v in q.q.items()}
     c.n = {k: list(v) for k, v in q.n.items()}
     c.visits = dict(q.visits)
@@ -446,7 +453,9 @@ def share_search(make_env: Callable[[int], object], alpha: float, budget: int, l
                   f"stored={sum(r.get('stored_hits', 0) for r in rows) / max(1, sum(r.get('decisions', 0) for r in rows)):.3f} "
                   f"[{time.time() - t:.0f}s]", file=log, flush=True)
         if share > best_share:
-            best_share, best_q = share, _copy_table(q)
+            best_share = share
+            best_q = None              # drop the old best before copying the new one (peak: two tables)
+            best_q = _copy_table(q)
         else:
             q = None                   # drop the failed probe's table before copying (peak: two tables)
             q = _copy_table(best_q)

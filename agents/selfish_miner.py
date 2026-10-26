@@ -276,6 +276,12 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                                             give_up_objects=self.give_up_objects,
                                             policy_file=self.policy_file,
                                             alpha=self.alpha)
+            if self.strategy.name == "learned":
+                # the one place a placeholder policy (an empty diff: the stubborn attacker under the
+                # learned name) shows: the file, its entries, and the meta the trainer wrote
+                meta = self.strategy.policy_meta or {}
+                self.logger.info(f"learned: policy_file={self.policy_file} entries={len(self.strategy.policy)} "
+                                 f"env={meta.get('env')} alpha={meta.get('alpha')} share={meta.get('share')}")
 
     @staticmethod
     def _header_difficulty(h) -> int:

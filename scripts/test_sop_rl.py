@@ -135,6 +135,52 @@ def test_train_follows_the_behaviour_policy_where_nothing_is_confident():
     assert stub > 0.7 * sum(sum(q.n[k]) for k in q.q)                     # ... but stubborn's action dominates
 
 
+def test_reference_key_tracks_the_most_visited_key_without_rescans():
+    # re-picking the reference by max() over the visits dict every REF_REFRESH steps cost 0.8 s per
+    # 5 M keys on lithium (2026-10-26), 4000 times per 2e8-step rho; the reference is tracked as
+    # visits grow instead. budget < REF_REFRESH: no rescan ever runs, the tracking alone must hold.
+    caps = M.Caps(3, 3, 40, 12, 12)
+    env = RL.MdpEnv(0.45, caps)
+    env.reset(1)
+    q = RL.train(env, 0.45, rho=0.3, budget=1000, seed=1)
+    assert q.visits[q.ref] == max(q.visits.values()) > 1
+    env.reset(2)
+    q = RL.train(env, 0.45, rho=0.3, budget=1000, seed=2, race_returns=True)
+    assert q.visits[q.ref] == max(q.visits.values()) > 1
+
+
+def test_share_search_frees_the_old_best_table_before_copying_a_better_one(monkeypatch):
+    # three multi-GB tables were alive at the peak of an improvement (the training table, the old
+    # best and its copy); the old best must be gone before the copy is made
+    import weakref
+    shares = iter([0.52, 0.56, 0.58, 0.40])      # three improvements, then a failed probe
+    copies = []
+    real_copy = RL._copy_table
+
+    def spy_copy(src):
+        if copies and src is not copies[-1]():   # an improvement copies the training table, not the best
+            assert copies[-1]() is None, "the old best table is still alive while the new one is copied"
+        c = real_copy(src)
+        copies.append(weakref.ref(c))
+        return c
+
+    def fake_train(env, alpha, rho, budget, q=None, **kw):
+        t = RL.QTable()
+        t.q[(len(copies),)] = [0.0, 0.0, 0.0, 0.0]
+        return t
+
+    monkeypatch.setattr(RL, "_copy_table", spy_copy)
+    monkeypatch.setattr(RL, "train", fake_train)
+    monkeypatch.setattr(RL, "rollout", lambda env, policy, n: {"share": next(shares)})
+
+    class E:
+        def reset(self, seed):
+            pass
+
+    out = RL.share_search(lambda seed: E(), 0.5, budget=1, lo=0.5, hi=0.6, tol=0.01, eval_objects=1, seeds=(1,))
+    assert out["share"] == 0.58 and len(copies) == 4
+
+
 def test_table_policy_falls_back_and_respects_legality():
     q = RL.QTable()
     pol = RL.TablePolicy(q)

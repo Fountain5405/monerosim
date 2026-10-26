@@ -1294,3 +1294,20 @@ def test_learned_strategy_attributes_are_plumbed(tmp_path):
     a._ensure_strategy(0)
     assert a.strategy.name == "learned" and a.strategy.alpha == 0.45
     assert a.strategy.policy == {}
+
+
+def test_learned_strategy_logs_the_policy_size_at_start(tmp_path):
+    # a placeholder policy (empty diff) runs the stubborn attacker under the learned name; the only
+    # place that shows is this line, so it must name the file, its entries, the meta env and alpha
+    import gzip
+    import json
+    pf = tmp_path / "p.json.gz"
+    with gzip.open(pf, "wt") as f:
+        json.dump({"meta": {"alpha": 0.45, "env": "placeholder"}, "key_clip": {"d": 128, "p": 48, "d_bin": 1},
+                   "fallback": "sim_stubborn", "policy": {"1,2,32,0,1,32,1": "hold"}}, f)
+    a = _make_agent(strategy="learned", start_height=0,
+                    extra=(("policy_file", str(pf)), ("alpha", "0.45"), ("window_rule", "20261020"),
+                           ("window_objects", "32"), ("give_up_objects", "5"), ("weigh", "sop")))
+    messages = [c.args[0] for c in a.logger.info.call_args_list]
+    assert any("learned: policy" in m and "entries=1" in m and "env=placeholder" in m and "alpha=0.45" in m
+               for m in messages), messages
