@@ -264,6 +264,10 @@ First round (launched 04:22Z 10-26 from local commit 81a3820e):
 | cell | box | knobs | model | sims share | att. orphan | net. orphan | reveals/72 h | run |
 |---|---|---|---|---|---|---|---|---|
 | a047 s1 | box81 | G=6 L=1 M=1 R=1 Z=1 | 0.472 | 0.464 | 0.108 | 0.104 | 36 | 20261026_042332 |
+| a048 s1 | box80 | G=8 L=1 M=1 R=1 Z=1 | 0.525 | (0.858: invalid, honest-001's daemon dead from sim 00:04:50) | 0.003 | 0.110 | 83 | 20261026_042327 |
+| a048 s2 | box80 | G=8 L=1 M=1 R=1 Z=1 | 0.525 | stopped 11:10Z at 49.5 h (11 of 12 daemons alive) | | | | 20261026_042457 |
+| a050 s1 | box82 | G=20 L=0 M=1 R=3 Z=1 | 0.725 | stopped 11:11Z at 45 h (11 of 12 daemons alive) | | | | 20261026_042142 |
+| a050 s2 | box82 | G=20 L=0 M=1 R=3 Z=1 | 0.725 | stopped 11:11Z at 41 h (11 of 12 daemons alive) | | | | 20261026_042312 |
 
 The 0.47 cell (rc 0, oracle 0 mismatches, 86,600 decisions all from the
 policy, 2,085 blocks) came in 0.008 under the model, but its structure
@@ -290,12 +294,43 @@ expectations (share above the ES curves and above honest), which every
 SoP cell below the crossing fails by design; health was ok.
 
 The four other first-round cells (box80 a048 s1+s2, box82 a050 s1+s2)
-ran the same crippled measurement; they are recorded below when they
-finish and then rerun with the fix, as a047 is.
+ran the same crippled measurement, and a second, independent defect: the
+kernel's out-of-memory killer took one daemon from each of them. The
+a048 s1 run finished first (10:30Z) with share 0.858, gamma 0.81, an
+attacker orphan rate of 0.003 and the health flag "REORG 839/840; SPLIT
+1813". The split depth is the giveaway: honest-001's monerod log ends at
+sim time 00:04:50 on day 1 at height 997 (no crash text, the process just
+stops), and 2810 - 997 = 1813. So that run had one honest miner (2.6 of
+7.4 units, an effective alpha of 0.65) for 45 h, and after honest-002's
+daemon died too (sim 21:22 on day 2, the attacker's log shows
+honest_weight 0 at all 702 later publishes) the attacker mined alone. The
+box's dmesg has the kills (09:03Z and 11:09Z on box80; 04:25Z, at launch,
+and 10:50Z on box82), and each of the three still-running first-round
+cells had 11 of 12 daemons alive when stopped. Cause: a lane of this
+attacker's cells holds about 10 GB of daemon memory (4,000 forks and
+4,500 alternative blocks per run, against 3.5 GB per lane in the stubborn
+campaigns), and two lanes on a 16 GB box leave nothing (memory_alerts.log:
+"RAM 100% used" from 04:51Z on). The campaign's gate (check_run.py) passed
+the run because it does not read the matrix health field; the first-round
+0.47 cell ran alone on box81 and was healthy. Rule from here: one lane per
+16 GB box for this spec; the first-round cell JSONs are kept in
+data/sop_search/sim_round1/ as the record.
 
-Second round (the fix, from the commit after e304ceee):
+Second round (the fix 61969161, one lane per box):
 
-(pending)
+| cell | box | start (UTC) | model | sims share | att. orphan | net. orphan | reveals/72 h | run |
+|---|---|---|---|---|---|---|---|---|
+| a046 s1 | phantom | 10-26 10:29 | 0.428 | (running) | | | | |
+| a047 s1 | box81 | 10-26 10:03 | 0.472 | (running) | | | | |
+| a047 s2 | lithium | 10-26 10:29 | 0.472 | (running) | | | | |
+| a048 s1 | box80 | 10-26 11:07 | 0.525 | (running) | | | | |
+| a050 s1 | box82 | 10-26 11:14 | 0.725 | (running) | | | | |
+
+The fix is confirmed live in the a047 s1 rerun: in its first 3.7 sim
+hours the attacker's 279 race-start observations all carried a nonzero
+pending count (mode 4, tail to 33), where the first round read 0 at all
+8,665; it had made 3 reveals and 8 publishes by then (model: about 4
+reveals in 3.7 h).
 
 ## Fidelity audit: sims vs race model
 
