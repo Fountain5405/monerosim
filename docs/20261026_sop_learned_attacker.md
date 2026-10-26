@@ -254,8 +254,19 @@ Options, in the order I would take them:
   (80,378 reveals per run, reorg 3.76/20, 96% of decisions from the
   table), the best any learner managed, just under the stubborn rule's
   0.5715 and well under the hand-written family's 0.725 at the same
-  alpha (docs/20261026_sop_attacker_search.md). Its bisection continues;
-  later steps are recorded here only if they pass 0.725.
+  alpha (docs/20261026_sop_attacker_search.md). Bisection done 08:30Z
+  (7 steps, 3.2 h; rho 0.583, converged; best rollout 0.5915 at step 4,
+  the other steps 0.575-0.589; 161,003 keys, 594 entries differ from
+  sim_stubborn; data/sop_rl/policy_noown_a050_coarse.json.gz). The
+  design's own check, a separate 5-seed x 2000 d eval of the exported
+  table: 0.5772 (0.5759-0.5786) against sim_stubborn's 0.5715 on the
+  same seeds, with 16% of decisions from the table. So block-granular
+  keys do let the learner improve on the rule it was warm-started from,
+  by 0.006 (seed noise 0.001), under the ladder's +0.01 bar and 0.15
+  under the searched hand-written family at the same alpha; the
+  bisection's 0.5915 was selection over noisy steps. The verdict stands:
+  the learner is not the way to the strongest attacker here, the search
+  is. The policy file is kept as the record.
 - D. Function approximation (a small network over the 7 features). A
   new design; days; the least predictable.
 
