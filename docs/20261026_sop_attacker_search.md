@@ -52,7 +52,28 @@ Seed noise at 1000 d is about 0.003 (0.001 at 2000 d, measured 2026-10-25).
 
 ### Stage 1 (G x Z)
 
-(pending)
+03:22Z, 72 runs in 192 s on 16 workers (a 1000 d rollout takes ~43 s).
+Mean share over 2 seeds; the sim's rule is G=5 Z=0.
+
+| alpha | honest | sim's rule (2000 d) | best | share | reveals/run | att. orphan | net. orphan | mean/max reorg |
+|---|---|---|---|---|---|---|---|---|
+| 0.45 | 0.45 | 0.2562 | G=8 Z=1 | 0.2809 | 29,049 | 0.643 | 0.428 | 3.44/17 |
+| 0.45 | | | G=5 Z=1 | 0.2755 | 29,495 | 0.648 | 0.424 | 3.25/16 |
+| 0.48 | 0.48 | 0.4467 | G=8 Z=1 | 0.5173 | 51,802 | 0.400 | 0.443 | 3.49/22 |
+| 0.48 | | | G=12 Z=1 | 0.5172 | 47,956 | 0.408 | 0.450 | 3.82/37 |
+| 0.50 | 0.50 | 0.5714 | G=20 Z=1 | 0.7149 | 56,024 | 0.240 | 0.468 | 4.47/47 |
+| 0.50 | | | G=40 Z=1 | 0.7125 | 39,466 | 0.259 | 0.480 | 6.39/133 |
+| 0.50 | | | G=12 Z=1 | 0.7035 | 64,774 | 0.239 | 0.459 | 3.77/31 |
+
+Findings: Z=1 (keep a pending-shares-only branch alive against an honest
+block, as the race model's own rule does) helps at every alpha; the best
+give-up threshold grows with alpha (8 objects at 0.45-0.48, 20 at 0.50,
+where a 40-object patience still scores 0.71 with reorgs of up to 133
+blocks). At 0.48 the attack becomes profitable (0.517 against honest's
+0.48) where the sim's rule was not (0.447). Interpolated crossings over
+the three alphas: G=8 Z=1 0.4746, G=12 Z=1 0.4750, G=5 Z=1 0.4776, the
+sim's rule 0.4862 (0.4864 on the 2000 d baseline). The network orphan
+rate under the stronger attacker rises to 0.43-0.48 of all blocks found.
 
 ### Stage 2 (L x M x R)
 
@@ -71,4 +92,30 @@ sims' share by 0.016 at 0.45 and 0.033 at 0.50 for the same rule; the
 orphan rates say whether that is network propagation (honest blocks lost
 to natural forks, favouring the attacker) or a rule difference.
 
-(pending)
+Baseline (03:23Z): the sim's rule on the race model at the sims' alphas,
+2000 d x 3 seeds, against the 72 h noown cells (n = 2 or 4 per alpha):
+
+| alpha | sims share | model share | diff | sims att. orphan | model | sims net. orphan | model | model reveals/day | reorg |
+|---|---|---|---|---|---|---|---|---|---|
+| 0.33 | 0.0010 | 0.0016 | -0.0006 | 0.998 | 0.997 | 0.330 | 0.330 | 0.2 | 2.40 |
+| 0.40 | 0.0647 | 0.0553 | +0.0094 | 0.900 | 0.915 | 0.385 | 0.387 | 6.0 | 2.55 |
+| 0.45 | 0.2726 | 0.2562 | +0.0163 | 0.638 | 0.656 | 0.398 | 0.396 | 27.0 | 2.69 |
+| 0.46 | 0.3414 | 0.3171 | +0.0243 | 0.544 | 0.581 | 0.385 | 0.393 | 33.5 | 2.70 |
+| 0.47 | 0.3933 | 0.3810 | +0.0124 | 0.480 | 0.505 | 0.385 | 0.389 | 40.4 | 2.71 |
+| 0.48 | 0.4591 | 0.4467 | +0.0124 | 0.414 | 0.427 | 0.392 | 0.385 | 47.7 | 2.71 |
+| 0.50 | 0.6035 | 0.5714 | +0.0321 | 0.252 | 0.284 | 0.382 | 0.373 | 62.1 | 2.68 |
+
+The model reproduces the sims' orphan structure: the network orphan rate
+within 0.01 everywhere, the attacker's own orphan rate within 0.04. The
+share gap is one-signed: the sims give the attacker 0.01-0.03 more at
+every alpha above 0.33, and the attacker loses fewer of its blocks there
+(0.252 vs 0.284 at 0.50) while the network loses slightly more. That is
+the signature of a propagation advantage in the 12-daemon network (an
+attacker's reveal lands before competing honest blocks have spread, and
+honest blocks found meanwhile are lost), not of a rule difference, which
+would show in the reveal/give-up structure. The model's crossing (0.4864
+for the sim's rule) is therefore an upper bound on the sims' (about
+0.483 measured), and the model is a conservative tool for the sweeps:
+what it finds profitable, the sims find at least as profitable.
+The sims' block count is 1924-1968 per 72 h (a 132-135 s interval); the
+model's reveal rate scales with it.
