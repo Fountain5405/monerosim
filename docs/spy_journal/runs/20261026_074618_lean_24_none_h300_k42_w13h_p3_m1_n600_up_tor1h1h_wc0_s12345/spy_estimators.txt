@@ -1,0 +1,37 @@
+spies: 42 (42 logging)   txs: 586 (586 seen by a spy)   senders: unreachable 37, reachable 0, busy 5   (busy = reachable with >= 5 txs)
+
+estimator class            n  guesses  correct  recall [95% CI]          precision [95% CI]      
+sp        unreachable    525      191      178  0.339 [0.28,0.40]        0.932 [0.89,0.96]       
+sp        reachable        0      305        0      -                    0.000 [0.00,0.00]       
+sp        busy            61       45       21  0.344 [0.14,0.60]        0.467 [0.10,0.72]       
+sp_r      unreachable    525      191      178  0.339 [0.28,0.40]        0.932 [0.89,0.96]       
+sp_r      reachable        0        0        0      -                        -                   
+sp_r      busy            61        0        0  0.000 [0.00,0.00]            -                   
+fs        unreachable    525        6        3  0.006 [0.00,0.01]        0.500 [0.00,1.00]       
+fs        reachable        0      445        0      -                    0.000 [0.00,0.00]       
+fs        busy            61      134        3  0.049 [0.00,0.15]        0.022 [0.00,0.07]       
+combined  unreachable    525      191      178  0.339 [0.28,0.40]        0.932 [0.89,0.96]       
+combined  reachable        0      346        0      -                    0.000 [0.00,0.00]       
+combined  busy            61       49       21  0.344 [0.14,0.60]        0.429 [0.09,0.69]       
+
+Ground truth: txs the origin stemmed straight to a spy (caps sp recall)
+  unreachable  178/522 = 0.341
+  busy         21/61 = 0.344
+
+P(sender has >= 1 tx attributed by sp_r), by tx count: exposed/senders
+  unreachable  10-19: 24/26  2-4: 0/1  5-9: 4/5  20+: 4/4  1: 1/1
+  busy         10-19: 0/4  5-9: 0/1
+
+P(sender has >= 1 tx attributed by combined), by tx count: exposed/senders
+  unreachable  10-19: 24/26  2-4: 0/1  5-9: 4/5  20+: 4/4  1: 1/1
+  busy         10-19: 4/4  5-9: 1/1
+
+Exposure over the activity window, sim 54000-68400 s
+
+p_stem (spy share of stem peers, per epoch)
+  unreachable  nodes   40   median of node means 0.367   ever had a spy 1.0
+  reachable    nodes  300   median of node means 0.349   ever had a spy 0.993
+
+p_out (spy share of outbound peers, per window)
+  unreachable  nodes   40   median of node means 0.309   ever had a spy 1.0
+  reachable    nodes  298   median of node means 0.31   ever had a spy 1.0
