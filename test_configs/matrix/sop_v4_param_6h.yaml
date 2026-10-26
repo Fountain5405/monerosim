@@ -1,0 +1,53 @@
+# sop_v4_param_6h (2026-10-26): the 6 h smoke cell for the PARAM_STUBBORN
+# attacker (strategy param_stubborn: the window_stubborn noown rule with the
+# knobs found by the race-model search, docs/20261026_sop_attacker_search.md),
+# at alpha 0.50 where the gain over the sim's rule is largest. Before the
+# 72 h cells (sop_v4_param_72h): grep the attacker log for
+# `param_stubborn: G=.. L=..`, reveals, rejected reveals and the `learned:`
+# counter lines; compare the share's direction with the model's prediction.
+name: sop_v4_param_6h
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 6h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: param_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          window_objects: '32'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          count_own_tip_shares: 'false'
+          give_up_depth: '5'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    sop2_param:
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+  alpha:
+    # the knobs ride on the alpha axis: the search picks them per alpha
+    # (stage 1 values until stage 3 settles them)
+    a050:
+      attacker:
+        hashrate: 5
+        attributes: {give_up_objects: '20', hold_shares: '1', publish_lead: '0', reveal_margin: '1', reveal_depth: '1', block_deficit: '0'}
+      honest: {hashrate: [2.5, 2.5]}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'

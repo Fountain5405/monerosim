@@ -1,0 +1,65 @@
+# sop_v4_param_72h (2026-10-26): the PARAM_STUBBORN attacker (strategy
+# param_stubborn: the window_stubborn noown rule with the knobs G give-up
+# objects, L publish lead, M reveal margin, R reveal depth, B block deficit,
+# Z hold shares, found by the race-model search in
+# docs/20261026_sop_attacker_search.md) on the sop_v4_o5_noown_72h network
+# and attacker settings. Validation cells only (owner 2026-10-25: sims are
+# for calibration and validation): the best knobs per alpha at 0.48 and
+# 0.50, two draws each, compared with the model's prediction for the same
+# knobs. The countermeasure name differs from sop2/sop2_noown so cell and
+# run names do not collide. Smoke first: sop_v4_param_6h.
+name: sop_v4_param_72h
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 2
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: param_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          window_objects: '32'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          count_own_tip_shares: 'false'
+          give_up_depth: '5'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    sop2_param:
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+  alpha:
+    # the knobs ride on the alpha axis: the search picks them per alpha
+    # (stage 1 values until stage 3 settles them)
+    a048:
+      attacker:
+        hashrate: 4.8
+        attributes: {give_up_objects: '8', hold_shares: '1', publish_lead: '0', reveal_margin: '1', reveal_depth: '1', block_deficit: '0'}
+      honest: {hashrate: [2.6, 2.6]}
+    a050:
+      attacker:
+        hashrate: 5
+        attributes: {give_up_objects: '20', hold_shares: '1', publish_lead: '0', reveal_margin: '1', reveal_depth: '1', block_deficit: '0'}
+      honest: {hashrate: [2.5, 2.5]}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+    s2:
+      attacker:
+        attributes:
+          sample: '2'
