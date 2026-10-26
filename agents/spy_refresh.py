@@ -140,7 +140,7 @@ def main():
             self._interval = float(args.refresh_interval or a.get("refresh_interval") or 300)
             self._ports = list(range(args.front_port_base,
                                      args.front_port_base + max(1, args.front_port_count)))
-            self._rotate = max(1, args.rotate_period)
+            self._rotate = max(1, int(args.rotate_period or a.get("rotate_period") or 1800))
             self._daemon_ip = (self.rpc_host
                                if self.rpc_host not in (None, "", "127.0.0.1")
                                else _local_ip())
