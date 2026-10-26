@@ -233,6 +233,14 @@ no-withholding one under every setting at these alphas, with its give-up
 threshold scaling with w (about half a block of objects: 4 at w=8, 8 at
 w=16, 16 at w=32); at the longer windows a reveal depth of 3 helps.
 
+Precision check (09:15Z; each setting's best attacker over alphas 0.44
+to 0.50 by 0.01, 2000 d x 3 seeds; data/sop_search/kw_fine.jsonl): the
+crossings are 0.4468 (window 8), 0.4599 (16 via K=3, w=8), 0.4630 (16
+via K=2, w=16), 0.4703 (32, the default), 0.4797 (64), 0.4811 (80),
+0.4855 (160), all within 0.002 of the sweep's values. Defender's rule of
+thumb from this: each doubling of the window length in objects raises the
+threshold by about 0.01 up to 64 objects, and by less beyond.
+
 ## Validation in the sims
 
 ### Smoke (6 h, alpha 0.50, G=20 Z=1, L=0 M=1 R=1)
