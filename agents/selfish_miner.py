@@ -1040,12 +1040,16 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                                  f"fallback={self.strategy.fallback_decisions} "
                                  f"clipped={self.strategy.clipped_decisions} "
                                  f"suppressed_reveals={self.strategy.suppressed_reveals}")
-        if (self.strategy_name in ("window_stubborn", "deep_hunt") and decision.release_to is not None
+        if (self.strategy_name in ("window_stubborn", "deep_hunt", "learned", "param_stubborn")
+                and decision.release_to is not None
                 and pub_height >= self.strategy.start_height):   # warm-up publishes everything
             fork = decision.release_from
-            att_objects, att_weight, hon_weight = self.strategy.last_weights[:3]
+            att_objects, att_weight, hon_weight = (self.strategy.last_weights or (0, 0, 0))[:3]
+            # the check gate counts "<strategy>: reveal" lines; a learned/param release with no
+            # honest block (publish_lead) orphans nothing and is logged as a publish instead
+            kind = "publish" if (self.strategy_name in ("learned", "param_stubborn") and pub_height == fork) else "reveal"
             self.logger.info(
-                f"{self.strategy_name}: reveal fork={fork} a={priv_height - fork} "
+                f"{self.strategy_name}: {kind} fork={fork} a={priv_height - fork} "
                 f"h={pub_height - fork} objects={att_objects} weight={att_weight} "
                 f"honest_weight={hon_weight}")
 

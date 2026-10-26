@@ -1296,6 +1296,34 @@ def test_learned_strategy_attributes_are_plumbed(tmp_path):
     assert a.strategy.policy == {}
 
 
+def test_param_stubborn_reveal_is_logged():
+    # the check gate and the campaign scripts count reveals from the "<strategy>: reveal fork=" line;
+    # the 6 h smoke of 2026-10-26 showed reveals=0 for a run that did reveal (only window_stubborn
+    # and deep_hunt logged it)
+    a = _make_agent(strategy="param_stubborn", start_height=0,
+                    extra=(("window_rule", "20261020"), ("window_objects", "1"), ("give_up_objects", "8"),
+                           ("weigh", "sop")))
+    a._start_synced = True
+    a.daemon_rpc.get_block.side_effect = lambda height: {
+        "blob": f"priv{height}", "block_header": {"hash": f"ph{height}"}}
+    a.bridge_rpc.get_block.side_effect = lambda height: {
+        "blob": f"pub{height}", "block_header": {"hash": f"hh{height}"}}
+    a.daemon_rpc.get_block_headers_range.return_value = [
+        {"difficulty": 16, "major_version": 16, "minor_version": 16 + 0},
+        {"difficulty": 16, "major_version": 16, "minor_version": 16 + 0},
+    ]
+    a.bridge_rpc.get_block_headers_range.return_value = [
+        {"difficulty": 16, "major_version": 16, "minor_version": 16 + 0},
+    ]
+    # a=2 (fork 0..1), h=1: past the 1-object window, D 1 > ph 0 -> reveal
+    a.bridge_rpc.get_info.return_value = {"height": 1}
+    a.daemon_rpc.get_info.return_value = {"height": 2}
+    a.run_iteration()
+    messages = [c.args[0] for c in a.logger.info.call_args_list]
+    assert any("param_stubborn: reveal fork=0 a=2 h=1 objects=2 weight=2 honest_weight=1" in m
+               for m in messages), messages
+
+
 def test_param_stubborn_attributes_are_plumbed_and_logged():
     a = _make_agent(strategy="param_stubborn", start_height=0,
                     extra=(("window_rule", "20261020"), ("window_objects", "32"), ("give_up_objects", "8"),

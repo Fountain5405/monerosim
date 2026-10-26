@@ -42,17 +42,21 @@ axes:
         daemon: monerod-sim
         daemon_options: {sim-share-or-perish: true}
   alpha:
-    # the knobs ride on the alpha axis: the search picks them per alpha
-    # (stage 1 values until stage 3 settles them)
+    # the knobs ride on the alpha axis: the search's best per alpha (stage 2,
+    # 2026-10-26): at 0.48 the attacker publishes every unopposed lead at once
+    # (publish_lead 1) and wins by contesting honest blocks with its share
+    # weight (hold_shares 1); at 0.50 it withholds (publish_lead 0) and reveals
+    # only against three honest blocks (reveal_depth 3). Model predictions
+    # (1000 d x 2 seeds): 0.526 at 0.48, 0.727 at 0.50.
     a048:
       attacker:
         hashrate: 4.8
-        attributes: {give_up_objects: '8', hold_shares: '1', publish_lead: '0', reveal_margin: '1', reveal_depth: '1', block_deficit: '0'}
+        attributes: {give_up_objects: '8', hold_shares: '1', publish_lead: '1', reveal_margin: '1', reveal_depth: '1', block_deficit: '0'}
       honest: {hashrate: [2.6, 2.6]}
     a050:
       attacker:
         hashrate: 5
-        attributes: {give_up_objects: '20', hold_shares: '1', publish_lead: '0', reveal_margin: '1', reveal_depth: '1', block_deficit: '0'}
+        attributes: {give_up_objects: '20', hold_shares: '1', publish_lead: '0', reveal_margin: '1', reveal_depth: '3', block_deficit: '0'}
       honest: {hashrate: [2.5, 2.5]}
   sample:
     s1:

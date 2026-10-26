@@ -112,6 +112,26 @@ R=2 0.4688, R=3 0.4695; the sim's rule 0.4862.
 
 (pending)
 
+## Validation in the sims
+
+### Smoke (6 h, alpha 0.50, G=20 Z=1, L=0 M=1 R=1)
+
+box81, 03:39-04:15Z 10-26 (cell share_sop2_param_a050_s1 of
+sop_v4_param_6h; tree synced from local commit 26d317d9). Return code 0,
+oracle 0 mismatches over 12 nodes, 34,800 decisions all from the policy,
+no suppressed reveals, give-ups with withheld blocks in the log. Share
+0.784 over 116 canonical blocks (the model's 2000 d prediction for these
+knobs is 0.715; a 6 h cell is noisy), attacker orphan rate 0.042,
+network orphan rate 0.380. The check gate reported reveals=0 and FAILed
+because the miner's `<strategy>: reveal fork=` line was only written for
+window_stubborn and deep_hunt; fixed before the 72 h cells (the learned
+and param strategies now log reveals, and publishes of an unopposed lead
+separately).
+
+### 72 h cells
+
+(pending)
+
 ## Fidelity audit: sims vs race model
 
 The 72 h cells' JSONs carry the attacker's and the network's orphan rates
