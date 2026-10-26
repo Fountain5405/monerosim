@@ -341,9 +341,10 @@ reveals in 3.7 h).
 
 Interim reading (16:35Z, three finished cells, all 12/12 daemons, oracle
 clean, gate PASS): the two 0.47 seeds differ by 0.063 (0.451 and 0.514),
-so one 72 h cell carries roughly +-0.03 of seed noise in share, about
-three times the binomial figure for ~1,950 blocks, as expected when races
-settle several blocks at once (mean reorg 4 in the model). Mean of the
+which puts the seed noise of one 72 h cell's share at a standard
+deviation near 0.045 (a rough figure from a single pair), about four
+times the binomial 0.011 for ~1,950 blocks, as expected when races settle
+several blocks at once (mean reorg 4 in the model). Mean of the
 three cells minus the model: +0.017 (0.450 vs 0.428, 0.451 and 0.514 vs
 0.472), within the 0.01-0.03 band the fidelity audit found for the
 stubborn rule. The sims' attacker reveals more often than the model's
