@@ -248,6 +248,14 @@ Options, in the order I would take them:
   Beyond what the design allowed (bins of 2, then stop); hours; it
   trades the aliasing of states on either side of the acceptance
   boundary for density, and may well drift to honest the same way.
+  Started 05:10Z 10-26 as a coda after the owner approved the post-ladder
+  plan (one run, alpha 0.50, bins 16/16, gate 30, lr 0.1, bracket
+  0.50-0.60): first step at rho 0.55 scored 0.5646 with 98,045 keys
+  (80,378 reveals per run, reorg 3.76/20, 96% of decisions from the
+  table), the best any learner managed, just under the stubborn rule's
+  0.5715 and well under the hand-written family's 0.725 at the same
+  alpha (docs/20261026_sop_attacker_search.md). Its bisection continues;
+  later steps are recorded here only if they pass 0.725.
 - D. Function approximation (a small network over the 7 features). A
   new design; days; the least predictable.
 
