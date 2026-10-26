@@ -22,7 +22,8 @@ chain and the strategy sees the recruited hashrate as its own lead).
 Attributes (via --attributes KEY VALUE):
     strategy            "honest" | "eyal_sirer" | "trail_stubborn" |
                         "equal_fork_stubborn" | "lead_stubborn" |
-                        "window_stubborn" | "deep_hunt" | "learned"  (default "honest")
+                        "window_stubborn" | "deep_hunt" | "learned" |
+                        "param_stubborn"  (default "honest")
     policy_file         learned (2026-10-25): the gzip-JSON policy table
                         scripts/sop_rl.py trained, a diff against the
                         window_stubborn noown rule (relative to the repository
@@ -32,6 +33,13 @@ Attributes (via --attributes KEY VALUE):
                         missing or unreadable file fails the run at once.
     alpha               learned: the cell's attacker share of the hashrate
                         (optional); must equal the policy file's training alpha.
+    publish_lead, reveal_margin, reveal_depth, block_deficit, hold_shares
+                        param_stubborn (2026-10-26): the knobs L, M, R, B, Z of
+                        scripts/sop_policy.py::param_stubborn, the window_stubborn
+                        noown rule with knobs searched in the race model
+                        (docs/20261026_sop_attacker_search.md); G is
+                        give_up_objects (required >= 0). Defaults 0/1/1/0/0 are
+                        the plain rule.
     bridges             comma-separated bridge agent ids (required)
     bridge_agent        single-bridge alias for `bridges` (phase-1 configs)
     islands             comma-separated ISLAND bridge agent ids (optional;
@@ -199,6 +207,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.give_up_objects = kw["give_up_objects"]
         self.policy_file = kw["policy_file"]
         self.alpha = kw["alpha"]
+        self.publish_lead, self.reveal_margin, self.reveal_depth = kw["publish_lead"], kw["reveal_margin"], kw["reveal_depth"]
+        self.block_deficit, self.hold_shares = kw["block_deficit"], kw["hold_shares"]
         self.embedded_shares = str(self.attributes.get("embedded_shares", "false")).strip().lower() in ("1", "true", "yes")
         self.weigh = self.attributes.get("weigh", "sop") or "sop"      # window_stubborn only
         self.sop_w = int(self.attributes.get("sop_w", "16") or 16)     # window_stubborn "sop" weigh only
@@ -262,6 +272,11 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             "give_up_objects": int(attributes.get("give_up_objects", "-1") or -1),  # window_stubborn, deep_hunt; -1 = block rule
             "policy_file": attributes.get("policy_file") or None,                    # learned only
             "alpha": float(attributes["alpha"]) if attributes.get("alpha") else None,   # learned only
+            "publish_lead": int(attributes.get("publish_lead", "0") or 0),            # param_stubborn only (L)
+            "reveal_margin": int(attributes.get("reveal_margin", "1") or 1),          # param_stubborn only (M)
+            "reveal_depth": int(attributes.get("reveal_depth", "1") or 1),            # param_stubborn only (R)
+            "block_deficit": int(attributes.get("block_deficit", "0") or 0),          # param_stubborn only (B)
+            "hold_shares": int(attributes.get("hold_shares", "0") or 0),              # param_stubborn only (Z)
         }
 
     def _ensure_strategy(self, start_height: int) -> None:
@@ -275,7 +290,14 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                                             window_rule=self.window_rule,
                                             give_up_objects=self.give_up_objects,
                                             policy_file=self.policy_file,
-                                            alpha=self.alpha)
+                                            alpha=self.alpha,
+                                            publish_lead=self.publish_lead, reveal_margin=self.reveal_margin,
+                                            reveal_depth=self.reveal_depth, block_deficit=self.block_deficit,
+                                            hold_shares=self.hold_shares)
+            if self.strategy.name == "param_stubborn":
+                s = self.strategy
+                self.logger.info(f"param_stubborn: G={s.give_up_objects} L={s.publish_lead} M={s.reveal_margin} "
+                                 f"R={s.reveal_depth} B={s.block_deficit} Z={s.hold_shares} window={s.window_objects}")
             if self.strategy.name == "learned":
                 # the one place a placeholder policy (an empty diff: the stubborn attacker under the
                 # learned name) shows: the file, its entries, and the meta the trainer wrote
@@ -1008,7 +1030,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
 
         # 5. Strategy decision first: forward_to (below) depends on it.
         decision = self.strategy.update(pub_height, priv_height, branch_weights=self._branch_weights)
-        if self.strategy.name == "learned" and self.strategy.last_learned is not None:
+        if self.strategy.name in ("learned", "param_stubborn") and self.strategy.last_learned is not None:
             obs, key, act, stored = self.strategy.last_learned
             self.strategy.last_learned = None
             self.logger.debug(f"learned: obs={obs} key={key} action={act} stored={stored}")

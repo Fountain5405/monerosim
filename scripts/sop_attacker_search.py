@@ -35,6 +35,7 @@ if __name__ == "__main__":   # run as `python scripts/sop_attacker_search.py`
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.sop_policy import param_stubborn
+from scripts.sop_race_model import K_DEFAULT, W_DEFAULT
 from scripts.sop_rl import legal_fallback, race_env, rollout
 
 KNOBS = ("G", "L", "M", "R", "B", "Z")
@@ -52,20 +53,24 @@ def parse_grid(spec: str) -> List[Dict[str, int]]:
     return [dict(c) for c in itertools.product(*axes)] if axes else [{}]
 
 
-def run_key(knobs: Dict[str, int], alpha: float, seed: int) -> str:
-    return json.dumps({"knobs": {k: knobs[k] for k in sorted(knobs)}, "alpha": alpha, "seed": seed}, sort_keys=True)
+def run_key(knobs: Dict[str, int], alpha: float, seed: int, K: int = K_DEFAULT, w: int = W_DEFAULT) -> str:
+    return json.dumps({"knobs": {k: knobs[k] for k in sorted(knobs)}, "alpha": alpha, "seed": seed,
+                       "K": K, "w": w}, sort_keys=True)
 
 
-def evaluate(knobs: Dict[str, int], alpha: float, days: float, seed: int) -> dict:
-    """One rollout of param_stubborn(**knobs) on race_env(alpha, days, seed):
-    share, reveals, reorg depths and the orphan rates the sims' cell JSONs
-    report (attacker_orphan_rate, network_orphan_rate)."""
-    env = race_env(alpha, days, seed)
-    r = rollout(env, lambda o, legal: legal_fallback(param_stubborn(o, **knobs), legal), env.n_objects)
+def evaluate(knobs: Dict[str, int], alpha: float, days: float, seed: int,
+             K: int = K_DEFAULT, w: int = W_DEFAULT) -> dict:
+    """One rollout of param_stubborn(**knobs) on race_env(alpha, days, seed,
+    K, w), the policy's window following the network's ((K - 1) * w): share,
+    reveals, reorg depths and the orphan rates the sims' cell JSONs report
+    (attacker_orphan_rate, network_orphan_rate)."""
+    env = race_env(alpha, days, seed, K=K, w=w)
+    W = env.window_obs
+    r = rollout(env, lambda o, legal: legal_fallback(param_stubborn(o, W=W, **knobs), legal), env.n_objects)
     st = env.stats
     hon_orphaned = sum(st.reorg_depths)
     found = st.att_final_blocks + st.att_orphaned_blocks + st.hon_final_blocks + hon_orphaned
-    return {"knobs": dict(knobs), "alpha": alpha, "seed": seed, "days": days, "share": r["share"],
+    return {"knobs": dict(knobs), "alpha": alpha, "seed": seed, "days": days, "K": K, "w": w, "share": r["share"],
             "reveals": r["reveals"], "mean_reorg": r["mean_reorg"], "max_reorg": r["max_reorg"],
             "att_final": st.att_final_blocks, "att_orphaned": st.att_orphaned_blocks,
             "hon_final": st.hon_final_blocks, "hon_orphaned": hon_orphaned,
@@ -89,15 +94,26 @@ def _work(task):
 
 
 def _label(knobs: Dict[str, int]) -> str:
-    return " ".join(f"{k}={knobs[k]}" for k in KNOBS if k in knobs) or "defaults"
+    kw = " ".join(f"{k}={knobs[k]}" for k in KNOBS if k in knobs) or "defaults"
+    if knobs.get("K", K_DEFAULT) != K_DEFAULT or knobs.get("w", W_DEFAULT) != W_DEFAULT:
+        kw += f" [K={knobs.get('K', K_DEFAULT)} w={knobs.get('w', W_DEFAULT)}]"
+    return kw
+
+
+def _combo(r: dict) -> str:
+    d = dict(r["knobs"])
+    if r.get("K", K_DEFAULT) != K_DEFAULT or r.get("w", W_DEFAULT) != W_DEFAULT:
+        d["K"], d["w"] = r.get("K", K_DEFAULT), r.get("w", W_DEFAULT)
+    return json.dumps(d, sort_keys=True)
 
 
 def report(rows: List[dict], top: int = 5, out=sys.stdout) -> None:
-    """Per alpha: the top combos by mean share over seeds (with the mean
-    reveals per run and the orphan rates), then every combo's crossing."""
+    """Per alpha: the top combos (knobs, and K/w when not the defaults) by
+    mean share over seeds, with the mean reveals per run and the orphan
+    rates; then every combo's crossing."""
     groups: Dict[Tuple[str, float], List[dict]] = defaultdict(list)
     for r in rows:
-        groups[(json.dumps(r["knobs"], sort_keys=True), r["alpha"])].append(r)
+        groups[(_combo(r), r["alpha"])].append(r)
     alphas = sorted({a for _, a in groups})
     means: Dict[str, Dict[float, float]] = defaultdict(dict)
     for (kj, a), rs in groups.items():
@@ -133,6 +149,8 @@ def main(argv=None) -> int:
     ap.add_argument("--fixed", default="", help="knobs fixed for every combo, e.g. 'Z=1 L=2'")
     ap.add_argument("--out", required=True, help="JSON lines, appended; existing runs are skipped")
     ap.add_argument("--top", type=int, default=5)
+    ap.add_argument("--K", type=int, default=K_DEFAULT, help="the countermeasure's window depth in blocks")
+    ap.add_argument("--w", type=int, default=W_DEFAULT, help="the countermeasure's shares per block")
     args = ap.parse_args(argv)
     fixed = parse_grid(args.fixed)
     if len(fixed) != 1:
@@ -147,11 +165,12 @@ def main(argv=None) -> int:
             if line.strip():
                 r = json.loads(line)
                 rows.append(r)
-                done.add(run_key(r["knobs"], r["alpha"], r["seed"]))
-    tasks = [(c, a, args.days, s) for c in combos for a in args.alphas for s in args.seeds
-             if run_key(c, a, s) not in done]
-    print(f"{len(combos)} combos x {len(args.alphas)} alphas x {len(args.seeds)} seeds at {args.days:g} d: "
-          f"{len(tasks)} runs to do, {len(done)} already in {out}", file=sys.stderr, flush=True)
+                done.add(run_key(r["knobs"], r["alpha"], r["seed"], r.get("K", K_DEFAULT), r.get("w", W_DEFAULT)))
+    tasks = [(c, a, args.days, s, args.K, args.w) for c in combos for a in args.alphas for s in args.seeds
+             if run_key(c, a, s, args.K, args.w) not in done]
+    print(f"{len(combos)} combos x {len(args.alphas)} alphas x {len(args.seeds)} seeds at {args.days:g} d "
+          f"(K {args.K}, w {args.w}): {len(tasks)} runs to do, {len(done)} already in {out}",
+          file=sys.stderr, flush=True)
     t0 = time.time()
     if tasks:
         with Pool(args.workers) as pool, out.open("a") as f:

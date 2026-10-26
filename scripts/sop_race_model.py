@@ -384,17 +384,19 @@ FAR_CAP = 200        # the d_cap / deficit_cap a learned policy's environment us
 Obs = Tuple[int, int, int, int, int, int, int]     # a, D, xa, pa, h, xh, ph (scripts/sop_mdp.py State)
 
 
-def observation(att_blocks: List[int], hon_blocks: List[int], att_pending: int, hon_pending: int) -> Obs:
+def observation(att_blocks: List[int], hon_blocks: List[int], att_pending: int, hon_pending: int,
+                window: int = WINDOW_OBS) -> Obs:
     """The exact-MDP state of a fork: blocks per side, weight difference in
     objects (blocks plus embedded shares; honest pending NOT included), the
     window counters (objects a branch holds past its FIRST block, capped at
-    32 and both collapsed to 32 once either passes) and the pending shares."""
+    the window ((K - 1) * w, 32 by default) and both collapsed to it once
+    either passes) and the pending shares."""
     a, h = len(att_blocks), len(hon_blocks)
     d = sum(1 + n for n in att_blocks) - sum(1 + m for m in hon_blocks)
-    xa = min(sum(1 + n for n in att_blocks[1:]), WINDOW_OBS)
-    xh = min(sum(1 + m for m in hon_blocks[1:]), WINDOW_OBS)
-    if xa >= WINDOW_OBS or xh >= WINDOW_OBS:
-        xa = xh = WINDOW_OBS
+    xa = min(sum(1 + n for n in att_blocks[1:]), window)
+    xh = min(sum(1 + m for m in hon_blocks[1:]), window)
+    if xa >= window or xh >= window:
+        xa = xh = window
     return (a, d, xa, att_pending, h, xh, hon_pending)
 
 
@@ -417,6 +419,7 @@ class SopEnv:
             raise ValueError("positional_shares needs equal_start (his share IDs assume a level start)")
         self.cfg = cfg
         self.n_objects = int(cfg.days * SECONDS_PER_DAY * (cfg.w / T_BLOCK_S))
+        self.window_obs = cfg.K_objects - cfg.w     # the observation's window cap: (K - 1) * w objects
         self.obj_mode = cfg.give_up_objects >= 0
         self.rng = random.Random(cfg.seed)
         self.stats = SimStats(sim_days=cfg.days)
@@ -450,9 +453,10 @@ class SopEnv:
         return self.obs()
 
     def obs(self) -> Obs:
-        xa, xh = min(self.att_x, WINDOW_OBS), min(self.hon_x, WINDOW_OBS)
-        if xa >= WINDOW_OBS or xh >= WINDOW_OBS:
-            xa = xh = WINDOW_OBS
+        W = self.window_obs
+        xa, xh = min(self.att_x, W), min(self.hon_x, W)
+        if xa >= W or xh >= W:
+            xa = xh = W
         return (len(self.att_blocks), self.att_w - self.hon_w, xa, self.att_pending,
                 len(self.hon_blocks), xh, self.hon_pending)
 

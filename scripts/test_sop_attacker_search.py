@@ -64,3 +64,16 @@ def test_evaluate_runs_the_race_model_with_the_family():
 def test_run_key_identifies_a_result_line():
     assert S.run_key({"Z": 1, "G": 5}, 0.5, 1) == S.run_key({"G": 5, "Z": 1}, 0.5, 1)
     assert S.run_key({"G": 5}, 0.5, 1) != S.run_key({"G": 5}, 0.5, 2)
+    assert S.run_key({"G": 5}, 0.5, 1, K=4, w=16) != S.run_key({"G": 5}, 0.5, 1)
+
+
+def test_window_follows_the_countermeasure_parameters():
+    # the policy's window and the environment's observation cap are (K - 1) * w objects, not the constant 32
+    from scripts import sop_rl as RL
+    env = RL.race_env(0.45, 1, 1, K=4, w=16)
+    assert env.window_obs == 48
+    assert P.param_stubborn((2, 6, 40, 0, 1, 40, 3), W=48) == P.HOLD
+    assert P.param_stubborn((2, 6, 48, 0, 1, 48, 3), W=48) == P.REVEAL
+    r4 = S.evaluate({}, alpha=0.5, days=2, seed=1, K=4, w=16)
+    assert r4["K"] == 4 and r4["w"] == 16
+    assert r4["share"] != S.evaluate({}, alpha=0.5, days=2, seed=1)["share"]

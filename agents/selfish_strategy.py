@@ -75,7 +75,9 @@ class SelfishStrategy:
                  release_lead: int = 1, window_objects: int = 48,
                  give_up_depth: int = 2, release_depth: int = 10,
                  window_rule: str = "v3", give_up_objects: int = -1,
-                 policy_file: Optional[str] = None, alpha: Optional[float] = None):
+                 policy_file: Optional[str] = None, alpha: Optional[float] = None,
+                 publish_lead: int = 0, reveal_margin: int = 1, reveal_depth: int = 1,
+                 block_deficit: int = 0, hold_shares: int = 0):
         if name not in (
             "honest",
             "eyal_sirer",
@@ -85,6 +87,7 @@ class SelfishStrategy:
             "window_stubborn",
             "deep_hunt",
             "learned",
+            "param_stubborn",
         ):
             raise ValueError(f"unknown strategy: {name}")
         self.name = name
@@ -117,6 +120,18 @@ class SelfishStrategy:
         self.learned_decisions = self.fallback_decisions = self.clipped_decisions = 0
         self.suppressed_reveals = 0
         self.last_learned = None   # (obs, key, action, stored) of the last learned decision
+        # param_stubborn (2026-10-26, scripts/sop_attacker_search.py): the sim's window_stubborn
+        # noown rule with knobs (scripts/sop_policy.py::param_stubborn; G = give_up_objects), run
+        # through the learned decision path (same observation, reveal gate and counters)
+        self.publish_lead, self.reveal_margin = int(publish_lead), int(reveal_margin)
+        self.reveal_depth, self.block_deficit, self.hold_shares = int(reveal_depth), int(block_deficit), int(hold_shares)
+        if name == "param_stubborn":
+            if self.give_up_objects < 0:
+                raise ValueError("param_stubborn needs give_up_objects >= 0 (the objects give-up G)")
+            if self.reveal_margin < 1 or self.reveal_depth < 1 or \
+                    min(self.publish_lead, self.block_deficit, self.hold_shares) < 0:
+                raise ValueError("param_stubborn: reveal_margin and reveal_depth >= 1; "
+                                 "publish_lead, block_deficit and hold_shares >= 0")
         if name == "learned":
             if not policy_file:
                 raise ValueError("strategy learned needs policy_file")
@@ -166,22 +181,24 @@ class SelfishStrategy:
             return self._window_stubborn_decision(old_fork, pub_height, priv_height, a, h, branch_weights)
         if self.name == "deep_hunt":
             return self._deep_hunt_decision(old_fork, pub_height, priv_height, a, h, branch_weights)
-        if self.name == "learned":
+        if self.name in ("learned", "param_stubborn"):
             return self._learned_decision(old_fork, pub_height, priv_height, a, h, branch_weights)
         return self._lead_stubborn_decision(old_fork, pub_height, priv_height, a, h)
 
     @staticmethod
-    def observation(a: int, h: int, weights) -> tuple:
+    def observation(a: int, h: int, weights, window: Optional[int] = None) -> tuple:
         """The exact-MDP state (scripts/sop_mdp.py: a, D, xa, pa, h, xh, ph) from
         the 8-tuple _branch_weights() returns: D = attacker objects - honest
         objects (blocks + embedded shares, in OBJECTS, not weight units;
         honest pending excluded), x = objects past each branch's first block
-        capped at 32 and both collapsed to 32 once either passes, pa =
-        weights[5] - weights[0], ph = weights[6] - weights[7]."""
+        capped at the window (32 by default: (K - 1) * w) and both collapsed
+        to it once either passes, pa = weights[5] - weights[0], ph =
+        weights[6] - weights[7]."""
         from scripts.sop_policy import WINDOW
-        xa, xh = min(int(weights[3]), WINDOW), min(int(weights[4]), WINDOW)
-        if xa >= WINDOW or xh >= WINDOW:
-            xa = xh = WINDOW
+        W = WINDOW if window is None else int(window)
+        xa, xh = min(int(weights[3]), W), min(int(weights[4]), W)
+        if xa >= W or xh >= W:
+            xa = xh = W
         return (int(a), int(weights[0]) - int(weights[7]), xa, int(weights[5]) - int(weights[0]),
                 int(h), xh, int(weights[6]) - int(weights[7]))
 
@@ -195,7 +212,8 @@ class SelfishStrategy:
         branch; reveal is only released if the strategy's own acceptance test
         passes (past the window and ahead by weight, as window_stubborn), else
         it becomes a hold and is counted as suppressed."""
-        from scripts.sop_policy import GIVE_UP, HOLD, PUBLISH, REVEAL, ACTION_NAMES, key_of, sim_stubborn
+        from scripts.sop_policy import (GIVE_UP, HOLD, PUBLISH, REVEAL, ACTION_NAMES, key_of, param_stubborn,
+                                        sim_stubborn)
         give_up = ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=True, forward_to=None)
         hold = ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
         if a == 0 and h == 0:
@@ -204,17 +222,24 @@ class SelfishStrategy:
         self.last_weights = weights
         if weights is None or len(weights) < 8:
             return hold
-        obs = self.observation(a, h, weights)
-        key = key_of(obs, *self._key_clip)
-        action = self.policy.get(key)
-        stored = action is not None
-        if stored:
+        obs = self.observation(a, h, weights, self.window_objects)
+        if self.name == "param_stubborn":
+            key, stored = obs, True
+            action = param_stubborn(obs, G=self.give_up_objects, L=self.publish_lead, M=self.reveal_margin,
+                                    R=self.reveal_depth, B=self.block_deficit, Z=self.hold_shares,
+                                    W=self.window_objects)
             self.learned_decisions += 1
         else:
-            action = sim_stubborn(obs)
-            self.fallback_decisions += 1
-        if key != obs:
-            self.clipped_decisions += 1
+            key = key_of(obs, *self._key_clip)
+            action = self.policy.get(key)
+            stored = action is not None
+            if stored:
+                self.learned_decisions += 1
+            else:
+                action = sim_stubborn(obs)
+                self.fallback_decisions += 1
+            if key != obs:
+                self.clipped_decisions += 1
         self.last_learned = (obs, key, ACTION_NAMES[action], stored)
         if action == GIVE_UP:
             self.fork = pub_height

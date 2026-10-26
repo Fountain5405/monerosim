@@ -89,17 +89,23 @@ class MdpEnv:
         return self.s, fa, fh
 
 
-def race_env(alpha: float, days: float, seed: int, cap_blocks: int = 0) -> SopEnv:
+def race_env(alpha: float, days: float, seed: int, cap_blocks: int = 0,
+             K: Optional[int] = None, w: Optional[int] = None) -> SopEnv:
     """The training environment: the sims' noown attacker settings
     (rule 20261020_noown, honest shares via the slot rule, o5 give-up for
     stubborn_policy only), far-capped on the objects deficit. The |D| cap is
     left off: equal_start copies a long honest share gap into the attacker's
     pending and the stubborn baseline then exceeds |D| 200 within 2000 d;
-    the Q-table key clips D instead. Returned already reset with `seed`."""
+    the Q-table key clips D instead. K and w are the countermeasure's
+    window depth (blocks) and shares per block (defaults 3 and 16: the
+    window is (K - 1) * w = 32 objects). Returned already reset with `seed`."""
+    from scripts.sop_race_model import K_DEFAULT, W_DEFAULT
+    K = K_DEFAULT if K is None else int(K)
+    w = W_DEFAULT if w is None else int(w)
     cfg = SimConfig(alpha=alpha, d=1, rule="sop", attacker_embeds=True, days=days, seed=seed,
                     give_up_objects=5, equal_start=True, early_honest_shares=True,
                     positional_shares=True, cap_blocks=cap_blocks, deficit_cap=FAR_CAP,
-                    **RULE_PRESETS["20261020_noown"])
+                    w=w, K_objects=K * w, **RULE_PRESETS["20261020_noown"])
     env = SopEnv(cfg)
     env.reset(seed)
     return env

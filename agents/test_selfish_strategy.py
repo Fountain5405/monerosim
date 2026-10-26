@@ -588,6 +588,45 @@ def test_learned_keys_through_the_policy_files_pending_bins(tmp_path):
     assert s.last_learned[0] == (1, 2, 32, 5, 1, 32, 1) and s.last_learned[1] == (1, 2, 32, 2, 1, 32, 0)
 
 
+# ---- param_stubborn strategy (docs/20261026_sop_attacker_search.md, the searched family in the sim) ----
+
+def test_param_stubborn_strategy_follows_the_knobs():
+    # hold_shares 1: a pending-shares-only branch (a = 0) against an honest block is held, not given up
+    s = SelfishStrategy("param_stubborn", start_height=0, window_objects=32, window_rule="20261020",
+                        give_up_objects=8, hold_shares=1)
+    s.fork = 100
+    # a=0, h=1: D = 0 - 2 = -2, pa = 4, ph = 3 - 2 = 1 -> objects deficit 2 + 1 - 4 = -1 <= 8 -> hold
+    d = s.update(pub_height=101, priv_height=100, branch_weights=lambda f, p, q: (0, 0, 2, 0, 0, 4, 3, 2))
+    assert d.adopt_public is False and d.release_to is None and s.learned_decisions == 1
+    s0 = SelfishStrategy("param_stubborn", start_height=0, window_objects=32, window_rule="20261020",
+                         give_up_objects=8)
+    s0.fork = 100
+    d = s0.update(pub_height=101, priv_height=100, branch_weights=lambda f, p, q: (0, 0, 2, 0, 0, 4, 3, 2))
+    assert d.adopt_public is True                      # hold_shares 0: the sim's rule gives up
+
+
+def test_param_stubborn_publish_lead_and_reveal_margin():
+    s = SelfishStrategy("param_stubborn", start_height=0, window_objects=32, window_rule="20261020",
+                        give_up_objects=8, publish_lead=2, reveal_margin=4)
+    s.fork = 100
+    d = s.update(pub_height=100, priv_height=102, branch_weights=lambda f, p, q: (4, 4, 0, 2, 0, 4, 0, 0))   # a=2, h=0
+    assert d.release_to == 101 and d.release_from == 100 and s.fork == 102
+    s.fork = 100
+    # a=2, h=1, past the window, D - ph = 3 - 1 = 2 < margin 4 although the network accepts (6 > 3 + 1): hold
+    d = s.update(pub_height=101, priv_height=102, branch_weights=lambda f, p, q: (6, 6, 3, 32, 0, 6, 4, 3))
+    assert d.release_to is None and s.suppressed_reveals == 0
+    s.reveal_margin = 2
+    d = s.update(pub_height=101, priv_height=102, branch_weights=lambda f, p, q: (6, 6, 3, 32, 0, 6, 4, 3))
+    assert d.release_to == 101
+
+
+def test_param_stubborn_rejects_bad_knobs():
+    with pytest.raises(ValueError):
+        SelfishStrategy("param_stubborn", start_height=0, give_up_objects=-1)     # needs the objects give-up
+    with pytest.raises(ValueError):
+        SelfishStrategy("param_stubborn", start_height=0, give_up_objects=5, reveal_margin=0)
+
+
 def test_learned_requires_a_loadable_policy_file(tmp_path):
     with pytest.raises(ValueError):
         SelfishStrategy("learned", start_height=0)

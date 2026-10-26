@@ -1296,6 +1296,18 @@ def test_learned_strategy_attributes_are_plumbed(tmp_path):
     assert a.strategy.policy == {}
 
 
+def test_param_stubborn_attributes_are_plumbed_and_logged():
+    a = _make_agent(strategy="param_stubborn", start_height=0,
+                    extra=(("window_rule", "20261020"), ("window_objects", "32"), ("give_up_objects", "8"),
+                           ("weigh", "sop"), ("publish_lead", "2"), ("reveal_margin", "3"), ("reveal_depth", "2"),
+                           ("block_deficit", "4"), ("hold_shares", "1")))
+    s = a.strategy
+    assert (s.name, s.give_up_objects, s.publish_lead, s.reveal_margin, s.reveal_depth, s.block_deficit,
+            s.hold_shares) == ("param_stubborn", 8, 2, 3, 2, 4, 1)
+    messages = [c.args[0] for c in a.logger.info.call_args_list]
+    assert any("param_stubborn: G=8 L=2 M=3 R=2 B=4 Z=1" in m for m in messages), messages
+
+
 def test_learned_strategy_logs_the_policy_size_at_start(tmp_path):
     # a placeholder policy (empty diff) runs the stubborn attacker under the learned name; the only
     # place that shows is this line, so it must name the file, its entries, the meta env and alpha
