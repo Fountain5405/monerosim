@@ -1,0 +1,30 @@
+{
+ "run_id": "20261026_012322_lean_24_none_h300_k42_w13h_p3_m1_n600_wl35_s12345",
+ "box": "simbox3",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_wl35_s12345",
+ "archived_at": "2026-10-26T01:24:26Z",
+ "monerod_sim_sha": "c1a4e6708ac3",
+ "wall": "4h 33m",
+ "exit_code": 0,
+ "min_avail_mb": 81345,
+ "txs_created": 1056,
+ "txs_in_blocks": 1054,
+ "note": "P41, the trim sweep's 35 point (stock, white list limited to 35): light 0.152 = 0.99x the ceiling - the sweep closes flat at the subnet share on every capped reading. Three of three: (a) 0.152 hit; (b) every probe exactly 35 entries, spies 3.0/35 below pool share and, notably, the freshest entries in the list (60 s vs honest 146 s) - freshness buys nothing when nothing is cut; (c) wall 275 m. E50; run 89.",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.152,
+ "light_out_quarters": [
+  0.1502,
+  0.1532,
+  0.1526,
+  0.152
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.198,
+ "stem_txs": 1097,
+ "stem_hops_implied": 5.05,
+ "embargo_rate": 0.0
+}
