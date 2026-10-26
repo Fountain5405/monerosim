@@ -1,6 +1,7 @@
 """Tests for scripts/sop_attacker_search.py and sop_policy.param_stubborn: the
 parametric stubborn family searched in the race model (2026-10-26, the
 experiment after the learned attacker's ladder stopped at step 3)."""
+import json
 import random
 
 import pytest
@@ -65,6 +66,21 @@ def test_run_key_identifies_a_result_line():
     assert S.run_key({"Z": 1, "G": 5}, 0.5, 1) == S.run_key({"G": 5, "Z": 1}, 0.5, 1)
     assert S.run_key({"G": 5}, 0.5, 1) != S.run_key({"G": 5}, 0.5, 2)
     assert S.run_key({"G": 5}, 0.5, 1, K=4, w=16) != S.run_key({"G": 5}, 0.5, 1)
+
+
+def test_kw_table_prints_a_row_per_setting_with_both_crossings(tmp_path, capsys):
+    from scripts import sop_kw_table as T
+    rows = []
+    for K, w in ((2, 8), (3, 16)):
+        for a, base, best in ((0.45, 0.30, 0.40), (0.48, 0.44, 0.49), (0.50, 0.57, 0.70)):
+            rows.append({"knobs": {}, "alpha": a, "seed": 1, "K": K, "w": w, "share": base})
+            rows.append({"knobs": {"G": 6, "L": 1}, "alpha": a, "seed": 1, "K": K, "w": w, "share": best})
+    p = tmp_path / "kw.jsonl"
+    p.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    T.main([str(p)])
+    lines = [l for l in capsys.readouterr().out.splitlines() if l.split() and l.split()[0] in ("2", "3")]
+    assert len(lines) == 2 and "G=6 L=1" in lines[0]
+    assert "0.4750" in lines[0] and "0.4873" in lines[0]     # best: 0.45 + 0.03 * 0.05/0.06; base: 0.48 + 0.02 * 0.04/0.11
 
 
 def test_window_follows_the_countermeasure_parameters():

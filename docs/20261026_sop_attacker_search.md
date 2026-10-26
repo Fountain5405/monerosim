@@ -151,6 +151,47 @@ irrational, but it is the attack a rational miner would keep in reserve.
 0.40 and 0.48 and the search was exhaustive over its six knobs at the
 grid resolution used; a tighter G grid around 6 could add a few thousandths.
 
+## Experiment 2: the countermeasure's K and w
+
+K is the window depth in blocks and w the shares per block; the window a
+branch must clear before a reveal is (K - 1) * w objects (32 by default).
+For each (K, w): the sim's rule as the baseline and the family with G in
+{w/2, w, 2w}, L in {0, 1}, R in {1, 3}, Z=1, M=1, at alphas 0.40 / 0.45 /
+0.48 / 0.50, 1000 d x 2 seeds (1,248 runs, 04:30-05:05Z 10-26;
+`scripts/sop_kw_table.py` on data/sop_search/kw_sweep.jsonl):
+
+| K | w | window | best at 0.40 | best at 0.45 | best at 0.48 | best at 0.50 | best crossing | best combo | sim's rule crossing |
+|---|---|---|---|---|---|---|---|---|---|
+| 2 | 8 | 8 | 0.331 | 0.456 | 0.573 | 0.721 | 0.446 | G=4 L=1 | 0.470 |
+| 3 | 8 | 16 | 0.299 | 0.426 | 0.561 | 0.717 | 0.459 | G=4 L=1 | 0.474 |
+| 2 | 16 | 16 | 0.282 | 0.409 | 0.546 | 0.730 | 0.462 | G=8 L=1 | 0.483 |
+| 4 | 8 | 24 | 0.278 | 0.401 | 0.547 | 0.713 | 0.467 | G=4 L=1 R=3 | 0.478 |
+| 3 | 16 | 32 (default) | 0.259 | 0.375 | 0.526 | 0.727 | 0.469 | G=8 L=1 | 0.486 |
+| 2 | 32 | 32 | 0.249 | 0.334 | 0.505 | 0.735 | 0.475 | G=16 L=1 | 0.492 |
+| 6 | 8 | 40 | 0.252 | 0.362 | 0.515 | 0.708 | 0.474 | G=8 L=1 R=3 | 0.482 |
+| 4 | 16 | 48 | 0.246 | 0.348 | 0.506 | 0.723 | 0.474 | G=8 L=1 | 0.489 |
+| 3 | 32 | 64 | 0.240 | 0.302 | 0.483 | 0.731 | 0.480 | G=16 L=1 | 0.494 |
+| 6 | 16 | 80 | 0.236 | 0.305 | 0.474 | 0.723 | 0.481 | G=8 L=1 R=3 | 0.491 |
+| 4 | 32 | 96 | 0.238 | 0.278 | 0.462 | 0.728 | 0.482 | G=16 L=1 | 0.496 |
+| 6 | 32 | 160 | 0.237 | 0.246 | 0.423 | 0.725 | 0.485 | G=16 L=1 R=3 | 0.497 |
+
+(The sim's rule keeps its give-up at 5 objects whatever w is, so its
+column is not comparable across w; the "best" columns are.)
+
+Findings. (1) The crossing is set almost entirely by the window length in
+objects, with diminishing returns: 0.446 at 8 objects, 0.469 at the
+default 32, 0.480 at 64, 0.485 at 160. Doubling the default window buys
+about 0.01 of threshold. (2) At a given window length, more shares per
+block helps the defender slightly (window 32: 0.469 with w=16, 0.475 with
+w=32), i.e. finer weight granularity is worth a little. (3) Above the
+crossing the parameters stop mattering: the best attacker takes 0.71 to
+0.74 at alpha 0.50 under every setting. (4) Below the crossing a longer
+window cuts what an irrational attacker can extract (0.33 at 0.40 with an
+8-object window, 0.24 with 160). (5) The best attacker is the
+no-withholding one under every setting at these alphas, with its give-up
+threshold scaling with w (about half a block of objects: 4 at w=8, 8 at
+w=16, 16 at w=32); at the longer windows a reveal depth of 3 helps.
+
 ## Validation in the sims
 
 ### Smoke (6 h, alpha 0.50, G=20 Z=1, L=0 M=1 R=1)
