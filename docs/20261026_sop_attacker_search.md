@@ -149,7 +149,15 @@ irrational, but it is the attack a rational miner would keep in reserve.
 (three honest blocks orphaned at a time, 20-object patience at 0.50).
 (4) No configuration in the family beats the no-withholding one between
 0.40 and 0.48 and the search was exhaustive over its six knobs at the
-grid resolution used; a tighter G grid around 6 could add a few thousandths.
+grid resolution used.
+
+Fine grid (05:25Z; G in 5/6/7 x R in 1/2, L=1 Z=1; alphas 0.455 to 0.48
+by 0.005; 2000 d x 3 seeds; data/sop_search/crossing_fine.jsonl): the
+crossing is 0.4693 for G=5 and G=6 (0.4698 for G=7), i.e. 0.469 to
+within the seed noise; the best give-up drifts up with alpha (5 at
+0.46-0.465, 5 or 6 at 0.47, 7 at 0.475-0.48), with differences of a few
+thousandths. At alpha 0.47 the best attacker earns 0.4724, 0.0024 above
+honest.
 
 ## Experiment 2: the countermeasure's K and w
 
