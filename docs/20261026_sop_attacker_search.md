@@ -75,9 +75,38 @@ the three alphas: G=8 Z=1 0.4746, G=12 Z=1 0.4750, G=5 Z=1 0.4776, the
 sim's rule 0.4862 (0.4864 on the 2000 d baseline). The network orphan
 rate under the stronger attacker rises to 0.43-0.48 of all blocks found.
 
-### Stage 2 (L x M x R)
+### Stage 2 (L x M x R at G in 8/12/20, Z=1)
 
-(pending)
+04:05Z, 864 runs (144 combos x 3 alphas x 2 seeds, 1000 d) in ~35 min on
+20 workers. Mean share over 2 seeds:
+
+| alpha | honest | stage-1 best | best | share | reveals/run | att. orphan | net. orphan | mean/max reorg |
+|---|---|---|---|---|---|---|---|---|
+| 0.45 | 0.45 | 0.2809 (G=8 Z=1) | G=8 L=1 M=1 R=1 Z=1 | 0.3747 | 18,641 | 0.410 | 0.291 | 4.13/23 |
+| 0.45 | | | G=8 L=1 M=1 R=2 Z=1 | 0.3738 | 18,330 | 0.413 | 0.293 | 4.22/23 |
+| 0.45 | | | G=8 L=1 M=2 R=1 Z=1 | 0.3609 | 16,650 | 0.431 | 0.291 | 4.18/23 |
+| 0.48 | 0.48 | 0.5173 (G=8 Z=1) | G=8 L=1 M=1 R=1 Z=1 | 0.5259 | 35,598 | 0.277 | 0.340 | 4.18/20 |
+| 0.48 | | | G=8 L=1 M=1 R=2 Z=1 | 0.5254 | 35,054 | 0.280 | 0.342 | 4.26/20 |
+| 0.48 | | | G=8 L=2 M=1 R=2 Z=1 | 0.5209 | 41,270 | 0.343 | 0.394 | 4.01/20 |
+| 0.50 | 0.50 | 0.7149 (G=20 Z=1) | G=20 L=0 M=1 R=3 Z=1 | 0.7274 | 49,928 | 0.235 | 0.474 | 5.14/47 |
+| 0.50 | | | G=20 L=0 M=1 R=2 Z=1 | 0.7205 | 54,048 | 0.237 | 0.471 | 4.69/47 |
+| 0.50 | | | G=12 L=0 M=1 R=3 Z=1 | 0.7167 | 56,458 | 0.238 | 0.468 | 4.45/28 |
+
+Findings. At 0.45 and 0.48 the best attacker publishes every unopposed
+lead at once (L=1): it never withholds a block the honest network has
+not yet matched. Its gain comes from contesting honest blocks with the
+share weight it has accumulated (Z=1: a pending-shares-only branch is
+kept alive against an honest block, and the attacker keeps mining on it
+until the window passes and its branch outweighs the honest one, or the
+deficit reaches 8 objects). That is a different attack from the
+block-withholding the stubborn family was written for, and it costs the
+network fewer orphans (0.29 of all blocks found at 0.45 against 0.43
+for the withholding version) while paying the attacker more. Withholding
+only pays at 0.50, where L=0 with a deep reveal (R=3: reveal only once
+the honest branch holds three blocks) is best. The reveal margin M never
+helps (1 is best everywhere): waiting for a larger margin forfeits
+accepted reveals. Interpolated crossings: G=8 L=1 M=1 R=1 Z=1 0.4686,
+R=2 0.4688, R=3 0.4695; the sim's rule 0.4862.
 
 ### Stage 3: the curve and the crossing
 
