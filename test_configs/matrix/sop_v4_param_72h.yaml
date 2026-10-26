@@ -50,6 +50,13 @@ axes:
     # (1000 d x 2 seeds): 0.526 at 0.48, 0.727 at 0.50. a047 (stage 3, 2000 d
     # x 3 seeds): the publish-lead family with give-up 6 scores 0.472 right at
     # the model's crossing (0.469), the cell that tests the headline number.
+    # a045 (added 10-26 16:10Z, same family): model 0.389; the second-round a047 s2
+    # scored 0.514 (above honest), so the sims' crossing may sit below 0.46.
+    a045:
+      attacker:
+        hashrate: 4.5
+        attributes: {give_up_objects: '6', hold_shares: '1', publish_lead: '1', reveal_margin: '1', reveal_depth: '1', block_deficit: '0'}
+      honest: {hashrate: [2.75, 2.75]}
     # a046 (added 10-26 for the second round, same family): model 0.428, the
     # cell just below the crossing, so a046/a047 bracket it.
     a046:
