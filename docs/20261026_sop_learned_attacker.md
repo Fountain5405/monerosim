@@ -153,8 +153,14 @@ Result (first steps at rho 0.55, 01:09-01:21Z 10-26): race returns with
 n_min 30: 0.496 (7.8 M keys, 110 min; 2,419 reveals per 2000 d run
 against `sim_stubborn`'s 124,250; reorg 2.51 mean, 15 max); race returns
 with n_min 100: 0.493 (8.8 M keys, 123 min; 16,729 reveals; reorg
-2.59/18); one-step with n_min 30: (pending). Honest-level again. The
-gate changed which noise wins, not the outcome.
+2.59/18); one-step with n_min 30: 0.512 (9.6 M keys, 125 min; 34,311
+reveals; reorg 3.34/18; 87% of decisions from the table). The last is
+the only configuration that lands above honest mining, by 0.012, with a
+quarter of stubborn's reveals; it is still 0.06 under the rule it was
+warm-started from and under the step's own bar of 0.55. Its bisection
+continues on lithium (next step at rho 0.525 from this table) and its
+final line will be recorded here; the gate changed which noise wins,
+not the outcome.
 
 **Step 3 fails.** Every configuration lands at honest mining or below;
 none reproduces the hand-written attacker, let alone beats it. The
@@ -180,7 +186,7 @@ first informative bisection step:
 | warm start | per-race | D/2, p/2 | - | 0.550 | 0.129 | 1.6 M |
 | warm start, lr 0.1 | per-race | exact | 30 | 0.550 | 0.496 | 7.8 M |
 | warm start, lr 0.1 | per-race | exact | 100 | 0.550 | 0.493 | 8.8 M |
-| warm start, lr 0.1 | one-step | exact | 30 | 0.550 | (pending) | |
+| warm start, lr 0.1 | one-step | exact | 30 | 0.550 | 0.512 | 9.6 M |
 
 Three problems compound:
 
