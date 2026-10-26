@@ -259,6 +259,42 @@ separately).
 
 ### 72 h cells
 
+First round (launched 04:22Z 10-26 from local commit 81a3820e):
+
+| cell | box | knobs | model | sims share | att. orphan | net. orphan | reveals/72 h | run |
+|---|---|---|---|---|---|---|---|---|
+| a047 s1 | box81 | G=6 L=1 M=1 R=1 Z=1 | 0.472 | 0.464 | 0.108 | 0.104 | 36 | 20261026_042332 |
+
+The 0.47 cell (rc 0, oracle 0 mismatches, 86,600 decisions all from the
+policy, 2,085 blocks) came in 0.008 under the model, but its structure
+was far off: 36 reveals and orphan rates near 0.10 where the model's
+attacker with these knobs makes 86 reveals per 72 h and orphans 0.30
+(`scripts/sop_decision_hist.py`). The attacker log explains it: the sim's
+attacker started 980 share races, abandoned 895 of them with no block
+and reached a block in only 8.5%, and at EVERY race start its observation
+had pa = 0, where the model's attacker holds a median of 12 pending
+shares (mean 15) when the honest block lands. The shares exist (its
+blocks embed 15-16 objects each, visible in the reveal lines); the
+agent's tip-pool lookup needs a header on the branch and an empty
+attacker branch has none, so a share-only branch always looked hopeless:
+the deficit was the honest branch's objects alone (median 7), 55% of
+races exceeded the give-up threshold at once and the rest held with
+nothing to race with. This is an agent measurement gap, not a network
+rule (the attacker can always count its own pool), and it never touched
+the earlier campaigns: the stubborn rule gives up at a = 0 regardless.
+Fixed: the empty branch's tip is the fork block and its pool is the
+attacker's pending (agents/selfish_miner.py `_fork_header`; test
+`test_branch_weights_counts_the_attackers_pool_shares_on_an_empty_branch`).
+The gate's three FAILed verdicts are the campaign's Eyal-Sirer
+expectations (share above the ES curves and above honest), which every
+SoP cell below the crossing fails by design; health was ok.
+
+The four other first-round cells (box80 a048 s1+s2, box82 a050 s1+s2)
+ran the same crippled measurement; they are recorded below when they
+finish and then rerun with the fix, as a047 is.
+
+Second round (the fix, from the commit after e304ceee):
+
 (pending)
 
 ## Fidelity audit: sims vs race model

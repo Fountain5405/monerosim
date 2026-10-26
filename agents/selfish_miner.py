@@ -388,16 +388,34 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                 hon_first = 1 + m
         att_pool = hon_pool = 0
         if self.tip_shares:
-            att_pool = self._tip_pool_count(self.daemon_rpc, att_headers, priv_height)
+            # A share-only attacker branch (a == 0) still has pending shares: they sit on
+            # the fork block, the empty branch's tip. Without this the agent read pa = 0 at
+            # every race start (2026-10-26, cell a047: 980 of 980) where the race model has
+            # a median of 12, and abandoned the share race at once.
+            att_tip = att_headers or self._fork_header(fork)
+            att_pool = self._tip_pool_count(self.daemon_rpc, att_tip, priv_height)
             hon_pool = self._tip_pool_count(self.bridge_rpc, hon_headers, pub_height)
             if self.count_own_tip_shares:
-                att_weight += self._tip_unit(att_headers) * att_pool
+                att_weight += self._tip_unit(att_tip) * att_pool
             hon_weight += self._tip_unit(hon_headers) * hon_pool
         return (att_objects, att_weight, hon_weight, att_objects - att_first, hon_objects - hon_first,
                 att_objects + att_pool, hon_objects + hon_pool, hon_objects)
 
     def _tip_unit(self, headers) -> int:
         return max(1, self._header_difficulty(headers[-1]) // self.sop_w) if headers else 0
+
+    def _fork_header(self, fork: int):
+        """The header of the block before the fork (index fork - 1) from the
+        attacker's daemon: the tip of an empty attacker branch, where a
+        share-only branch's pending shares sit. [] at genesis or on an RPC
+        error (the pool then counts as 0, as before 2026-10-26)."""
+        if fork <= 0:
+            return []
+        try:
+            return list(self.daemon_rpc.get_block_headers_range(fork - 1, fork - 1))[-1:]
+        except RPCError as e:
+            self.logger.warning(f"_branch_weights: fork header read failed: {e}")
+            return []
 
     def _tip_pool_count(self, rpc, headers, height: int) -> int:
         """The counted pool shares on the branch's tip (MRL #146 2026-10-20;

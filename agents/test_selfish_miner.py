@@ -1173,13 +1173,22 @@ def _s(slot, recv, i=0):
 
 
 class _FakeRPC:
-    def __init__(self, blocks=(), pool=(), tip_hash="tip"):
-        self.blocks, self.pool, self.tip_hash = list(blocks), list(pool), tip_hash
+    """A daemon whose chain is `base - 1` common blocks (no embedded shares)
+    followed by `blocks` (embedded shares per block) from index `base`;
+    get_block_headers_range serves exactly the requested indexes."""
+
+    def __init__(self, blocks=(), pool=(), tip_hash="tip", base=100):
+        self.blocks, self.pool, self.tip_hash, self.base = list(blocks), list(pool), tip_hash, base
         self.submitted = []
 
     def get_block_headers_range(self, lo, hi):
-        return [{"hash": f"h{lo + i}", "difficulty": 1600, "major_version": 16,
-                 "minor_version": 16 + n} for i, n in enumerate(self.blocks)]
+        out = []
+        for idx in range(lo, hi + 1):
+            n = self.blocks[idx - self.base] if self.base <= idx < self.base + len(self.blocks) else 0
+            if idx >= self.base + len(self.blocks):
+                raise RPCError(f"no block at index {idx}")
+            out.append({"hash": f"h{idx}", "difficulty": 1600, "major_version": 16, "minor_version": 16 + n})
+        return out
 
     def get_info(self):
         return {"top_block_hash": self.tip_hash}
@@ -1220,6 +1229,20 @@ def test_branch_weights_tip_shares(make_miner):
     assert (att_objects, att_x1, hon_x1, hon_objects) == (32, 16, 16, 32)
     assert att_w == 3200 + 300 and hon_w == 3200 + 500
     assert (att_tot, hon_tot) == (32 + 3, 32 + 5)     # give-up objects include the pending pool shares
+
+
+def test_branch_weights_counts_the_attackers_pool_shares_on_an_empty_branch(make_miner):
+    # 2026-10-26, cell a047: at a == 0 the agent read its own pending shares as 0 (the tip-pool
+    # lookup needs a header and an empty branch has none), so every share race started at pa 0
+    # where the race model has a median of 12 and 55% were abandoned at once. The empty branch's
+    # tip is the fork block (index fork - 1); its pool shares are the attacker's pending.
+    m = make_miner(attributes={"weigh": "sop", "embedded_shares": "true", "tip_shares": "true",
+                               "count_own_tip_shares": "false"},
+                   priv_blocks=[], pub_blocks=[15], pub_pool=[16, 17], priv_pool=[16, 17, 18])
+    w = m._branch_weights(fork=100, priv_height=100, pub_height=101)
+    assert w[0] == 0 and w[5] - w[0] == 3           # pa: three pending shares on the fork tip
+    assert w[6] - w[7] == 2 and w[7] == 16          # ph 2; the honest block carries 15 shares
+    assert w[1] == 0                                # own tip shares stay out of the reveal weight
 
 
 def test_branch_weights_without_tip_shares_is_v3(make_miner):
