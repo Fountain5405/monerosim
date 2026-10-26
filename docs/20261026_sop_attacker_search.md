@@ -327,8 +327,9 @@ Second round (the fix 61969161, one lane per box):
 | a045 s1 | lithium | 10-26 16:10 | 0.389 | (running) | | | | |
 | a046 s1 | phantom | 10-26 10:29 | 0.428 | 0.450 | 0.348 | 0.339 | 127 | 20261026_102909 |
 | a046 s2 | phantom | 10-26 16:20 | 0.428 | (running) | | | | |
-| a047 s1 | box81 | 10-26 10:03 | 0.472 | (running) | | | | |
+| a047 s1 | box81 | 10-26 10:03 | 0.472 | 0.451 | 0.362 | 0.350 | 135 | 20261026_100300 |
 | a047 s2 | lithium | 10-26 10:29 | 0.472 | 0.514 | 0.308 | 0.368 | 160 | 20261026_102904 |
+| a047 s3 | box81 | 10-26 16:35 | 0.472 | (running) | | | | |
 | a048 s1 | box80 | 10-26 11:07 | 0.525 | (running) | | | | |
 | a050 s1 | box82 | 10-26 11:14 | 0.725 | (running) | | | | |
 
@@ -337,6 +338,18 @@ hours the attacker's 279 race-start observations all carried a nonzero
 pending count (mode 4, tail to 33), where the first round read 0 at all
 8,665; it had made 3 reveals and 8 publishes by then (model: about 4
 reveals in 3.7 h).
+
+Interim reading (16:35Z, three finished cells, all 12/12 daemons, oracle
+clean, gate PASS): the two 0.47 seeds differ by 0.063 (0.451 and 0.514),
+so one 72 h cell carries roughly +-0.03 of seed noise in share, about
+three times the binomial figure for ~1,950 blocks, as expected when races
+settle several blocks at once (mean reorg 4 in the model). Mean of the
+three cells minus the model: +0.017 (0.450 vs 0.428, 0.451 and 0.514 vs
+0.472), within the 0.01-0.03 band the fidelity audit found for the
+stubborn rule. The sims' attacker reveals more often than the model's
+(127-160 per 72 h against 86) and orphans more of the network's blocks
+(0.34-0.37 against 0.30). A third 0.47 seed, a second 0.46 seed and a
+0.45 cell are running before any crossing is read off the sims.
 
 ## Fidelity audit: sims vs race model
 
