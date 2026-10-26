@@ -87,8 +87,11 @@ def agents_yaml(a, ban):
         w("    daemon: monerod-sim\n    wallet: monero-wallet-rpc\n    script: agents.regular_user")
         w("    start_time: 1200s\n    start_time_stagger: auto\n    transaction_interval: 300")
         w("    activity_start_time: auto\n    can_receive_distributions: true")
-        if adopter and ban:
-            w("    daemon_options: " + opts({}, ban))
+        uopts = {}
+        if a.user_dumps:
+            uopts["peerlist-dump-file"] = "peerlist_dump.jsonl"
+        if uopts or (adopter and ban):
+            w("    daemon_options: " + opts(uopts, ban if adopter else ""))
     w("")
 
     r = max(0, a.reachable - FIXED_HONEST)
@@ -134,8 +137,12 @@ def agents_yaml(a, ban):
         tag = "abcdefghijklmnopqrstuvwxyz"[j] if j < 26 else f"x{j}"
         w(f"  spy-{tag}-{{001..{n:03d}}}:")
         w("    daemon: monerod-sim")
+        if a.spy_refresh:
+            w("    script: agents.spy_refresh")
         w(f"    start_time: {10 * j}s\n    start_time_stagger: 60s")
         w(f"    topology_node: {a.spy_node0 + (j % a.spy_subnets)}")
+        if a.spy_refresh:
+            w(f"    attributes:\n      refresh_interval: \"{a.spy_refresh}\"")
         w("    daemon_options: " + opts({"hide-my-port": "false",
                                          "add-exclusive-node": f'"{SEED_IPS[j % len(SEED_IPS)]}:18080"'}, ""))
     w("\n  miner-distributor:\n    script: agents.miner_distributor\n    wait_time: auto\n")
@@ -249,6 +256,14 @@ def main():
                     help="with --turnover, also cycle the reachable honest daemons (relays, medium nodes, observers) through a "
                          "per-agent turnover: true; miners, seeds and spies stay up. Cell names get _tor<ON><OFF> in place "
                          "of _to<ON><OFF>.")
+    ap.add_argument("--spy-refresh", type=int, default=None, metavar="N",
+                    help="every spy also runs agents.spy_refresh (open question 13's active adversary, py-Levin, no daemon "
+                         "rebuild): it re-handshakes with every honest reachable node every N sim-seconds, advertising the spy "
+                         "daemon's own port and peer id, so the honest nodes' ping-backs keep the spies' white-list entries the "
+                         "newest everywhere. Cell names get _srN.")
+    ap.add_argument("--user-dumps", action="store_true",
+                    help="the user daemons also dump their peer list (--peerlist-dump-file), so the cell answers why users sit "
+                         "below the ceiling under the stock rule (open question 10 (d)). Cell names get _ud.")
     ap.add_argument("--fixed-rx-seed", action="store_true",
                     help="every daemon gets --sim-fixed-randomx-seed (needs a monerod-sim built with "
                          "patches/monero-sim-fixed-randomx-seed.patch). Without it a cell that runs past chain height "
@@ -278,6 +293,7 @@ def main():
             + (f"_c{round(100 * a.ban_coverage)}" if a.list == "half" and a.ban_coverage != 1.0 else "")
             + ("_fx" if a.fixed_rx_seed else "") + ("_up" if a.uniform_pick else "") + ("_rc" if a.rand_cands else "")
             + (f"_wl{a.white_limit}" if a.white_limit is not None else "") + (f"_gl{a.gray_limit}" if a.gray_limit is not None else "")
+            + (f"_sr{a.spy_refresh}" if a.spy_refresh else "") + ("_ud" if a.user_dumps else "")
             + (f"_to{'r' if a.turnover_reachable else ''}{a.turnover.replace(',', '')}" if a.turnover else "")
             + (f"_wc{a.wl_cands}" if a.wl_cands is not None else ""))
     stem = f"lean_{a.dedup}_{a.list}_h{a.reachable}_k{a.spy_subnets}{wtag}_s{a.seed}"
