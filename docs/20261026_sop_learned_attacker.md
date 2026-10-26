@@ -53,8 +53,14 @@ give_up 10.8 M; 3601 s on lithium). The race-env training at 0.45 found
 a learner-vs-exact comparison at 0.45 only shows that it learns to mine
 honestly. The check is therefore repeated at alpha 0.50, where the
 hand-written attacker is profitable (sims 0.604): exact 3/3/48/20/20 solve
-at 0.50 launched 18:10Z, MdpEnv training at the same caps to follow.
-Result: (pending).
+at 0.50 launched 18:10Z. Result: 0.5000, honest mining with zero reveals
+there too (19:20Z), so a learner-vs-exact comparison at these caps cannot
+tell a working learner from one that drifts to honest at either alpha,
+and the MdpEnv training at these caps was not run. The step-2 evidence is
+the slow test on 3/3/32/16/16, where reveals do pay: the learner lands
+within 0.01 of the exact optimum with one-step targets (2026-10-25) and
+with per-race returns (21:30Z, 1206 s). Step 2 passes for both
+estimators where every state is visited thousands of times.
 
 For reference, the 4/4/64/24/24 exact solve (85,108,639 states, lithium,
 07:07Z to 19:50Z, 12.7 h): optimum 0.4500, i.e. honest mining: within a
@@ -142,20 +148,124 @@ stubborn plus the deviations the data supports), with a faster step-size
 decay (1/(1 + 0.1 n) instead of 1/(1 + 0.02 n), under which the step
 stayed above 0.5 for a key's first 50 updates): one-step targets with
 n_min 30, race returns with n_min 30, race returns with n_min 100.
-Result: (pending).
+
+Result (first steps at rho 0.55, 01:09-01:21Z 10-26): race returns with
+n_min 30: 0.496 (7.8 M keys, 110 min; 2,419 reveals per 2000 d run
+against `sim_stubborn`'s 124,250; reorg 2.51 mean, 15 max); race returns
+with n_min 100: 0.493 (8.8 M keys, 123 min; 16,729 reveals; reorg
+2.59/18); one-step with n_min 30: (pending). Honest-level again. The
+gate changed which noise wins, not the outcome.
+
+**Step 3 fails.** Every configuration lands at honest mining or below;
+none reproduces the hand-written attacker, let alone beats it. The
+bisections of the three gated runs are left running on lithium (they
+warm-start each step from the best table so far, so a later step can
+only confirm) and no further variant is started: the design's fallback
+ladder for this case (D binned by 2, then the pending counts) is
+exhausted and it says to stop and report rather than tune further.
+
+## Verdict: why the tabular learner cannot recover stubborn
+
+All attempts at alpha 0.50 (race model; `sim_stubborn` 0.5715, honest
+0.5000), each the greedy policy's mean share over 3 seeds x 2000 d at the
+first informative bisection step:
+
+| attempt | targets | key | gate | rho | share | keys |
+|---|---|---|---|---|---|---|
+| eps-greedy, no warm start | one-step | exact | - | (bisection) | 0.498 | - |
+| warm start (behaviour = stubborn) | one-step | exact | - | 0.425 | 0.498 | 5.1 M |
+| warm start | one-step | exact | - | 0.550 | 0.485 | 5.2 M |
+| warm start | one-step | D/2 | - | 0.550 | 0.488 (0.498 at 0.525) | 4.4 M (6.9 M) |
+| warm start | per-race | exact | - | 0.550 | 0.320 | 4.9 M |
+| warm start | per-race | D/2, p/2 | - | 0.550 | 0.129 | 1.6 M |
+| warm start, lr 0.1 | per-race | exact | 30 | 0.550 | 0.496 | 7.8 M |
+| warm start, lr 0.1 | per-race | exact | 100 | 0.550 | 0.493 | 8.8 M |
+| warm start, lr 0.1 | one-step | exact | 30 | 0.550 | (pending) | |
+
+Three problems compound:
+
+1. Data density. The learner's game has millions of reachable keys
+   (5-9 M visited per 2e8 objects) because the state carries the weight
+   difference and both pending counts at object granularity, and the
+   states where the attack's value lives, the deep races, are each seen
+   a handful of times. A tabular value there is single-sample noise.
+   The exact solver's truncations showed the same thing from the other
+   side: 8.5e7 states at 4 blocks per side, and the profitable reveals
+   live deeper than any solvable truncation.
+2. The max over noisy values. With one-step targets a hold is valued off
+   its untried successor (the reference value), so an early publish or
+   give-up, whose reward is immediate, looks safe and the greedy policy
+   drifts to honest mining. With full returns a hold followed once by a
+   won race looks brilliant, and the greedy policy holds in hopeless
+   states until the deficit cap takes its blocks: the collapses to 0.32
+   and 0.13. Requiring 30 or 100 updates before an action may win
+   (the gate) only decides which of the two noises wins.
+3. Policy-dependent continuation. Once the greedy policy at the deep
+   race states is poor, holding at a race's first key is worth little
+   under that continuation, so publishing wins there; the deep states
+   then stop being visited as the behaviour weight decays, and their
+   values never recover. Approximate policy iteration with a weak
+   evaluation collapses toward the policy whose value is easiest to
+   estimate, and honest mining is a one-key policy. The reveal counts
+   show it: 2,419 and 16,729 per run against stubborn's 124,250.
+
+What is not the problem: the implementation (the learner matches the
+exact solver within 0.01 on a game where reveals pay and every state is
+visited thousands of times, with both estimators) and the environment
+(`SopEnv` reproduces the old race loop bit for bit; stubborn through it
+scores 0.5715 where the sims measured 0.604).
+
+What the negative result says: this learner (tabular Q-learning over
+the exact-MDP observation, 2e8 objects per rho, 32 GB) cannot find an
+attacker better than the hand-written one, and cannot even recover it.
+What it does not say: that no better attacker exists. Together with the
+exact solves (optimum = honest in every solvable truncation at 0.45 and
+0.50), the model-side evidence stands where it was: the window_stubborn
+noown attacker is the strongest we have, SoP concedes at least 0.57 to it
+at alpha 0.50 in the race model (0.604 in the sims) and nothing above
+honest below ~0.483.
+
+Options, in the order I would take them:
+
+- A. Close here. Report stubborn-noown's curve as the bound with this
+  document as the record of the learned-attacker attempt. No cost.
+- B. Parametric search instead of RL: a family of hand-written rules
+  with a few knobs (give-up objects, publish lead, reveal margin, how
+  deep to hold when behind) optimized by direct search in the race
+  model, ~2 min per evaluation on lithium, hours in all. It finds the
+  best attacker within a structured family, has none of the learner's
+  fragility, and the result is directly runnable in the sim (the
+  strategy class and the matrix specs exist). This is my recommendation
+  if a stronger bound is wanted.
+- C. Block-granular keys for the same learner (D and the pending counts
+  binned by 16: tens of thousands of keys, thousands of visits each).
+  Beyond what the design allowed (bins of 2, then stop); hours; it
+  trades the aliasing of states on either side of the acceptance
+  boundary for density, and may well drift to honest the same way.
+- D. Function approximation (a small network over the 7 features). A
+  new design; days; the least predictable.
+
+Ladder steps 4 and 5 (sim cells) are not run: the design gates sim time
+on step 3. The matrix specs sop_v4_learned_6h / _72h and the placeholder
+policy files in data/sop_rl/ stay as they are (a placeholder is an empty
+diff, i.e. the stubborn attacker under the learned name; the miner logs
+the entry count at start).
 
 ### 4. Smoke cell (6 h)
 
-(pending)
+Not run: gated on step 3, which failed (see Verdict).
 
 ### 5. 72 h cells
 
-(pending)
+Not run, for the same reason.
 
 ## What the policy does
 
-(pending: diff entries by action; where it holds a winning reveal, where
-it gives up earlier or later than o5)
+Not applicable: no learned policy passed step 3. The exported tables of
+the gated runs (data/sop_rl/policy_noown_a050_*_g*.json.gz once their
+bisections end on lithium) are diffs against `sim_stubborn` and can be
+read for where the learner deviated, but they describe policies that
+score below the rule they deviate from.
 
 ## Incidents
 
