@@ -271,6 +271,37 @@ whatever K), as in the model. The window sims test the flip at w=16:
 sop_v4_window_72h, K=2 and K=6 at alpha 0.47, two seeds each, on the
 same seeds as the default window's a047 s1 and s2 cells.
 
+The window sims (10-27, 72 h, one lane per box; all four PASS the gate with
+no dead daemons; reveals per 1,000 found blocks; model = the perish run's
+best attacker at 0.47):
+
+| cell | box | share | model | attacker orphan rate | model | network orphan rate | model | reveals per 1,000 found | model | default window, same seed | run |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| K=2 s1 | box80 | 0.546 | 0.514 | 0.240 | 0.274 | 0.332 | 0.337 | 71.9 | 66.9 | 0.451 | 20261027_115702 |
+| K=2 s2 | box81 | 0.493 | 0.514 | 0.309 | 0.274 | 0.358 | 0.337 | 67.6 | 66.9 | 0.514 | 20261027_115708 |
+| K=6 s1 | box82 | 0.454 | 0.399 | 0.368 | 0.433 | 0.358 | 0.332 | 26.2 | 18.8 | 0.451 | 20261027_115714 |
+| K=6 s2 | phantom | 0.436 | 0.399 | 0.410 | 0.433 | 0.372 | 0.332 | 24.5 | 18.8 | 0.514 | 20261027_115719 |
+
+The flip holds in both seeds: at alpha 0.47 the attack pays with a
+16-object window (mean 0.520) and does not with an 80-object one (mean
+0.445). K=2 matches the model on every measure (share +0.006, reveals +4%,
+both orphan rates within 0.01 on the pair). K=6 does not: the sims'
+attacker takes 0.046 more than the model, reveals 35% more often (80 and
+76 reveals against about 58 expected; each cell 2-3 Poisson sd above) and
+loses fewer of its blocks (attacker orphan rate 0.389 against 0.433).
+Pairing by seed did not cut the noise (seed 1: K=6 0.454 above the
+default window's 0.451; seed 2: K=2 0.493 below its 0.514), so the cells
+count as independent (sd about 0.03 per cell). Read through the model's
+slope at each window (share rises 4.4 points per alpha point at K=2
+between 0.46 and 0.47, 7.7 at K=6 between 0.47 and 0.48), the sims put
+the K=2 crossing near 0.455 and the K=6 crossing near 0.474 (each about
++-0.005 from the two-cell noise), against the default window's 0.4635:
+a window of 16 objects lowers the threshold by about 0.008 and one of
+80 raises it by about 0.010, against the model's 0.011 and 0.012. The
+K=6 excess is the one open point; sop_v4_window_k6_a048_72h (K=6 at
+0.48 with G=8, the model's break-even at 0.476; two seeds, launched
+18:41Z) tests it directly: the excess would put the attacker near 0.52.
+
 ## Validation in the sims
 
 ### Smoke (6 h, alpha 0.50, G=20 Z=1, L=0 M=1 R=1)
