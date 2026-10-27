@@ -178,17 +178,23 @@ data/sop_search/stock_crossing.jsonl):
 | 0.44 | 0.4745 | 0.4920 | 0.4950 |
 
 Crossings: d=2 0.3648, d=3 0.3746, d=1 0.3825. The sims' stock cells
-(window_stubborn on the stock network) measured 0.398 at 0.40 and 0.528
-at 0.45, i.e. a crossing near 0.40 there; the model's stock attacker is
-a little stronger than the sims' at 0.40 (0.424), the opposite sign to
-the SoP case, which is consistent with propagation effects favouring
-whichever side is revealing against the slower network. The textbook
+(window_stubborn on the stock network, giving up 5 blocks behind)
+measured 0.247 at 0.33, 0.398 at 0.40 and 0.528 at 0.45 (two seeds
+each), a crossing near 0.40. Like for like (d=5, 10-27;
+data/sop_search/stock_crossing_d5.jsonl) the model gives 0.262, 0.394
+and 0.505, crossing 0.405: sims minus model -0.015, +0.004, +0.023, so
+the model reproduces the stock sims as it does the SoP ones. (This
+paragraph used to compare those cells with the model's d=2 attacker and
+read a sign reversal into the gap; that was not like for like.) The
+headline's stock figure (d=2, 0.365) has not been simulated; it is the
+same attacker family in a model the d=5 cells validate. The textbook
 optimum for a zero-propagation-advantage selfish miner is 1/3; this
 family is not optimal and lands at 0.365.
 
 **The headline, all in one model and one attacker family:** SoP moves the
 profitability threshold from 0.365 (stock, best d) to 0.469 (the
-strongest SoP attacker found) and 0.486 (the sims' stubborn rule). The
+strongest SoP attacker found; 0.468 with the perish rule, 0.464 in
+Shadow) and 0.486 (the sims' stubborn rule). The
 attacker that sets the SoP figure does not withhold blocks below 0.49;
 it contests honest blocks with share weight.
 
@@ -472,6 +478,32 @@ block propagation does not explain the sims' +0.02; that gap is still
 unexplained. (A first reading of these "ties" as propagation losses, which
 would have explained the gap, was wrong: those honest blocks are already
 counted as orphaned by the model's reveal.)
+
+### The perish re-search (10-27)
+
+The search rerun with honest shares perishing on an attacker publish
+(`sop_attacker_search.py --perish`; the L=1 family, M=1, Z=1, G 3-12, R
+1-2, 2000 d x 3 seeds; data/sop_search/perish_stage3.jsonl and, by 0.005,
+perish_fine.jsonl):
+
+| alpha | best with perish | share | best without | share |
+|---|---|---|---|---|
+| 0.44 | G=3 | 0.363 | G=6 | 0.357 |
+| 0.45 | G=3 | 0.393 | G=6 | 0.389 |
+| 0.46 | G=3 | 0.429 | G=5 | 0.431 |
+| 0.465 | G=4 | 0.450 | G=5 | 0.451 |
+| 0.47 | G=6 | 0.477 | G=6 | 0.472 |
+| 0.475 | G=7 | 0.507 | G=7 | 0.497 |
+| 0.48 | G=7 | 0.540 | G=7 | 0.524 |
+
+Crossing 0.4684 with the rule, 0.4693 without (fine grids): the rule
+moves the best give-up threshold down at low alpha (an attacker who is
+no longer handed a phantom honest lead can afford to give up sooner)
+and adds 0.005-0.016 of share above the crossing, but the threshold
+itself does not move. The withholding family that wins at 0.49-0.50
+never publishes, so its results (0.617, 0.725) stand. The model's
+default stays off so that every archived number reproduces; every new
+model run passes the option (`--perish`, `race_env(perish=True)`).
 
 ## Fidelity audit: sims vs race model
 
