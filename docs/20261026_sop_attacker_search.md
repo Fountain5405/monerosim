@@ -247,6 +247,30 @@ via K=2, w=16), 0.4703 (32, the default), 0.4797 (64), 0.4811 (80),
 thumb from this: each doubling of the window length in objects raises the
 threshold by about 0.01 up to 64 objects, and by less beyond.
 
+With the perish rule (10-27; the L=1 family, M=1, Z=1, G and R as
+listed in data/sop_search/kw_perish_047.jsonl, 2000 d x 3 seeds; the
+default window from perish_stage3.jsonl), each setting's best attacker:
+
+| K | w | window | best at 0.46 | best at 0.47 | best at 0.48 | crossing | best at 0.47 | reveals per 1,000 found at 0.47 |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 8 | 8 | 0.497 | 0.536 | 0.576 | below 0.46 (about 0.447 extrapolated) | G=4 | 74.1 |
+| 2 | 16 | 16 | 0.470 | 0.514 | 0.568 | below 0.46 (about 0.457 extrapolated) | G=6 | 66.9 |
+| 3 | 16 | 32 (default) | 0.429 | 0.477 | 0.540 | 0.4684 | G=6 | 46.3 |
+| 3 | 32 | 64 | 0.383 | 0.433 | 0.502 | 0.476 | G=6 | 34.0 |
+| 6 | 16 | 80 | 0.348 | 0.399 | 0.476 | just above 0.48 (about 0.4805 extrapolated) | G=4 | 18.8 |
+
+The rule lowers the crossings by up to 0.006 at the short windows (16
+objects: 0.463 to about 0.457) and by less at the long ones (64: 0.480 to
+0.476; 80: 0.481 to about 0.4805), so the rule of thumb stands. At alpha
+0.47 the window alone sets the sign of the attack: the best attacker
+makes +0.044 over honest mining with a 16-object window and +0.007 with
+the default 32, and loses 0.037 with 64 and 0.071 with 80 (R=1 and R=3
+tie at 80, within 0.0003). The daemon's K enters only its lateness window
+((K - 1) * w objects; its fallback to plain work is at 10 * w blocks,
+whatever K), as in the model. The window sims test the flip at w=16:
+sop_v4_window_72h, K=2 and K=6 at alpha 0.47, two seeds each, on the
+same seeds as the default window's a047 s1 and s2 cells.
+
 ## Validation in the sims
 
 ### Smoke (6 h, alpha 0.50, G=20 Z=1, L=0 M=1 R=1)

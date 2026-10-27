@@ -1,0 +1,85 @@
+# sop_v4_window_72h (2026-10-27): SoP's window depth K in Shadow. The race
+# model predicts the profitability threshold of the best attacker moves with
+# the window (K - 1) * w in objects (docs/20261026_sop_attacker_search.md,
+# "Experiment 2" and the perish predictions at alpha 0.47): with w fixed at
+# the validated 16, K=2 (window 16) and K=6 (window 80) bracket the default
+# K=3 (window 32, simulated in sop_v4_param_72h). Only K changes, so the share
+# traffic, and with it the sims' cost and memory, match the validated cells.
+# Every SoP node gets the same options: the honest miners, the relays group
+# (relay-001/002 and the six seeds), the bridge and the attacker's daemon.
+# The attacker is param_stubborn with that window's best knobs from the race
+# model (perish rule on). One lane per 16 GB box (a lane of this attacker is
+# ~6.5 GB of daemons).
+# Model at alpha 0.47 (perish, best of G x R, L=1 M=1 Z=1, 2000 d x 3 seeds,
+# data/sop_search/kw_perish_047.jsonl), per found block where it matters:
+#   k2 (window 16): G=6 R=1, share 0.514 (+0.044 over alpha), 66.9 reveals
+#       per 1,000 found blocks, network orphan rate 0.337
+#   default K=3 (window 32): G=6, share 0.477 (+0.007; sims ran +0.021 over
+#       the model there, sop_v4_param_72h)
+#   k6 (window 80): G=4 R=1 (R=3 the same), share 0.399 (-0.071), 18.8
+#       reveals per 1,000 found blocks, network orphan rate 0.332
+# The test: the window alone flips the sign of the attack at one alpha.
+name: sop_v4_window_72h
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: param_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          count_own_tip_shares: 'false'
+          give_up_depth: '5'
+          hold_shares: '1'
+          publish_lead: '1'
+          reveal_margin: '1'
+          block_deficit: '0'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    k2:
+      attacker:
+        attributes: {window_objects: '16', give_up_objects: '6', reveal_depth: '1'}
+        daemon_options: {sim-sop-k: 2}
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16, sim-sop-k: 2}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16, sim-sop-k: 2}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16, sim-sop-k: 2}
+    k6:
+      attacker:
+        attributes: {window_objects: '80', give_up_objects: '4', reveal_depth: '1'}
+        daemon_options: {sim-sop-k: 6}
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16, sim-sop-k: 6}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16, sim-sop-k: 6}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16, sim-sop-k: 6}
+  alpha:
+    a047:
+      attacker: {hashrate: 4.7}
+      honest: {hashrate: [2.65, 2.65]}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+    s2:
+      attacker:
+        attributes:
+          sample: '2'
