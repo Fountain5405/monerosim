@@ -271,9 +271,10 @@ First round (launched 04:22Z 10-26 from local commit 81a3820e):
 
 The 0.47 cell (rc 0, oracle 0 mismatches, 86,600 decisions all from the
 policy, 2,085 blocks) came in 0.008 under the model, but its structure
-was far off: 36 reveals and orphan rates near 0.10 where the model's
-attacker with these knobs makes 86 reveals per 72 h and orphans 0.30
-(`scripts/sop_decision_hist.py`). The attacker log explains it: the sim's
+was far off: 36 reveals (15 per 1,000 found blocks) and orphan rates
+near 0.10 where the model's attacker with these knobs makes 40 reveals
+per 1,000 found blocks (86 in the model's 72 h, which is 2,160 found
+blocks) and orphans 0.30 (`scripts/sop_decision_hist.py`). The attacker log explains it: the sim's
 attacker started 980 share races, abandoned 895 of them with no block
 and reached a block in only 8.5%, and at EVERY race start its observation
 had pa = 0, where the model's attacker holds a median of 12 pending
@@ -354,17 +355,18 @@ pending count (mode 4, tail to 33), where the first round read 0 at all
 reveals in 3.7 h).
 
 Second-round readout (all 11 cells, 10-27 03:45Z;
-`scripts/sop_param_readout.py matrix_runs/sop_v4_param_72h/cells`). Every
+`scripts/sop_param_readout.py matrix_runs/sop_v4_param_72h/cells --pool=<pool>`;
+reveals from the lane gate's counts). Every
 cell ran to the end with 12 of 12 daemons, 0 oracle mismatches over 12
 nodes and gate PASS; the one health flag is note (a).
 
-| alpha | knobs | model share | sim shares | sim mean | sim - model | sim - alpha | reveals/72 h model / sims |
+| alpha | knobs | model share | sim shares | sim mean | sim - model | sim - alpha | reveals per 1,000 found, model / sims |
 |---|---|---|---|---|---|---|---|
-| 0.45 | G=6 L=1 M=1 R=1 Z=1 | 0.389 | 0.431, 0.378 | 0.405 | +0.016 | -0.045 | 54 / 102 |
-| 0.46 | G=6 L=1 M=1 R=1 Z=1 | 0.428 | 0.450, 0.445 | 0.448 | +0.020 | -0.012 | 69 / 127 |
-| 0.47 | G=6 L=1 M=1 R=1 Z=1 | 0.472 | 0.451, 0.514, 0.478 | 0.481 | +0.009 | +0.011 | 86 / 146 |
-| 0.48 | G=8 L=1 M=1 R=1 Z=1 | 0.525 | 0.535, 0.577 | 0.556 | +0.031 | +0.076 | 106 / 188 |
-| 0.50 | G=20 L=0 M=1 R=3 Z=1 | 0.725 | 0.724, 0.796 | 0.760 | +0.035 | +0.260 | 149 / 256 |
+| 0.45 | G=6 L=1 M=1 R=1 Z=1 | 0.389 | 0.431, 0.378 | 0.405 | +0.016 | -0.045 | 25.2 / 34.3 |
+| 0.46 | G=6 L=1 M=1 R=1 Z=1 | 0.428 | 0.450, 0.445 | 0.448 | +0.020 | -0.012 | 32.0 / 42.3 |
+| 0.47 | G=6 L=1 M=1 R=1 Z=1 | 0.472 | 0.451, 0.514, 0.478 | 0.481 | +0.009 | +0.011 | 39.6 / 48.2 |
+| 0.48 | G=8 L=1 M=1 R=1 Z=1 | 0.525 | 0.535, 0.577 | 0.556 | +0.031 | +0.076 | 49.3 / 59.8 |
+| 0.50 | G=20 L=0 M=1 R=3 Z=1 | 0.725 | 0.724, 0.796 | 0.760 | +0.035 | +0.260 | 69.1 / 72.4 |
 
 - **The sims confirm the race model.** Over the 11 cells the sims sit
   +0.021 above the model at the same knobs (sd 0.028 per cell), the sign
@@ -382,11 +384,94 @@ nodes and gate PASS; the one health flag is note (a).
   residual; the 0.47 pair alone suggested 0.045), about two to four
   times the binomial 0.011, as expected when races settle several blocks
   at once.
-- **Open: reveals.** At every alpha the sims' attacker reveals 1.7 to 1.9
-  times as often as the model's, yet scores only about 0.02 more. Not
-  checked: whether the agent logs a fresh reveal each time it extends an
-  already revealed fork, or whether the sims' attacker meets more
-  contested states (propagation).
+- **Reveals: explained (10-27, next section).** The sims' 1.7-1.9x
+  reveal rate per 72 h is two effects: a counting basis (a sim's 72 h
+  holds 1.4-1.6x the model's found blocks; per found block the sims
+  reveal 1.05-1.36x the model's, the column above) and a model rule
+  (honest shares did not perish when the attacker published; with it
+  the ratio is 1.03-1.15x).
+
+### The reveal discrepancy (10-27)
+
+Checked in order (scripts/sop_reveal_audit.py, scripts/sop_decision_hist.py
+--sim-log, tests in scripts/test_sop_reveal_audit.py and
+test_sop_decision_hist.py):
+
+1. **Not double counting.** In all 11 runs every fork is revealed exactly
+   once (reveal lines = distinct forks), and reveals mostly succeed (in
+   a047 s1, 2 of 135 rejected by the bridge, 3 followed by a concession).
+2. **The counting basis.** The model's "72 h" is 2,160 FOUND blocks (720
+   a day, canonical and orphaned). The sims' difficulty tracks the main
+   chain while 30-48% of found blocks are orphaned, so a sim's 72 h holds
+   2,960-3,540 found blocks (canonical / (1 - network orphan rate)). Every
+   per-72 h rate compared across the two (reveals, race starts, publishes)
+   must be per found block. Shares and orphan rates are ratios and are not
+   affected.
+3. **A model rule.** At a race start the sims' honest block carries a
+   median 9-11 work objects, the model's 18, and the model's attacker
+   gave up at once in 30% of races (deficit over G) against 0-1% in the
+   sims. Cause: SopEnv._publish reset the attacker's pending shares but
+   kept the honest miners' (hon_pending), so shares mined on the old tip
+   were counted in the next honest block. Under share-or-perish they
+   perish once the attacker's block is the tip (the sims' share slots are
+   keyed by prev). New option SimConfig.honest_perish_on_publish
+   (race_env(..., perish=True); default off, so every number above is
+   unchanged); test
+   test_honest_pending_shares_perish_when_the_attacker_publishes_only_with_the_flag.
+   It matters only when the attacker publishes (the L=1 family below
+   0.49), not at 0.50 (L=0).
+
+Per 1,000 found blocks (model: 600 d, seed 1; sims: mean over seeds):
+
+| alpha | source | reveals | race starts | publishes | give-ups, no block | give-ups with blocks |
+|---|---|---|---|---|---|---|
+| 0.45 | model | 25.2 | 231.4 | 196.1 | 133.9 | 80.5 |
+| 0.45 | model, perish | 29.9 | 181.5 | 153.8 | 65.6 | 92.5 |
+| 0.45 | sims (2) | 34.3 | 174.7 | 146.6 | 56.8 | 84.2 |
+| 0.46 | model | 32.0 | 218.5 | 192.9 | 120.8 | 73.4 |
+| 0.46 | model, perish | 37.8 | 170.4 | 150.4 | 55.0 | 83.6 |
+| 0.46 | sims (2) | 41.9 | 168.1 | 141.4 | 49.8 | 76.4 |
+| 0.47 | model | 39.6 | 206.9 | 190.0 | 109.2 | 65.1 |
+| 0.47 | model, perish | 46.5 | 160.2 | 147.0 | 46.0 | 73.4 |
+| 0.47 | sims (3) | 48.1 | 159.0 | 140.9 | 42.0 | 69.2 |
+| 0.48 | model | 49.4 | 173.0 | 166.0 | 75.2 | 54.1 |
+| 0.48 | model, perish | 56.8 | 133.4 | 128.0 | 23.0 | 58.3 |
+| 0.48 | sims (2) | 59.3 | 133.0 | 119.0 | 19.4 | 54.0 |
+| 0.50 | model (= perish) | 69.3 | 40.2 | 0.0 | 0.3 | 16.6 |
+| 0.50 | sims (2) | 72.2 | 41.8 | 0.0 | 0.4 | 12.2 |
+
+The sims' reveals are releases (the agent's '<strategy>: reveal fork='
+lines); the agent's own acceptance test held back a further 0.1-4.2 reveal
+decisions per 1,000 found blocks (its suppressed_reveals counter), which a
+first tally of the decision lines had counted as reveals. With the perish
+rule the model reproduces the sims' race structure: race starts within 4%
+at every alpha (160.2 vs 159.0 at 0.47), reveals within 4% at 0.47-0.50
+and 11-15% low at 0.45-0.46 (two seeds each).
+The share at the cells' knobs moves (one seed, 600 d): 0.389 to 0.377 at
+0.45, 0.428 to 0.424 at 0.46, 0.473 to 0.478 at 0.47, 0.526 to 0.543 at
+0.48, 0.723 unchanged at 0.50; the crossing at these knobs stays near
+0.468. The searched optimum was found without the rule and is not
+re-searched yet, and the sims' share is still about +0.02 above the model
+with it.
+
+**The sims' "gamma" is not an honest split (10-27).** The cell JSONs'
+gamma (0.04-0.15; selfish_mining_analysis.realized_gamma: forks at a height
+F with both an attacker and an honest block, resolved by an honest block at
+F + 1, counted for the attacker when canonical F is its block) was split
+for all 11 runs against the attacker's own release lines (the agent's
+`fork` is a daemon height, so the first new block sits at index fork).
+Every attacker-side event is one of two things: the top block of a won
+reveal with the honest branch at least as long (a <= h; 28-42 per 72 h),
+or the attacker's next published block beside an honest block that the
+same reveal had already orphaned (14-30 per 72 h; the honest sibling was
+found a median 220-370 s before the attacker's block, up to 19 min).
+Genuine near-simultaneous ties (honest block within 1 s of the attacker's)
+were 2 of 113 checked in a047 s2 and a045 s1. So gamma here measures
+SoP's weight-based reveal wins, not tie-breaking, and the model's lack of
+block propagation does not explain the sims' +0.02; that gap is still
+unexplained. (A first reading of these "ties" as propagation losses, which
+would have explained the gap, was wrong: those honest blocks are already
+counted as orphaned by the model's reveal.)
 
 ## Fidelity audit: sims vs race model
 
@@ -422,5 +507,10 @@ would show in the reveal/give-up structure. The model's crossing (0.4864
 for the sim's rule) is therefore an upper bound on the sims' (about
 0.483 measured), and the model is a conservative tool for the sweeps:
 what it finds profitable, the sims find at least as profitable.
-The sims' block count is 1924-1968 per 72 h (a 132-135 s interval); the
-model's reveal rate scales with it.
+The sims' main chain grows by 1924-1968 blocks per 72 h (a 132-135 s
+interval), but with 36-40% of found blocks orphaned they find 3,080-3,240
+blocks per 72 h, 4.3-4.5 of the model's 720-block days, so reveal rates
+compare per found block (corrected 10-27; this line used to scale by the
+main chain): at 0.45 the sims made 40.2 reveals per 1,000 found blocks
+(119-138 per 72 h, n = 4) against the model's 37.5, at 0.50 90.6 (272-301,
+n = 4) against 86.3. The rule's reveal structure matches within 5-7%.

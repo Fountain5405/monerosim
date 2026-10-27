@@ -21,16 +21,19 @@ in the 12-daemon Shadow cells. Every step below gates the next.
 `simulate()` loop bit for bit (29 pinned 60 d runs across every preset).
 Through it, at alpha 0.45, 2000 d, 5 seeds:
 
-| policy | share (5 seeds) | mean | reveals/run | mean reorg | max reorg |
+| policy | share (5 seeds) | mean | reveals per 1,000 found blocks | mean reorg | max reorg |
 |---|---|---|---|---|---|
-| race model's stubborn rule (`stubborn_policy`) | 0.2806 (seed 1) | 0.281 | 60,198 | 3.27 | - |
-| the SIM's stubborn rule (`sim_stubborn`) | 0.2569 0.2565 0.2553 0.2560 0.2546 | 0.2558 | 53,871 | 2.69 | 17 |
-| 12-daemon sims, window_stubborn noown (n=4) | 0.288 0.279 0.269 0.253 | 0.272 | 119-138 per 72 h | - | - |
+| race model's stubborn rule (`stubborn_policy`) | 0.2806 (seed 1) | 0.281 | 41.8 (60,198 per 2000 d run) | 3.27 | - |
+| the SIM's stubborn rule (`sim_stubborn`) | 0.2569 0.2565 0.2553 0.2560 0.2546 | 0.2558 | 37.4 (53,871 per run) | 2.69 | 17 |
+| 12-daemon sims, window_stubborn noown (n=4) | 0.288 0.279 0.269 0.253 | 0.272 | 40.2 (37.3-43.3; 119-138 per 72 h) | - | - |
 
 At alpha 0.50 (same procedure): `sim_stubborn` 0.5721 0.5705 0.5716 0.5730
-0.5703, mean 0.5715, 124,250 reveals/run, mean reorg 2.69, max 19; the sims
+0.5703, mean 0.5715, 124,250 reveals/run (86.3 per 1,000 found blocks; the
+sims 90.6, n = 4), mean reorg 2.69, max 19; the sims
 measured 0.604 (n=4: 0.591 0.582 0.614 0.628). The race model under-predicts
 the sim's rule by 0.016 at 0.45 and 0.033 at 0.50.
+(Reveal rates compare per found block: the model's day is 720 found
+blocks, a sim's 72 h holds 3,080-3,240; corrected 10-27.)
 
 Finding: the two hand-written rules differ by 0.025 in the race model. The
 sim's rule holds while there is no honest block whatever the objects

@@ -53,24 +53,29 @@ def parse_grid(spec: str) -> List[Dict[str, int]]:
     return [dict(c) for c in itertools.product(*axes)] if axes else [{}]
 
 
-def run_key(knobs: Dict[str, int], alpha: float, seed: int, K: int = K_DEFAULT, w: int = W_DEFAULT) -> str:
-    return json.dumps({"knobs": {k: knobs[k] for k in sorted(knobs)}, "alpha": alpha, "seed": seed,
-                       "K": K, "w": w}, sort_keys=True)
+def run_key(knobs: Dict[str, int], alpha: float, seed: int, K: int = K_DEFAULT, w: int = W_DEFAULT,
+            perish: bool = False) -> str:
+    k = {"knobs": {k: knobs[k] for k in sorted(knobs)}, "alpha": alpha, "seed": seed, "K": K, "w": w}
+    if perish:          # only when set, so result lines written before 2026-10-27 keep their keys
+        k["perish"] = True
+    return json.dumps(k, sort_keys=True)
 
 
 def evaluate(knobs: Dict[str, int], alpha: float, days: float, seed: int,
-             K: int = K_DEFAULT, w: int = W_DEFAULT) -> dict:
+             K: int = K_DEFAULT, w: int = W_DEFAULT, perish: bool = False) -> dict:
     """One rollout of param_stubborn(**knobs) on race_env(alpha, days, seed,
     K, w), the policy's window following the network's ((K - 1) * w): share,
     reveals, reorg depths and the orphan rates the sims' cell JSONs report
-    (attacker_orphan_rate, network_orphan_rate)."""
-    env = race_env(alpha, days, seed, K=K, w=w)
+    (attacker_orphan_rate, network_orphan_rate). perish: honest pending shares
+    perish when the attacker publishes (SimConfig.honest_perish_on_publish)."""
+    env = race_env(alpha, days, seed, K=K, w=w, perish=perish)
     W = env.window_obs
     r = rollout(env, lambda o, legal: legal_fallback(param_stubborn(o, W=W, **knobs), legal), env.n_objects)
     st = env.stats
     hon_orphaned = sum(st.reorg_depths)
     found = st.att_final_blocks + st.att_orphaned_blocks + st.hon_final_blocks + hon_orphaned
-    return {"knobs": dict(knobs), "alpha": alpha, "seed": seed, "days": days, "K": K, "w": w, "share": r["share"],
+    return {"knobs": dict(knobs), "alpha": alpha, "seed": seed, "days": days, "K": K, "w": w, "perish": bool(perish),
+            "share": r["share"],
             "reveals": r["reveals"], "mean_reorg": r["mean_reorg"], "max_reorg": r["max_reorg"],
             "att_final": st.att_final_blocks, "att_orphaned": st.att_orphaned_blocks,
             "hon_final": st.hon_final_blocks, "hon_orphaned": hon_orphaned,
@@ -151,6 +156,7 @@ def main(argv=None) -> int:
     ap.add_argument("--top", type=int, default=5)
     ap.add_argument("--K", type=int, default=K_DEFAULT, help="the countermeasure's window depth in blocks")
     ap.add_argument("--w", type=int, default=W_DEFAULT, help="the countermeasure's shares per block")
+    ap.add_argument("--perish", action="store_true", help="honest pending shares perish on an attacker publish")
     args = ap.parse_args(argv)
     fixed = parse_grid(args.fixed)
     if len(fixed) != 1:
@@ -165,9 +171,10 @@ def main(argv=None) -> int:
             if line.strip():
                 r = json.loads(line)
                 rows.append(r)
-                done.add(run_key(r["knobs"], r["alpha"], r["seed"], r.get("K", K_DEFAULT), r.get("w", W_DEFAULT)))
-    tasks = [(c, a, args.days, s, args.K, args.w) for c in combos for a in args.alphas for s in args.seeds
-             if run_key(c, a, s, args.K, args.w) not in done]
+                done.add(run_key(r["knobs"], r["alpha"], r["seed"], r.get("K", K_DEFAULT), r.get("w", W_DEFAULT),
+                                 r.get("perish", False)))
+    tasks = [(c, a, args.days, s, args.K, args.w, args.perish) for c in combos for a in args.alphas for s in args.seeds
+             if run_key(c, a, s, args.K, args.w, args.perish) not in done]
     print(f"{len(combos)} combos x {len(args.alphas)} alphas x {len(args.seeds)} seeds at {args.days:g} d "
           f"(K {args.K}, w {args.w}): {len(tasks)} runs to do, {len(done)} already in {out}",
           file=sys.stderr, flush=True)

@@ -617,3 +617,29 @@ def test_env_legal_mask_and_illegal_action_raises():
     assert env.legal() == (True, True, False, True)
     with pytest.raises(ValueError):
         env.step(REVEAL)
+
+
+def test_honest_pending_shares_perish_when_the_attacker_publishes_only_with_the_flag():
+    # 2026-10-27: the sims' honest blocks carry ~10 objects at a race start, the model's 18:
+    # the model kept honest shares mined on the old tip across an attacker's publish.
+    from scripts.sop_rl import race_env
+    from scripts.sop_race_model import GIVE_UP, HOLD, PUBLISH
+    for perish in (True, False):
+        env = race_env(0.47, 200, seed=3, perish=perish)
+        o, checked = env.obs(), 0
+        while not env.done and checked < 20:
+            a, D, xa, pa, h, xh, ph = o
+            if a >= 1 and h == 0 and ph >= 2:
+                o, _, _ = env.step(PUBLISH)
+                if perish:
+                    assert o[6] <= 1, o      # only the object drawn after the publish can be a share
+                else:
+                    assert o[6] >= ph, o
+                checked += 1
+            elif h >= 1:
+                o, _, _ = env.step(GIVE_UP)
+            elif a >= 1:
+                o, _, _ = env.step(PUBLISH)
+            else:
+                o, _, _ = env.step(HOLD)
+        assert checked == 20

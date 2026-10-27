@@ -93,3 +93,14 @@ def test_window_follows_the_countermeasure_parameters():
     r4 = S.evaluate({}, alpha=0.5, days=2, seed=1, K=4, w=16)
     assert r4["K"] == 4 and r4["w"] == 16
     assert r4["share"] != S.evaluate({}, alpha=0.5, days=2, seed=1)["share"]
+
+
+def test_perish_runs_are_their_own_results():
+    # 2026-10-27: honest shares perish on an attacker publish (SimConfig.honest_perish_on_publish)
+    knobs = {"G": 6, "L": 1, "Z": 1}
+    a = S.evaluate(knobs, alpha=0.47, days=20, seed=1, perish=True)
+    b = S.evaluate(knobs, alpha=0.47, days=20, seed=1)
+    assert a["perish"] is True and b["perish"] is False
+    assert a["share"] != b["share"]
+    assert S.run_key(knobs, 0.47, 1, perish=True) != S.run_key(knobs, 0.47, 1)
+    assert S.run_key(knobs, 0.47, 1, perish=False) == S.run_key(knobs, 0.47, 1)   # old result lines keep their keys

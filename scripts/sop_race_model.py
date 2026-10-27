@@ -277,6 +277,9 @@ class SimConfig:
                                          # blocks (deep_hunt, 2026-10-19); 0 = at the first chance
     # tevador's attacker (blockhain-sim.py, 2026-10-17), for `reconcile`. Defaults reproduce Model B.
     equal_start: bool = False            # after a give-up the attacker adopts honest's pending shares
+    honest_perish_on_publish: bool = False  # 2026-10-27: honest shares mined on the old tip perish when
+                                          # the attacker publishes (the sims' share slots are keyed by
+                                          # prev; the default keeps them, as every result to date did)
     early_honest_shares: bool = False    # honest shares found before either side has a block since the
                                          # fork sit on the fork point, so the attacker's first block embeds them too
     either_window: bool = False          # SoP window ends once EITHER branch holds (K - w) objects past
@@ -558,6 +561,8 @@ class SopEnv:
         a, _ = self._a_h()
         self.stats.att_final_blocks += a
         self._reset_fork()
+        if self.cfg.honest_perish_on_publish:
+            self.hon_pending = 0
         self.att_fork, self.hon_fork = self.att_pending, self.hon_pending
         return a, 0
 
