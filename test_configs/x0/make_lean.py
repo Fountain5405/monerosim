@@ -77,6 +77,18 @@ def agents_yaml(a, ban):
             if a.turnover_reachable:
                 w("    turnover: true")
             w("    daemon_options: " + opts({"out-peers": out, "hide-my-port": "false"}, ban if adopter else ""))
+
+    # reachable home senders (OQ12): relay-class daemons that also run a wallet, so the
+    # estimators class them reachable/busy from blocked_inbound_ports and tx counts
+    for tag, n, interval in (("a", a.reachable_senders, 18000), ("b", a.busy_senders, 3600)):
+        if n <= 0:
+            continue
+        rng = f"001..{n:03d}"
+        w(f"  sender-{tag}-{{{rng}}}:")
+        w("    daemon: monerod-sim\n    wallet: monero-wallet-rpc\n    script: agents.regular_user")
+        w(f"    start_time: 1200s\n    start_time_stagger: auto\n    transaction_interval: {interval}")
+        w("    activity_start_time: auto\n    can_receive_distributions: true")
+        w("    daemon_options: " + opts({"out-peers": 16, "hide-my-port": "false"}, ""))
     w("")
 
     half_u = a.users // 2
@@ -85,7 +97,7 @@ def agents_yaml(a, ban):
             continue
         w(f"  user-{{{rng}}}:")
         w("    daemon: monerod-sim\n    wallet: monero-wallet-rpc\n    script: agents.regular_user")
-        w("    start_time: 1200s\n    start_time_stagger: auto\n    transaction_interval: 300")
+        w(f"    start_time: 1200s\n    start_time_stagger: auto\n    transaction_interval: {a.user_interval}")
         w("    activity_start_time: auto\n    can_receive_distributions: true")
         uopts = {}
         if a.user_dumps:
@@ -158,7 +170,7 @@ def scenario_text(a, ban):
     head = src[src.index("general:"):src.index("\nagents:")]
     last_relay = 1200 + a.interval * max(0, a.reachable - FIXED_HONEST)
     bootstrap = max(2 * 3600, int(math.ceil((last_relay + a.warmup) / 1800.0)) * 1800)
-    stop = bootstrap + 4 * 3600
+    stop = bootstrap + a.window * 3600
     head = re.sub(r"(?m)^(  simulation_seed:).*", rf"\1 {a.seed}", head)
     head = re.sub(r"(?m)^(    sim-subnet-dedup:).*", rf'\1 "{a.dedup}"', head)
     if a.fixed_rx_seed:
@@ -268,6 +280,20 @@ def main():
                     help="with --spy-refresh, the front-port rotation period in sim-seconds (agents.spy_refresh --rotate-period; default 1800). "
                          "The trim defense's strength is proportional to it (journal E56): the honest refresh cycle a trimmed list forces "
                          "outruns a slow rotation. Cell names get _roN.")
+    ap.add_argument("--window", type=int, default=4, metavar="H",
+                    help="stop = bootstrap end + H hours (activity starts 1 h after bootstrap end, so "
+                         "sender activity spans H-1 hours). Default 4 = every cell so far. X1's 24 h of "
+                         "activity needs 25 (and --fixed-rx-seed, past the 20 h RandomX wall).")
+    ap.add_argument("--user-interval", type=int, default=300, metavar="S",
+                    help="the users' transaction_interval in sim-seconds (default 300, ~150x mainnet's "
+                         "per-sender rate; X1's mainnet anchor is 43200, ~2 tx/day).")
+    ap.add_argument("--reachable-senders", type=int, default=0, metavar="N",
+                    help="N reachable home senders (sender-a-*, hide-my-port false, wallets, "
+                         "regular_user at 18000 s ~ 4.8 tx/day): the occasional-reachable class OQ12 "
+                         "has n = 0 for. Cell names get _rsN.")
+    ap.add_argument("--busy-senders", type=int, default=0, metavar="N",
+                    help="N busy reachable senders (sender-b-*, 3600 s, 1 tx/h): the busy class. "
+                         "Cell names get _bsN.")
     ap.add_argument("--user-dumps", action="store_true",
                     help="the user daemons also dump their peer list (--peerlist-dump-file), so the cell answers why users sit "
                          "below the ceiling under the stock rule (open question 10 (d)). Cell names get _ud.")
@@ -301,6 +327,8 @@ def main():
             + ("_fx" if a.fixed_rx_seed else "") + ("_up" if a.uniform_pick else "") + ("_rc" if a.rand_cands else "")
             + (f"_wl{a.white_limit}" if a.white_limit is not None else "") + (f"_gl{a.gray_limit}" if a.gray_limit is not None else "")
             + (f"_sr{a.spy_refresh}" if a.spy_refresh else "") + (f"_ro{a.spy_rotate}" if a.spy_rotate else "") + ("_ud" if a.user_dumps else "")
+            + (f"_mw{a.window}h" if a.window != 4 else "") + (f"_ui{a.user_interval}" if a.user_interval != 300 else "")
+            + (f"_rs{a.reachable_senders}" if a.reachable_senders else "") + (f"_bs{a.busy_senders}" if a.busy_senders else "")
             + (f"_to{'r' if a.turnover_reachable else ''}{a.turnover.replace(',', '')}" if a.turnover else "")
             + (f"_wc{a.wl_cands}" if a.wl_cands is not None else ""))
     stem = f"lean_{a.dedup}_{a.list}_h{a.reachable}_k{a.spy_subnets}{wtag}_s{a.seed}"
