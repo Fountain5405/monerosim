@@ -254,13 +254,13 @@ default window from perish_stage3.jsonl), each setting's best attacker:
 | K | w | window | best at 0.46 | best at 0.47 | best at 0.48 | crossing | best at 0.47 | reveals per 1,000 found at 0.47 |
 |---|---|---|---|---|---|---|---|---|
 | 2 | 8 | 8 | 0.497 | 0.536 | 0.576 | below 0.46 (about 0.447 extrapolated) | G=4 | 74.1 |
-| 2 | 16 | 16 | 0.470 | 0.514 | 0.568 | below 0.46 (about 0.457 extrapolated) | G=6 | 66.9 |
+| 2 | 16 | 16 | 0.470 | 0.514 | 0.568 | 0.4547 (at 0.45: G=1 0.441, G=2 0.438; kw_perish_k2_045.jsonl) | G=6 | 66.9 |
 | 3 | 16 | 32 (default) | 0.429 | 0.477 | 0.540 | 0.4684 | G=6 | 46.3 |
 | 3 | 32 | 64 | 0.383 | 0.433 | 0.502 | 0.476 | G=6 | 34.0 |
 | 6 | 16 | 80 | 0.348 | 0.399 | 0.476 | just above 0.48 (about 0.4805 extrapolated) | G=4 | 18.8 |
 
-The rule lowers the crossings by up to 0.006 at the short windows (16
-objects: 0.463 to about 0.457) and by less at the long ones (64: 0.480 to
+The rule lowers the crossings by up to 0.008 at the short windows (16
+objects: 0.463 to 0.4547) and by less at the long ones (64: 0.480 to
 0.476; 80: 0.481 to about 0.4805), so the rule of thumb stands. At alpha
 0.47 the window alone sets the sign of the attack: the best attacker
 makes +0.044 over honest mining with a 16-object window and +0.007 with
@@ -291,13 +291,16 @@ attacker takes 0.046 more than the model, reveals 35% more often (80 and
 loses fewer of its blocks (attacker orphan rate 0.389 against 0.433).
 Pairing by seed did not cut the noise (seed 1: K=6 0.454 above the
 default window's 0.451; seed 2: K=2 0.493 below its 0.514), so the cells
-count as independent (sd about 0.03 per cell). Read through the model's
-slope at each window (share rises 4.4 points per alpha point at K=2
-between 0.46 and 0.47, 7.7 at K=6 between 0.47 and 0.48), the sims put
-the K=2 crossing near 0.455 and the K=6 crossing near 0.474 (each about
-+-0.005 from the two-cell noise), against the default window's 0.4635:
-a window of 16 objects lowers the threshold by about 0.008 and one of
-80 raises it by about 0.010, against the model's 0.011 and 0.012. The
+count as independent (sd about 0.03 per cell). Read as the model's
+curve plus the cells' mean offset at 0.47 (+0.006 at K=2, +0.046 at
+K=6; the model's curves bend, so a straight line through one alpha
+misreads them), the sims put the K=2 crossing near 0.452 and the K=6
+crossing near 0.474 (each about +-0.005 from the two-cell noise),
+against the default window's 0.4635: a window of 16 objects lowers the
+threshold by about 0.011 and one of 80 raises it by about 0.010,
+against the model's 0.014 and 0.012. A K=2 cell at 0.45
+(sop_v4_window_k2_a045_72h, model 0.438 with G=2; launched 20:54Z)
+brackets the K=2 crossing directly. The
 K=6 excess is the one open point; sop_v4_window_k6_a048_72h (K=6 at
 0.48 with G=8, the model's break-even at 0.476; two seeds, launched
 18:41Z) tests it directly: the excess would put the attacker near 0.52.
