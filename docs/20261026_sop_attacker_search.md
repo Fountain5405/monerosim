@@ -311,18 +311,37 @@ races start alike (race starts 156.5 vs 146.2 / 139.6, with the same
 pending-share, honest-object and deficit quantiles at the start) but end
 differently: 26-29% of the races that put blocks on both sides end in a
 reveal in the sims against 19% in the model (reveals 26.2 / 24.5 vs 18.8;
-give-ups with blocks 64.8 / 71.1 vs 79.7). The sims' reveals also reach
-states the model's do not, with the attacker behind in blocks and ahead in
-weight (3 vs 8, 5 vs 9, 4 vs 7; 43 of s1's 80 reveals had fewer attacker
-blocks; every reveal is a distinct race, so nothing is counted twice). So
-the gap is in the weight comparison late in long races, where the honest
-side carries less weight in the sims than in the model. Two candidates the
-model has no clock for: honest shares mined on a stale tip while a block
-propagates, and SoP's 5 s delay rule (a share counts only when seen more
-than 5 s before its block). Either would also produce the default window's
-smaller +0.018 residual, its races being shorter. The daemons' per-fork
-decision records (`SIM-SoP-DEC` JSON: every block on both branches with its
-seen time and its shares' seen times) can separate the two without new sims.
+give-ups with blocks 64.8 / 71.1 vs 79.7). Every reveal is a distinct race
+(no fork is revealed twice), and reveals with fewer attacker blocks than
+honest ones are normal in both (48% in the model, 54% in K=6 s1): shares
+carry the weight. The weights the network compared at each reveal, from the
+honest nodes' per-fork decision records (`SIM-SoP-DEC`: every block on both
+branches with its embedded shares, and the pool shares counted; honest-001,
+relay-001 within 0.1), against the model's state at its own reveals (600 d,
+seed 1):
+
+| at the reveal | K=2 model | K=2 sim s1 | K=6 model | K=6 sim s1 |
+|---|---|---|---|---|
+| blocks, attacker / honest | 2.59 / 3.11 | 2.40 / 3.23 | 6.49 / 6.82 | 6.25 / 7.23 |
+| objects per attacker block | 20.1 | 21.7 | 17.9 | 18.6 |
+| objects per honest block (with pending) | 14.9 | 14.5 | 15.7 | 14.6 |
+| honest pending (pool) shares counted | 10.4 | 9.4 | 12.2 | 9.7 |
+| objects, attacker / honest | 52.0 / 46.3 | 52.0 / 46.8 | 116.5 / 106.9 | 116.0 / 105.8 |
+
+The sims' nodes judged 181 of the 188 K=2 reveals and all 79 K=6 ones after
+the window, where SoP's 5 s delay rule does not apply, so that rule is not
+the cause. The gap between the sides per block (attacker 18-22 objects,
+honest about 15) is selection, the same in the model: the attacker reveals
+when its share luck is good. The weights at the reveal match; what differs
+is how fast the honest side builds weight: at K=6 the sims' honest side
+counts about one object less per block (14.6 against 15.7), split between
+shares embedded per honest block (12.3 against 12.9) and pending shares
+counted (9.7 against 12.2), and reaches the reveal point with 0.4 more
+honest blocks; at K=2 the gap is 0.4 objects per block. A candidate cause
+the model (one honest miner, no propagation) cannot produce: honest shares
+still in flight, or mined on a stale tip, when a node judges or a block is
+built. Such a loss grows with race length, as the excess does (K=2 +0.006,
+default +0.018, K=6 +0.046); not yet tested.
 
 ## Validation in the sims
 
