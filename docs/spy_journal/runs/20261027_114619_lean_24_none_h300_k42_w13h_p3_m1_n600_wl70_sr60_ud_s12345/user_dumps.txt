@@ -1,0 +1,11 @@
+{
+  "run": "/fast/antiproxy/monerosim_archives/20261027_114619_lean_24_none_h300_k42_w13h_p3_m1_n600_wl70_sr60_ud_s12345",
+  "users": 40,
+  "white_size": "70-70",
+  "spy_entries": "24-34 (med 28) of white",
+  "spy_entry_age_med_s": "762-1284 (med 1076)",
+  "honest_age_med_s": "553-1256 (med 919)",
+  "honest_age_p10_s": "2076-2839 (med 2446)",
+  "honest_age_p90_s": "4-65 (med 29)",
+  "newest20_spy": "3-7 (med 5.0)"
+}
