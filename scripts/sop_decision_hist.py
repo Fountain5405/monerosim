@@ -31,10 +31,11 @@ def q(vals):
             "p90": s[9 * len(s) // 10] if s else None}
 
 
-def histograms(alpha: float, days: float, seed: int, knobs: dict, perish: bool = False) -> dict:
+def histograms(alpha: float, days: float, seed: int, knobs: dict, perish: bool = False,
+               K: int | None = None, w: int | None = None) -> dict:
     from scripts.sop_policy import ACTION_NAMES, GIVE_UP, PUBLISH, REVEAL, param_stubborn
     from scripts.sop_rl import legal_fallback, race_env   # numpy: the model side only
-    env = race_env(alpha, days, seed, perish=perish)
+    env = race_env(alpha, days, seed, K=K, w=w, perish=perish)   # K, w: race_env's defaults 3, 16
     W = env.window_obs
     acts0, acts1 = Counter(), Counter()
     starts = []          # (pa, ph, honest objects, deficit) at the first decision of a race begun by an honest block
@@ -77,7 +78,7 @@ def histograms(alpha: float, days: float, seed: int, knobs: dict, perish: bool =
                        "race_starts": len(starts) * per72},
             "reveal_ah": dict(reveal_ah.most_common(12)),
             "found": found, "per_1000_found": {k: v / found * 1000 for k, v in counts.items()} if found else {},
-            "share": env.stats.attacker_revenue_share, "days": days}
+            "share": env.stats.attacker_revenue_share, "days": days, "window_obs": W}
 
 
 LEARNED = re.compile(r"^((2000-\d\d-\d\d \d\d:\d\d:\d\d),\d+) - attacker-miner - SelfishMinerAgent\[attacker-miner\] - "
@@ -158,6 +159,8 @@ def main(argv=None) -> int:
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--knobs", default="G=6 L=1 M=1 R=1 Z=1")
     ap.add_argument("--perish", action="store_true", help="honest pending shares perish on an attacker publish")
+    ap.add_argument("--K", type=int, help="window depth in blocks (default 3)")
+    ap.add_argument("--w", type=int, help="shares per block (default 16); the window is (K - 1) * w objects")
     args = ap.parse_args(argv)
     knobs = {k: int(v) for k, v in (kv.split("=") for kv in args.knobs.split())}
     if args.sim_log:
@@ -172,7 +175,7 @@ def main(argv=None) -> int:
             found = c["canonical_blocks"] / (1.0 - c["network_orphan_rate"])
         h = sim_histograms(lines, G=knobs.get("G", 6), found=found)
     else:
-        h = histograms(args.alpha, args.days, args.seed, knobs, perish=args.perish)
+        h = histograms(args.alpha, args.days, args.seed, knobs, perish=args.perish, K=args.K, w=args.w)
     import json
     print(json.dumps(h, indent=1))
     return 0

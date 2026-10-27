@@ -43,3 +43,12 @@ def test_model_histograms_report_rates_per_found_block():
     assert 3000 < h["found"] < 4200                           # ~720 found blocks a model day
     for k, v in h["per72h"].items():
         assert h["per_1000_found"][k] == pytest.approx(v * (5 / 3.0) / h["found"] * 1000)
+
+
+def test_model_histograms_take_the_window_depth():
+    from scripts.sop_decision_hist import histograms
+    knobs = {"G": 4, "L": 1, "M": 1, "R": 1, "Z": 1}
+    k3 = histograms(0.47, 10, 1, knobs, perish=True)
+    k6 = histograms(0.47, 10, 1, knobs, perish=True, K=6, w=16)
+    assert (k3["window_obs"], k6["window_obs"]) == (32, 80)
+    assert k6["per_1000_found"]["reveals"] < 0.7 * k3["per_1000_found"]["reveals"]
