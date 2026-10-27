@@ -1,0 +1,45 @@
+============================================================
+MONEROSIM SIMULATION SUMMARY
+============================================================
+
+Run:            lean_24_none_h300_k42_w13h_p3_m1_n600_fx_mw25h_ui43200_rs60_bs6_s12345
+Wall time:      4h 44m
+Exit code:      0
+
+SUCCESS CRITERIA
+----------------------------------------
+  Blocks created                 PASS
+  Nodes funded                   PASS
+  Blocks propagated (actual)     PASS
+  Transactions broadcast         PASS
+  Transactions in blocks         PASS
+
+  Result: ALL CHECKS PASSED
+
+NETWORK
+----------------------------------------
+  Nodes online:     448
+  Sync:             100%
+  Block height:     2697
+  Blocks mined:     2696
+  Alerts:           8
+
+TRANSACTIONS
+----------------------------------------
+  Created:          426
+  In blocks:        424
+
+  Created by:
+    miner-001              19 txs
+    miner-002              20 txs
+    miner-003              22 txs
+    miner-004              19 txs
+    miner-005              18 txs
+    sender-a-001            3 txs
+    sender-a-002            5 txs
+    sender-a-003            5 txs
+    sender-a-004            3 txs
+    sender-a-005            5 txs
+    sender-a-006            3 txs
+    sender-a-007            3 txs
+    sender-a-008            4 txs

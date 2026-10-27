@@ -1,0 +1,30 @@
+{
+ "run_id": "20261027_142035_lean_24_none_h300_k42_w13h_p3_m1_n600_fx_mw25h_ui43200_rs60_bs6_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_fx_mw25h_ui43200_rs60_bs6_s12345",
+ "archived_at": "2026-10-27T14:21:16Z",
+ "monerod_sim_sha": "ab6646d74725",
+ "wall": "4h 44m",
+ "exit_code": 0,
+ "min_avail_mb": 36050,
+ "txs_created": 426,
+ "txs_in_blocks": 424,
+ "note": "P51 X1a mainnet-rate: 5/5 - reachable-occasional sp precision 0.265 (OQ12), busy 0.843, users 21.6 pct exposed/24h, light 0.2935=1.92x ceiling (E61)",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 366,
+ "honest_reachable_24s": 295,
+ "light_out": 0.2935,
+ "light_out_quarters": [
+  0.2887,
+  0.2943,
+  0.2966,
+  0.2941
+ ],
+ "model_out": 0.1299,
+ "fluff_per_hop": 0.205,
+ "stem_txs": 430,
+ "stem_hops_implied": 4.88,
+ "embargo_rate": 0.0
+}
