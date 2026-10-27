@@ -334,7 +334,7 @@ Second round (the fix 61969161, one lane per box):
 | a048 s1 | box80 | 10-26 11:07 | 0.525 | 0.535 | 0.318 | 0.387 | 173 | 20261026_110702 |
 | a048 s2 | box80 | 10-26 17:48 | 0.525 | 0.577 | 0.270 | 0.390 | 202 | 20261026_174808 |
 | a050 s1 | box82 | 10-26 11:14 | 0.725 | 0.724 (a) | 0.231 | 0.475 | 248 | 20261026_111408 |
-| a050 s2 | box82 | 10-26 19:25 | 0.725 | (running) | | | | |
+| a050 s2 | box82 | 10-26 19:24 | 0.725 | 0.796 | 0.180 | 0.483 | 264 | 20261026_192424 |
 
 (a) Health flag "INVALID-CHAIN 1": one 'Sent invalid chain' at
 monero-seed-006 from relay-002 at sim 22:18:09 on day 2. seed-006 had
@@ -353,18 +353,40 @@ pending count (mode 4, tail to 33), where the first round read 0 at all
 8,665; it had made 3 reveals and 8 publishes by then (model: about 4
 reveals in 3.7 h).
 
-Interim reading (16:35Z, three finished cells, all 12/12 daemons, oracle
-clean, gate PASS): the two 0.47 seeds differ by 0.063 (0.451 and 0.514),
-which puts the seed noise of one 72 h cell's share at a standard
-deviation near 0.045 (a rough figure from a single pair), about four
-times the binomial 0.011 for ~1,950 blocks, as expected when races settle
-several blocks at once (mean reorg 4 in the model). Mean of the
-three cells minus the model: +0.017 (0.450 vs 0.428, 0.451 and 0.514 vs
-0.472), within the 0.01-0.03 band the fidelity audit found for the
-stubborn rule. The sims' attacker reveals more often than the model's
-(127-160 per 72 h against 86) and orphans more of the network's blocks
-(0.34-0.37 against 0.30). A third 0.47 seed, a second 0.46 seed and a
-0.45 cell are running before any crossing is read off the sims.
+Second-round readout (all 11 cells, 10-27 03:45Z;
+`scripts/sop_param_readout.py matrix_runs/sop_v4_param_72h/cells`). Every
+cell ran to the end with 12 of 12 daemons, 0 oracle mismatches over 12
+nodes and gate PASS; the one health flag is note (a).
+
+| alpha | knobs | model share | sim shares | sim mean | sim - model | sim - alpha | reveals/72 h model / sims |
+|---|---|---|---|---|---|---|---|
+| 0.45 | G=6 L=1 M=1 R=1 Z=1 | 0.389 | 0.431, 0.378 | 0.405 | +0.016 | -0.045 | 54 / 102 |
+| 0.46 | G=6 L=1 M=1 R=1 Z=1 | 0.428 | 0.450, 0.445 | 0.448 | +0.020 | -0.012 | 69 / 127 |
+| 0.47 | G=6 L=1 M=1 R=1 Z=1 | 0.472 | 0.451, 0.514, 0.478 | 0.481 | +0.009 | +0.011 | 86 / 146 |
+| 0.48 | G=8 L=1 M=1 R=1 Z=1 | 0.525 | 0.535, 0.577 | 0.556 | +0.031 | +0.076 | 106 / 188 |
+| 0.50 | G=20 L=0 M=1 R=3 Z=1 | 0.725 | 0.724, 0.796 | 0.760 | +0.035 | +0.260 | 149 / 256 |
+
+- **The sims confirm the race model.** Over the 11 cells the sims sit
+  +0.021 above the model at the same knobs (sd 0.028 per cell), the sign
+  and size the fidelity audit found for the stubborn rule (+0.01 to
+  +0.03, from propagation).
+- **The sims' crossing of honest mining is 0.4635** by least squares over
+  the nine cells from 0.45 to 0.48 (slope 3.8, residual sd 0.027 per
+  cell, a rough one-sd band of +-0.0024), and 0.4653 by interpolating
+  the per-alpha means; the model's is 0.4693. Under SoP (K=3, w=16) the
+  share-weight racing attacker profits from about alpha 0.464 in Shadow,
+  against about 0.48 for the stubborn rule in the earlier noown sims
+  (round 4; model 0.486) and 0.365 for the best attacker on the stock
+  network in the model.
+- **Seed noise.** One 72 h cell's share scatters by sd 0.027 (the fit's
+  residual; the 0.47 pair alone suggested 0.045), about two to four
+  times the binomial 0.011, as expected when races settle several blocks
+  at once.
+- **Open: reveals.** At every alpha the sims' attacker reveals 1.7 to 1.9
+  times as often as the model's, yet scores only about 0.02 more. Not
+  checked: whether the agent logs a fresh reveal each time it extends an
+  already revealed fork, or whether the sims' attacker meets more
+  contested states (propagation).
 
 ## Fidelity audit: sims vs race model
 
