@@ -1,0 +1,55 @@
+# sop_v4_stock_d2_72h (2026-10-27): the stock network with the race model's
+# best stock attacker, giving up 2 blocks behind (scripts/sop_stock_crossing.py
+# d=2: crossing 0.365, the headline's stock figure, so far model-only). The
+# validated stock cells (sop_v4_o5_stock_72h) are the same attacker with
+# give-up depth 5, which the model reproduces like for like (0.394 vs 0.398 at
+# 0.40). Only the depth changes here. Model d=2: 0.324 at 0.34, 0.390 at 0.38.
+name: sop_v4_stock_d2_72h
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          window_objects: '32'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          give_up_depth: '5'
+          give_up_objects: '5'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    stockd2:
+      attacker:
+        attributes:
+          weigh: difficulty
+          window_objects: '0'
+          give_up_objects: '-1'
+          give_up_depth: '2'
+  alpha:
+    a034:
+      attacker: {hashrate: 3.4}
+      honest: {hashrate: [3.3, 3.3]}
+    a038:
+      attacker: {hashrate: 3.8}
+      honest: {hashrate: [3.1, 3.1]}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+    s2:
+      attacker:
+        attributes:
+          sample: '2'
+ksm: true
+bootfast: true
