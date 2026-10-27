@@ -2,8 +2,8 @@
 
 A human-readable summary of the spy-relay research program's results. Two to three pages,
 the important numbers only; every claim carries a pointer into
-`docs/SPY_EXPERIMENT_JOURNAL.md` (entries E1-E57, predictions P1-P48, run register
-`docs/spy_journal/runs/`, 97 runs) where the full method, clauses and raw scoring live.
+`docs/SPY_EXPERIMENT_JOURNAL.md` (entries E1-E61, predictions P1-P51, run register
+`docs/spy_journal/runs/`, 100 runs) where the full method, clauses and raw scoring live.
 The lab's design and question framing are in `docs/20261018_spy_node_defenses.md` and
 its section 7 review.
 
@@ -92,16 +92,35 @@ rules is empty: the lifted cap is *cheaper* than stock under churn (1.37 vs 2.85
 dials per relay-hour; refill 1.7 vs 1.6 min; 1.3% of sessions unfilled). Attribution
 precision degrades under churn (0.86-0.93 from 1.000). [OQ11, closed.]
 
+## Finding 6 — Who is deanonymized today (mainnet rates, X1a)
+
+At mainnet's sender rate over 24 h of activity (E61, run 100; passive fleet, stock
+rule): unreachable senders are attributable one transaction at a time at
+**precision 1.000** (recall 0.146; **21.6 %** of users had at least one
+transaction attributed in 24 h). Occasional reachable senders read **precision
+0.265** — one spy guess in four is right — but **38.8 %** of their own
+transactions are attributed (reachability *doubles* per-tx first-hop exposure:
+caps 0.388/0.189 against the users' 0.148) and **77.6 %** had at least one
+exposed transaction in 24 h. Busy reachable nodes: **precision 0.843, 86 %**
+exposed. The passive multiplier itself transfers to mainnet rate
+(**0.2935 = 1.92x** the ceiling, against 2.20x at lab rate). So the exposure
+ordering is busy ≈ unreachable (cleanly attributable) > occasional reachable
+(noisy per observation, exposed nearly as often): relayed-stem cover dilutes
+attribution 4x for occasional senders and almost not at all for busy ones.
+[Journal: open question 12, E61.]
+
 ## The bottom line
 
 Nothing in the candidate rule set survives the active adversary untrimmed; the
 white-list cap — which mainnet has run all along — is the measured defense, passive and
-active, in the lab and in the wild. The remaining live question is the arms race: how
-much dialing budget an adversary must spend to out-refresh mainnet's minutes-fresh
-candidate cut, and whether the real fleet's weekly address rotation changes the
-calculus. Those are measurable: the first with one more cell class (a faster *sweep*,
-not rotation — the two dials are now decoupled in the tooling), the second with a
-standing monthly dump read.
+active, in the lab and in the wild. The arms race is now measured to the lab's floor:
+the trim holds at every sweep rate the simulator can deliver (0.0248 at 300 s sweeps,
+0.0239 at the agent's ~18-minute dial floor, E59), and the sub-10-minute regime a real
+fleet could run is bounded by mainnet's own dump evidence instead (the cut is already
+minutes-fresh). The fluff epoch adds no independent leak (E58). What remains live is
+observational, not simulated: the standing monthly mainnet dump read (the fleet's
+weekly address rotation and the cut's freshness), and optionally the 10x-rate arm of
+the sender-class table and the IP-churn model.
 
 ## Pointers
 
