@@ -302,6 +302,28 @@ K=6 excess is the one open point; sop_v4_window_k6_a048_72h (K=6 at
 0.48 with G=8, the model's break-even at 0.476; two seeds, launched
 18:41Z) tests it directly: the excess would put the attacker near 0.52.
 
+Where the K=6 excess comes from (decision histograms, `sop_decision_hist.py
+--K --w`: the model with the perish rule, 600 d x 2 seeds, against the cells'
+attacker logs, per 1,000 found blocks). At K=2 every count matches: reveals
+67.1 vs 71.9 / 67.5, race starts 182.5 vs 184.3 / 181.8, give-ups 52.5 +
+69.0 vs 50.1 + 62.3 / 45.7 + 68.9, and the same reveal states. At K=6 the
+races start alike (race starts 156.5 vs 146.2 / 139.6, with the same
+pending-share, honest-object and deficit quantiles at the start) but end
+differently: 26-29% of the races that put blocks on both sides end in a
+reveal in the sims against 19% in the model (reveals 26.2 / 24.5 vs 18.8;
+give-ups with blocks 64.8 / 71.1 vs 79.7). The sims' reveals also reach
+states the model's do not, with the attacker behind in blocks and ahead in
+weight (3 vs 8, 5 vs 9, 4 vs 7; 43 of s1's 80 reveals had fewer attacker
+blocks; every reveal is a distinct race, so nothing is counted twice). So
+the gap is in the weight comparison late in long races, where the honest
+side carries less weight in the sims than in the model. Two candidates the
+model has no clock for: honest shares mined on a stale tip while a block
+propagates, and SoP's 5 s delay rule (a share counts only when seen more
+than 5 s before its block). Either would also produce the default window's
+smaller +0.018 residual, its races being shorter. The daemons' per-fork
+decision records (`SIM-SoP-DEC` JSON: every block on both branches with its
+seen time and its shares' seen times) can separate the two without new sims.
+
 ## Validation in the sims
 
 ### Smoke (6 h, alpha 0.50, G=20 Z=1, L=0 M=1 R=1)
