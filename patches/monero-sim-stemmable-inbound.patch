@@ -1,0 +1,442 @@
+diff --git a/src/cryptonote_protocol/levin_notify.cpp b/src/cryptonote_protocol/levin_notify.cpp
+index 46327d18c..accd875e5 100644
+--- a/src/cryptonote_protocol/levin_notify.cpp
++++ b/src/cryptonote_protocol/levin_notify.cpp
+@@ -33,9 +33,11 @@
+ #include <boost/asio/steady_timer.hpp>
+ #include <boost/system/system_error.hpp>
+ #include <boost/uuid/uuid_io.hpp>
++#include <algorithm>
+ #include <chrono>
+ #include <deque>
+ #include <stdexcept>
++#include <unordered_map>
+ #include <utility>
+ 
+ #include "byte_slice.h"
+@@ -48,6 +50,7 @@
+ #include "cryptonote_basic/cryptonote_format_utils.h"
+ #include "cryptonote_core/i_core_events.h"
+ #include "cryptonote_protocol/cryptonote_protocol_defs.h"
++#include "cryptonote_protocol/sim_stemmable.h"
+ #include "cryptonote_protocol/sim_txrelay_log.h"
+ #include "net/dandelionpp.h"
+ #include "p2p/net_node.h"
+@@ -207,6 +210,72 @@ namespace levin
+       return out + "]";
+     }
+ 
++    //! SIMULATION ONLY (--sim-stemmable-inbound): the "a.b" and "a.b.c" prefixes
++    //! of an IPv4 "a.b.c.d:port", or two empty strings when it is not IPv4.
++    std::pair<std::string, std::string> sim_slashes(const std::string& remote)
++    {
++      const std::size_t colon = remote.find(':');
++      const std::string host = colon == std::string::npos ? remote : remote.substr(0, colon);
++      if (host.find(':') != std::string::npos)
++        return {};
++      const std::size_t d1 = host.find('.');
++      const std::size_t d2 = d1 == std::string::npos ? std::string::npos : host.find('.', d1 + 1);
++      const std::size_t d3 = d2 == std::string::npos ? std::string::npos : host.find('.', d2 + 1);
++      if (d1 == std::string::npos || d2 == std::string::npos || d3 == std::string::npos ||
++          host.find('.', d3 + 1) != std::string::npos)
++        return {};
++      return {host.substr(0, d2), host.substr(0, d3)};
++    }
++
++    //! SIMULATION ONLY (--sim-stemmable-inbound, tevador's MRL #160 variant):
++    //! the virtual outgoing list from stemmable inbound connections — bucketed
++    //! by /16, one random /24 per bucket, one random stemmable connection per
++    //! /24, capped at 12 (the outgoing default) — as {uuid, /16} pairs, plus the
++    //! /16s of the height-passing real outgoing connections in `out_slash16`
++    //! for the edge-2 union deduplication.
++    void sim_virtual_outgoing(connections& p2p, const uint64_t blockchain_height,
++      std::vector<std::string>& out_slash16, std::vector<std::pair<boost::uuids::uuid, std::string>>& virtuals)
++    {
++      struct peer { boost::uuids::uuid id; std::string s16; std::string s24; };
++      std::vector<peer> stemmable;
++      p2p.foreach_connection([&] (detail::p2p_context& context) {
++        const auto slashes = sim_slashes(context.m_remote_address.str());
++        if (slashes.first.empty())
++          return true;
++        if (!context.m_is_income)
++        {
++          if (context.m_remote_blockchain_height >= blockchain_height)
++            out_slash16.push_back(slashes.first);
++          return true;
++        }
++        if (sim_stemmable::stemmable_addr(context.m_remote_address.str()) &&
++            context.m_remote_blockchain_height >= blockchain_height)
++          stemmable.push_back({context.m_connection_id, slashes.first, slashes.second});
++        return true;
++      });
++
++      std::unordered_map<std::string, std::vector<const peer*>> by16;
++      for (const peer& p : stemmable)
++        by16[p.s16].push_back(std::addressof(p));
++      std::vector<std::string> buckets;
++      buckets.reserve(by16.size());
++      for (const auto& bucket : by16)
++        buckets.push_back(bucket.first);
++      while (buckets.size() > 12)
++        buckets.erase(buckets.begin() + std::ptrdiff_t(crypto::rand_idx(buckets.size())));
++      for (const std::string& bucket : buckets)
++      {
++        std::unordered_map<std::string, std::vector<const peer*>> by24;
++        for (const peer* p : by16.at(bucket))
++          by24[p->s24].push_back(p);
++        auto it = by24.begin();
++        std::advance(it, std::ptrdiff_t(crypto::rand_idx(by24.size())));
++        const std::vector<const peer*>& conns = it->second;
++        const peer& chosen = *conns.at(crypto::rand_idx(conns.size()));
++        virtuals.push_back({chosen.id, chosen.s16});
++      }
++    }
++
+     epee::levin::message_writer make_tx_message(std::vector<blobdata>&& txs, const bool pad, const bool fluff)
+     {
+       NOTIFY_NEW_TRANSACTIONS::request request{};
+@@ -767,11 +836,45 @@ namespace levin
+ 
+         const bool fluffing = crypto::rand_idx(unsigned(100)) < CRYPTONOTE_DANDELIONPP_FLUFF_PROBABILITY;
+         const auto start = std::chrono::steady_clock::now();
+-        auto connections = get_out_connections(*(zone_->p2p), core_);
+-        boost::asio::dispatch(
+-          zone_->strand,
+-          change_channels{zone_, net::dandelionpp::connection_map{std::move(connections), count_}, fluffing}
+-        );
++        if (sim_stemmable::enabled() && zone_->noise.empty())
++        {
++          // SIMULATION ONLY (--sim-stemmable-inbound, tevador's MRL #160
++          // variant): edge 1 from real outgoing connections only (local
++          // transactions always use it), edge 2 from the /16-deduplicated union
++          // of real outgoing and virtual outgoing connections.
++          const uint64_t height = get_blockchain_height(*(zone_->p2p), core_);
++          auto edge1 = get_out_connections(*(zone_->p2p), height);
++          std::vector<std::string> out16;
++          std::vector<std::pair<boost::uuids::uuid, std::string>> virtuals;
++          sim_virtual_outgoing(*(zone_->p2p), height, out16, virtuals);
++          auto edge2 = edge1;
++          for (const auto& v : virtuals)
++            if (std::find(out16.begin(), out16.end(), v.second) == out16.end())
++              edge2.push_back(v.first);
++          if (sim_txrelay_log::enabled() && zone_->nzone == epee::net_utils::zone::public_)
++          {
++            std::string arr{"["};
++            for (const auto& v : virtuals)
++            {
++              if (arr.size() > 1)
++                arr += ',';
++              arr += sim_peer(*(zone_->p2p), v.first);
++            }
++            sim_txrelay_log::write("x3", ","virtual":" + arr + "],"union":" + std::to_string(edge2.size()));
++          }
++          boost::asio::dispatch(
++            zone_->strand,
++            change_channels{zone_, net::dandelionpp::connection_map::sim_two_edge(std::move(edge1), std::move(edge2)), fluffing}
++          );
++        }
++        else
++        {
++          auto connections = get_out_connections(*(zone_->p2p), core_);
++          boost::asio::dispatch(
++            zone_->strand,
++            change_channels{zone_, net::dandelionpp::connection_map{std::move(connections), count_}, fluffing}
++          );
++        }
+ 
+         detail::zone& alias = *zone_;
+         alias.next_epoch.expires_at(start + min_epoch_ + random_duration(epoch_range_));
+diff --git a/src/cryptonote_protocol/sim_stemmable.h b/src/cryptonote_protocol/sim_stemmable.h
+new file mode 100644
+index 000000000..ffa06b09a
+--- /dev/null
++++ b/src/cryptonote_protocol/sim_stemmable.h
+@@ -0,0 +1,141 @@
++// SIMULATION ONLY (--sim-stemmable-inbound): tevador's MRL #160 variant of
++// stemmable inbound connections, for spy-exposure measurement.  The PoW gate
++// (sustained 0.5 MH/s of HashWX per stemmable connection) is modeled, not
++// implemented: with the flag on, an inbound connection counts as stemmable
++// when its remote IPv4 address matches --sim-stemmable-cidrs (a file of
++// a.b.c.d/len lines; no file = every inbound connection).  The stem-edge
++// selection itself is in net/dandelionpp.cpp and levin_notify.cpp: edge 1 is
++// drawn from real outgoing connections only (local transactions always use
++// it), edge 2 from the /16-deduplicated union of real outgoing connections
++// and the "virtual outgoing" list built from stemmable inbounds (one random
++// /24 per /16, one random connection per /24, capped at 12).
++#pragma once
++
++#include <atomic>
++#include <cstdint>
++#include <fstream>
++#include <string>
++#include <vector>
++
++namespace cryptonote
++{
++namespace sim_stemmable
++{
++  struct cidr
++  {
++    std::uint32_t addr;
++    std::uint32_t mask;
++  };
++
++  inline std::atomic<bool>& enabled_flag()
++  {
++    static std::atomic<bool> value{false};
++    return value;
++  }
++
++  inline std::vector<cidr>& cidrs()
++  {
++    static std::vector<cidr> value;
++    return value;
++  }
++
++  inline bool enabled()
++  {
++    return enabled_flag().load(std::memory_order_relaxed);
++  }
++
++  //! "1.2.3.4" -> host-order uint32. False on anything else.
++  inline bool parse_ipv4(const std::string& ip, std::uint32_t& out)
++  {
++    std::size_t pos = 0;
++    std::uint32_t parts[4];
++    for (int i = 0; i < 4; ++i)
++    {
++      const std::size_t next = ip.find('.', pos);
++      const std::string octet = i < 3 ? ip.substr(pos, next - pos) : ip.substr(pos);
++      if (octet.empty() || octet.size() > 3)
++        return false;
++      for (const char c : octet)
++        if (c < '0' || c > '9')
++          return false;
++      const int value = std::stoi(octet);
++      if (value < 0 || value > 255)
++        return false;
++      parts[i] = std::uint32_t(value);
++      if (i < 3 && next == std::string::npos)
++        return false;
++      pos = next + 1;
++    }
++    out = (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3];
++    return true;
++  }
++
++  //! Enables the feature and loads the stemmable CIDR list. An empty or
++  //! missing file with `enable` means "every inbound connection is stemmable".
++  //! Returns false only when `enable` is set and the file cannot be read.
++  inline bool open(const bool enable, const std::string& cidrs_path)
++  {
++    enabled_flag().store(false, std::memory_order_relaxed);
++    cidrs().clear();
++    if (!enable)
++      return true;
++    if (!cidrs_path.empty())
++    {
++      std::ifstream in{cidrs_path};
++      if (!in)
++        return false;
++      std::string line;
++      while (std::getline(in, line))
++      {
++        const std::size_t comment = line.find('#');
++        if (comment != std::string::npos)
++          line.erase(comment);
++        while (!line.empty() && (line.back() == ' ' || line.back() == '\r' || line.back() == '\t'))
++          line.pop_back();
++        if (line.empty())
++          continue;
++        const std::size_t slash = line.find('/');
++        std::uint32_t addr;
++        if (!parse_ipv4(line.substr(0, slash), addr))
++          continue; // not a dotted quad: skip, the lab's lists are IPv4 only
++        int bits = 32;
++        if (slash != std::string::npos)
++        {
++          const std::string len = line.substr(slash + 1);
++          if (len.empty() || len.size() > 2)
++            continue;
++          for (const char c : len)
++            if (c < '0' || c > '9')
++              continue;
++          bits = std::stoi(len);
++          if (bits < 0 || bits > 32)
++            continue;
++        }
++        const std::uint32_t mask = bits == 0 ? 0 : (0xFFFFFFFFu << (32 - bits));
++        cidrs().push_back({addr, mask});
++      }
++    }
++    enabled_flag().store(true, std::memory_order_relaxed);
++    return true;
++  }
++
++  //! True when the remote address of an inbound connection ("1.2.3.4:18080")
++  //! is in the stemmable set. Requires enabled().
++  inline bool stemmable_addr(const std::string& remote)
++  {
++    if (!enabled())
++      return false;
++    const std::size_t colon = remote.find(':');
++    const std::string host = colon == std::string::npos ? remote : remote.substr(0, colon);
++    std::uint32_t addr;
++    if (!parse_ipv4(host, addr))
++      return false;
++    if (cidrs().empty())
++      return true;
++    for (const cidr& c : cidrs())
++      if ((addr & c.mask) == (c.addr & c.mask))
++        return true;
++    return false;
++  }
++}
++}
+diff --git a/src/net/dandelionpp.cpp b/src/net/dandelionpp.cpp
+index e75fb2753..2d874735f 100644
+--- a/src/net/dandelionpp.cpp
++++ b/src/net/dandelionpp.cpp
+@@ -126,6 +126,33 @@ namespace dandelionpp
+     connection_map::~connection_map() noexcept
+     {}
+ 
++    connection_map connection_map::sim_two_edge(std::vector<boost::uuids::uuid> edge1, std::vector<boost::uuids::uuid> edge2)
++    {
++      // SIMULATION ONLY (--sim-stemmable-inbound): see the declaration. An empty
++      // candidate list leaves that edge nil (a nil edge-1 makes local stems fail
++      // into the no_stem fluff path, as today with no outgoing connections).
++      connection_map out{};
++      out.usage_count_.assign(2, 0);
++      out.sim_local_first_edge_ = true;
++      if (!edge1.empty())
++        out.out_mapping_.push_back(edge1.at(crypto::rand_idx(edge1.size())));
++      else
++        out.out_mapping_.push_back(boost::uuids::nil_uuid());
++      if (!edge2.empty())
++      {
++        std::vector<boost::uuids::uuid> candidates = edge2;
++        if (candidates.size() > 1)
++          candidates.erase(std::remove(candidates.begin(), candidates.end(), out.out_mapping_.at(0)), candidates.end());
++        if (!candidates.empty())
++          out.out_mapping_.push_back(candidates.at(crypto::rand_idx(candidates.size())));
++        else
++          out.out_mapping_.push_back(boost::uuids::nil_uuid());
++      }
++      else
++        out.out_mapping_.push_back(boost::uuids::nil_uuid());
++      return out;
++    }
++
+     connection_map connection_map::clone() const
+     {
+         return {*this};
+@@ -182,6 +209,11 @@ namespace dandelionpp
+ 
+     boost::uuids::uuid connection_map::get_stem(const boost::uuids::uuid& source)
+     {
++        // SIMULATION ONLY (--sim-stemmable-inbound): local transactions (nil
++        // source) always take the first edge, which is never an inbound peer.
++        if (sim_local_first_edge_ && source.is_nil() && !out_mapping_.empty() && !out_mapping_.at(0).is_nil())
++          return out_mapping_.at(0);
++
+         auto elem = std::lower_bound(in_mapping_.begin(), in_mapping_.end(), source, key_less{});
+         if (elem == in_mapping_.end() || elem->first != source)
+         {
+diff --git a/src/net/dandelionpp.h b/src/net/dandelionpp.h
+index e344bc7ce..01f19c69e 100644
+--- a/src/net/dandelionpp.h
++++ b/src/net/dandelionpp.h
+@@ -47,6 +47,7 @@ namespace dandelionpp
+         std::vector<boost::uuids::uuid> out_mapping_; //<! Current outgoing uuid connection at index.
+         std::vector<std::pair<boost::uuids::uuid, std::size_t>> in_mapping_; //<! uuid source to an `out_mapping_` index.
+         std::vector<std::size_t> usage_count_;
++        bool sim_local_first_edge_ = false;  //<! SIMULATION ONLY (--sim-stemmable-inbound): local txs pinned to out_mapping_[0]
+ 
+         // Use clone method to prevent "hidden" copies.
+         connection_map(const connection_map&) = default;
+@@ -68,6 +69,14 @@ namespace dandelionpp
+         //! Initialized with `out_connections` and `stem_count`.
+         explicit connection_map(std::vector<boost::uuids::uuid> out_connections, std::size_t stems);
+ 
++        //! SIMULATION ONLY (--sim-stemmable-inbound, tevador's MRL #160 variant):
++        //! two stem edges. `out_mapping_[0]` is a random connection from `edge1`
++        //! only (real outgoing connections; local transactions always use it, see
++        //! get_stem), `out_mapping_[1]` a random connection from `edge2` (the
++        //! /16-deduplicated union of real outgoing and virtual outgoing
++        //! connections), avoiding the edge-1 connection when there is a choice.
++        static connection_map sim_two_edge(std::vector<boost::uuids::uuid> edge1, std::vector<boost::uuids::uuid> edge2);
++
+         connection_map(connection_map&&) = default;
+         ~connection_map() noexcept;
+         connection_map& operator=(connection_map&&) = default;
+diff --git a/src/p2p/net_node.cpp b/src/p2p/net_node.cpp
+index d6ba229ac..15f3855d7 100644
+--- a/src/p2p/net_node.cpp
++++ b/src/p2p/net_node.cpp
+@@ -161,6 +161,8 @@ namespace nodetool
+     const command_line::arg_descriptor<bool> arg_no_sync = {"no-sync", "Don't synchronize the blockchain with other peers", false};
+     const command_line::arg_descriptor<bool> arg_enable_dns_blocklist = {"enable-dns-blocklist", "Apply realtime blocklist from DNS", false};
+     const command_line::arg_descriptor<std::string> arg_sim_log_txrelay = {"sim-log-txrelay", "Simulation only (measurement): append a JSONL line for every Dandelion++ relay event (tx received, stem send, fluff, epoch, stem change, pool re-relay) to this file. Off by default; read-only w.r.t. relay.", ""};
++    const command_line::arg_descriptor<bool> arg_sim_stemmable_inbound = {"sim-stemmable-inbound", "Simulation only: tevador's MRL #160 variant — stemmable inbound connections. Stem edge 1 is drawn from real outgoing connections only (local transactions always use it); edge 2 from the /16-deduplicated union of real outgoing connections and 'virtual outgoing' connections built from stemmable inbounds (one random /24 per /16, one random connection per /24, capped at 12). Off = stock Dandelion++.", false};
++    const command_line::arg_descriptor<std::string> arg_sim_stemmable_cidrs = {"sim-stemmable-cidrs", "Simulation only: with --sim-stemmable-inbound, a file of a.b.c.d/len lines (one per line, # comments) whose inbound connections count as stemmable — the modeled PoW-paid set; empty = every inbound connection is stemmable. A relative path resolves against the data dir.", ""};
+     const command_line::arg_descriptor<std::string> arg_sim_subnet_dedup = {"sim-subnet-dedup", "Simulation only: outbound peer grouping. 24 (stock): one candidate per /24, skipping /24s already connected. 16: the same at /16. none: no subnet grouping (ports still collapsed). legacy: v0.18.4.2's selection, before #9939 (skip /16s already connected).", "24"};
+     const command_line::arg_descriptor<size_t> arg_sim_whitelist_candidates = {"sim-whitelist-candidates", "Simulation only: how many of the newest (by last_seen) subnet-deduplicated white-list peers are candidates for an outbound pick. Stock monero uses 20; 0 = every unconnected subnet is a candidate.", 20};
+     const command_line::arg_descriptor<bool> arg_sim_random_whitelist_candidates = {"sim-random-whitelist-candidates", "Simulation only: the white-list candidates for an outbound pick (--sim-whitelist-candidates of them, stock 20) are a uniform random sample of the subnet-deduplicated white list instead of its newest entries by last_seen; the draw among them (stock cubic by recency, or --sim-uniform-whitelist-pick) is unchanged. Off = stock behaviour.", false};
+diff --git a/src/p2p/net_node.h b/src/p2p/net_node.h
+index 9f2692d85..11d5a99fb 100644
+--- a/src/p2p/net_node.h
++++ b/src/p2p/net_node.h
+@@ -556,6 +556,8 @@ namespace nodetool
+     extern const command_line::arg_descriptor<uint32_t> arg_max_connections_per_ip;
+     extern const command_line::arg_descriptor<std::string> arg_peerlist_dump_file;
+     extern const command_line::arg_descriptor<std::string> arg_sim_log_txrelay;
++    extern const command_line::arg_descriptor<bool> arg_sim_stemmable_inbound;
++    extern const command_line::arg_descriptor<std::string> arg_sim_stemmable_cidrs;
+     extern const command_line::arg_descriptor<std::string> arg_sim_subnet_dedup;
+     extern const command_line::arg_descriptor<size_t> arg_sim_whitelist_candidates;
+     extern const command_line::arg_descriptor<bool> arg_sim_random_whitelist_candidates;
+diff --git a/src/p2p/net_node.inl b/src/p2p/net_node.inl
+index 0f25dfb43..825e4bb22 100644
+--- a/src/p2p/net_node.inl
++++ b/src/p2p/net_node.inl
+@@ -61,6 +61,7 @@
+ #include "crypto/crypto.h"
+ #include "storages/levin_abstract_invoke2.h"
+ #include "cryptonote_core/cryptonote_core.h"
++#include "cryptonote_protocol/sim_stemmable.h"
+ #include "cryptonote_protocol/sim_txrelay_log.h"
+ #include "net/parse.h"
+ 
+@@ -124,6 +125,8 @@ namespace nodetool
+     command_line::add_arg(desc, arg_enable_dns_blocklist);
+     command_line::add_arg(desc, arg_peerlist_dump_file);
+     command_line::add_arg(desc, arg_sim_log_txrelay);
++    command_line::add_arg(desc, arg_sim_stemmable_inbound);
++    command_line::add_arg(desc, arg_sim_stemmable_cidrs);
+     command_line::add_arg(desc, arg_sim_subnet_dedup);
+     command_line::add_arg(desc, arg_sim_whitelist_candidates);
+     command_line::add_arg(desc, arg_sim_random_whitelist_candidates);
+@@ -502,6 +505,22 @@ namespace nodetool
+     }
+     if (!sim_txrelay_log_path.empty())
+       MGINFO_RED("*** SIMULATION: --sim-log-txrelay is ON, writing Dandelion++ relay events to " << sim_txrelay_log_path << ". Measurement only. ***");
++    // SIMULATION ONLY (--sim-stemmable-inbound): set before the notifier below,
++    // whose constructor starts the first epoch. A relative path is resolved
++    // against the data dir, like --sim-log-txrelay.
++    const bool sim_stemmable_inbound = command_line::get_arg(vm, arg_sim_stemmable_inbound);
++    std::string sim_stemmable_cidrs = command_line::get_arg(vm, arg_sim_stemmable_cidrs);
++    if (!sim_stemmable_cidrs.empty() && sim_stemmable_cidrs[0] != '/')
++      sim_stemmable_cidrs = command_line::get_arg(vm, cryptonote::arg_data_dir) + "/" + sim_stemmable_cidrs;
++    if (!sim_stemmable::open(sim_stemmable_inbound, sim_stemmable_inbound ? sim_stemmable_cidrs : std::string{}))
++    {
++      MERROR("Failed to open --sim-stemmable-cidrs file " << sim_stemmable_cidrs);
++      return false;
++    }
++    if (sim_stemmable_inbound)
++      MGINFO_RED("*** SIMULATION: --sim-stemmable-inbound is ON"
++        << (sim_stemmable_cidrs.empty() ? " (every inbound connection stemmable)" : " (stemmable set: " + sim_stemmable_cidrs + ")")
++        << ". Stem edge 1 is real-outgoing-only; edge 2 is the /16-deduplicated union with virtual outgoing connections. ***");
+     public_zone.m_notifier = cryptonote::levin::notify{
+       public_zone.m_net_server.get_io_context(), public_zone.m_net_server.get_config_shared(), nullptr, epee::net_utils::zone::public_, pad_txs, m_payload_handler.get_core()
+     };

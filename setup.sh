@@ -61,6 +61,7 @@ while [[ $# -gt 0 ]]; do
             echo "                         monero-sim-txrelay-log.patch      --sim-log-txrelay (Dandelion++ relay log)"
             echo "                         monero-sim-subnet-dedup.patch     --sim-subnet-dedup (outbound peer grouping; stock = 24)"
             echo "                         monero-sim-fixed-randomx-seed.patch --sim-fixed-randomx-seed (no RandomX epoch change at block 2113)"
+            echo "                         monero-sim-stemmable-inbound.patch --sim-stemmable-inbound (tevador MRL #160 stemmable inbound stems) + --sim-stemmable-cidrs"
             echo "                         Built in a worktree; the primary monerod stays vanilla."
             echo "                         Installs ~/.monerosim/bin/monerod-sim and the alias monerod-hf."
             echo "                         --hardfork is accepted as a synonym."
@@ -1258,6 +1259,7 @@ install_sim_monerod() {
         "$SCRIPT_DIR/patches/monero-sim-whitelist-candidates.patch"
         "$SCRIPT_DIR/patches/monero-sim-random-whitelist-candidates.patch"
         "$SCRIPT_DIR/patches/monero-sim-peerlist-limits.patch"
+        "$SCRIPT_DIR/patches/monero-sim-stemmable-inbound.patch"
     )
     local p
     for p in "${patches[@]}"; do

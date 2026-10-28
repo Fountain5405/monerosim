@@ -61,6 +61,7 @@ def opts(d, ban):
 
 def agents_yaml(a, ban):
     """ban: path of the ban list, or '' for none."""
+    st = {"sim-stemmable-inbound": "true"} if a.stemmable else {}
     L = []
     w = L.append
     w("agents:")
@@ -76,7 +77,7 @@ def agents_yaml(a, ban):
             w("    daemon: monerod-sim\n    start_time: 0s\n    start_time_stagger: auto")
             if a.turnover_reachable:
                 w("    turnover: true")
-            w("    daemon_options: " + opts({"out-peers": out, "hide-my-port": "false"}, ban if adopter else ""))
+            w("    daemon_options: " + opts({"out-peers": out, "hide-my-port": "false", **st}, ban if adopter else ""))
 
     # reachable home senders (OQ12): relay-class daemons that also run a wallet, so the
     # estimators class them reachable/busy from blocked_inbound_ports and tx counts
@@ -123,7 +124,7 @@ def agents_yaml(a, ban):
             w(f"    start_time: {1200 + off + (lo - 1) * 2 * T}s\n    start_time_stagger: {2 * T}s")
             if a.turnover_reachable:
                 w("    turnover: true")
-            extra = {"hide-my-port": "false"}
+            extra = {"hide-my-port": "false", **st}
             if probe:
                 extra["peerlist-dump-file"] = "peerlist_dump.jsonl"
                 extra["log-level"] = f'"{PROBE_LOG}"'
@@ -135,7 +136,7 @@ def agents_yaml(a, ban):
         w("    daemon: monerod-sim\n    start_time: 0s\n    start_time_stagger: 3s")
         if a.turnover_reachable:
             w("    turnover: true")
-        w("    daemon_options: " + opts({"hide-my-port": "false", "peerlist-dump-file": "peerlist_dump.jsonl"},
+        w("    daemon_options: " + opts({"hide-my-port": "false", "peerlist-dump-file": "peerlist_dump.jsonl", **st},
                                          ban if adopter else ""))
     w("  monero-seed-{001..006}:\n    daemon: monerod-sim\n    start_time: 0s\n    start_time_stagger: 1s\n")
 
@@ -294,6 +295,13 @@ def main():
     ap.add_argument("--busy-senders", type=int, default=0, metavar="N",
                     help="N busy reachable senders (sender-b-*, 3600 s, 1 tx/h): the busy class. "
                          "Cell names get _bsN.")
+    ap.add_argument("--stemmable", action="store_true",
+                    help="tevador's MRL #160 variant: the honest relay fabric (relays, mediums, observers) runs "
+                         "--sim-stemmable-inbound, so stem edge 1 is real-outgoing-only (local transactions always "
+                         "use it) and edge 2 draws on the /16-deduplicated union with 'virtual outgoing' stemmable "
+                         "inbound connections. Every inbound connection counts as stemmable (the universal-PoW "
+                         "upper bound; --sim-stemmable-cidrs narrows it when an adversary cell needs it). Cell "
+                         "names get _x3.")
     ap.add_argument("--user-dumps", action="store_true",
                     help="the user daemons also dump their peer list (--peerlist-dump-file), so the cell answers why users sit "
                          "below the ceiling under the stock rule (open question 10 (d)). Cell names get _ud.")
@@ -327,7 +335,7 @@ def main():
             + ("_fx" if a.fixed_rx_seed else "") + ("_up" if a.uniform_pick else "") + ("_rc" if a.rand_cands else "")
             + (f"_wl{a.white_limit}" if a.white_limit is not None else "") + (f"_gl{a.gray_limit}" if a.gray_limit is not None else "")
             + (f"_sr{a.spy_refresh}" if a.spy_refresh else "") + (f"_ro{a.spy_rotate}" if a.spy_rotate else "") + ("_ud" if a.user_dumps else "")
-            + (f"_mw{a.window}h" if a.window != 4 else "") + (f"_ui{a.user_interval}" if a.user_interval != 300 else "")
+            + ("_x3" if a.stemmable else "") + (f"_mw{a.window}h" if a.window != 4 else "") + (f"_ui{a.user_interval}" if a.user_interval != 300 else "")
             + (f"_rs{a.reachable_senders}" if a.reachable_senders else "") + (f"_bs{a.busy_senders}" if a.busy_senders else "")
             + (f"_to{'r' if a.turnover_reachable else ''}{a.turnover.replace(',', '')}" if a.turnover else "")
             + (f"_wc{a.wl_cands}" if a.wl_cands is not None else ""))
