@@ -198,6 +198,22 @@ Shadow) and 0.486 (the sims' stubborn rule). The
 attacker that sets the SoP figure does not withhold blocks below 0.49;
 it contests honest blocks with share weight.
 
+Stock sims with the model's best stock attacker (sop_v4_stock_d2_72h,
+give-up depth 2; 10-27, 72 h, all four cells PASS with no dead daemons;
+rates per 1,000 found blocks):
+
+| alpha | sims (s1, s2) | mean | model | reveals per 1,000 found, sims / model | attacker orphan rate, sims / model | network orphan rate, sims / model |
+|---|---|---|---|---|---|---|
+| 0.34 | 0.303, 0.310 | 0.307 | 0.324 | 101.7 / 107.1 | 0.266 / 0.239 | 0.209 / 0.203 |
+| 0.38 | 0.402, 0.382 | 0.392 | 0.390 | 122.5 / 123.7 | 0.207 / 0.193 | 0.223 / 0.214 |
+
+The sims cross at 0.370 by interpolation (the model at 0.365); as with
+give-up depth 5, the sims' curve is a little steeper than the model's
+(-0.018 at 0.34, +0.002 at 0.38). The headline comparison holds in
+Shadow: the best attacker found needs about 0.370 of the hashrate on the
+stock network and 0.4635 under SoP, a rise of about 0.094 (model 0.103).
+A 0.36 cell (model 0.357) checks the straight line at the crossing.
+
 ## Experiment 2: the countermeasure's K and w
 
 K is the window depth in blocks and w the shares per block; the window a
