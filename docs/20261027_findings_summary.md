@@ -2,8 +2,8 @@
 
 A human-readable summary of the spy-relay research program's results. Two to three pages,
 the important numbers only; every claim carries a pointer into
-`docs/SPY_EXPERIMENT_JOURNAL.md` (entries E1-E63, predictions P1-P54, run register
-`docs/spy_journal/runs/`, 103 runs) where the full method, clauses and raw scoring live.
+`docs/SPY_EXPERIMENT_JOURNAL.md` (entries E1-E64, predictions P1-P59, run register
+`docs/spy_journal/runs/`, 104 runs) where the full method, clauses and raw scoring live.
 The lab's design and question framing are in `docs/20261018_spy_node_defenses.md` and
 its section 7 review.
 
@@ -120,6 +120,16 @@ blind-side check confirms it (E63, run 103): under the front-port eclipse X3 cha
 cover collapses to 17 relayed stems at one user — the guarantee's blind side is where the real
 attack lives.
 
+The mainnet-rate point closes the cover story (E64, run 104): with senders at mainnet's rate
+(~2 tx/day per home node) the cover is 13 relayed stems at 11 of 40 users in 24 h against 55 own
+sends, none of them forwarded to a spy, and sp precision on unreachable senders reads 1.000 against
+the 0.45-0.92 band — the mechanism ran at full strength (66,485 epoch events over 40 h) and had
+almost nothing to carry. The cover is too thin at the lab rate and absent at the mainnet rate; what
+survives of the proposal is the edge-1 guarantee and the /16 inbound deduplication. The lab's spy
+fleet, in every cell so far, holds only relay-dialed connections (100 % of spy stem receipts), the
+one kind a PoW-gated virtual slot never carries; the X3b cells (P55-P59, a fleet that dials, hidden
+or paying) measure what the guarantee is worth against the adversary that would actually pay.
+
 ## The bottom line
 
 Nothing in the candidate rule set survives the active adversary untrimmed; the
@@ -135,9 +145,9 @@ the sender-class table and the IP-churn model.
 
 ## Pointers
 
-- Journal: `docs/SPY_EXPERIMENT_JOURNAL.md` — entries E1-E63 (section 4), predictions
+- Journal: `docs/SPY_EXPERIMENT_JOURNAL.md` — entries E1-E64 (section 4), predictions
   P1-P54 (section 5), open questions (section 6), decisions (section 7), run register
-  (section 3, 103 runs; per-run artifacts in `docs/spy_journal/runs/<id>/`).
+  (section 3, 104 runs; per-run artifacts in `docs/spy_journal/runs/<id>/`).
 - Tooling: `test_configs/x0/make_lean.py` (`--spy-refresh/--spy-rotate/--user-dumps`
   and the rule/trim flags), `agents/spy_refresh.py` (the adversary),
   `analysis/spy/{spy_estimators,churn_cost}.py` (scoring), `analysis/mainnet/` (crawl).
