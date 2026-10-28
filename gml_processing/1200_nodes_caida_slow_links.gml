@@ -8437,6 +8437,72 @@ graph [
     region "north_america"
     bandwidth "238Mbit"
   ]
+  node [
+    id 1206
+    AS "1206"
+    region "north_america"
+    bandwidth "238Mbit"
+  ]
+  node [
+    id 1207
+    AS "1207"
+    region "north_america"
+    bandwidth "238Mbit"
+  ]
+  node [
+    id 1208
+    AS "1208"
+    region "north_america"
+    bandwidth "238Mbit"
+  ]
+  node [
+    id 1209
+    AS "1209"
+    region "north_america"
+    bandwidth "238Mbit"
+  ]
+  node [
+    id 1210
+    AS "1210"
+    region "north_america"
+    bandwidth "238Mbit"
+  ]
+  node [
+    id 1211
+    AS "1211"
+    region "north_america"
+    bandwidth "238Mbit"
+  ]
+  node [
+    id 1212
+    AS "1212"
+    region "north_america"
+    bandwidth "238Mbit"
+  ]
+  node [
+    id 1213
+    AS "1213"
+    region "north_america"
+    bandwidth "238Mbit"
+  ]
+  node [
+    id 1214
+    AS "1214"
+    region "north_america"
+    bandwidth "238Mbit"
+  ]
+  node [
+    id 1215
+    AS "1215"
+    region "north_america"
+    bandwidth "238Mbit"
+  ]
+  node [
+    id 1216
+    AS "1216"
+    region "north_america"
+    bandwidth "238Mbit"
+  ]
   edge [
     source 0
     target 349
@@ -122435,6 +122501,228 @@ graph [
     source 1205
     target 1203
     latency "4000ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1206
+    target 1206
+    latency "1ms"
+    bandwidth "10Gbit"
+  ]
+  edge [
+    source 0
+    target 1206
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1206
+    target 0
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1207
+    target 1207
+    latency "1ms"
+    bandwidth "10Gbit"
+  ]
+  edge [
+    source 1206
+    target 1207
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1207
+    target 1206
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1208
+    target 1208
+    latency "1ms"
+    bandwidth "10Gbit"
+  ]
+  edge [
+    source 1207
+    target 1208
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1208
+    target 1207
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1209
+    target 1209
+    latency "1ms"
+    bandwidth "10Gbit"
+  ]
+  edge [
+    source 1208
+    target 1209
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1209
+    target 1208
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1210
+    target 1210
+    latency "1ms"
+    bandwidth "10Gbit"
+  ]
+  edge [
+    source 1209
+    target 1210
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1210
+    target 1209
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1211
+    target 1211
+    latency "1ms"
+    bandwidth "10Gbit"
+  ]
+  edge [
+    source 1210
+    target 1211
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1211
+    target 1210
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1212
+    target 1212
+    latency "1ms"
+    bandwidth "10Gbit"
+  ]
+  edge [
+    source 1211
+    target 1212
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1212
+    target 1211
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1213
+    target 1213
+    latency "1ms"
+    bandwidth "10Gbit"
+  ]
+  edge [
+    source 1212
+    target 1213
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1213
+    target 1212
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1214
+    target 1214
+    latency "1ms"
+    bandwidth "10Gbit"
+  ]
+  edge [
+    source 1203
+    target 1214
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1214
+    target 1203
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 0
+    target 1214
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1214
+    target 0
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1215
+    target 1215
+    latency "1ms"
+    bandwidth "10Gbit"
+  ]
+  edge [
+    source 1214
+    target 1215
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1215
+    target 1214
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1216
+    target 1216
+    latency "1ms"
+    bandwidth "10Gbit"
+  ]
+  edge [
+    source 1215
+    target 1216
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1216
+    target 1215
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 0
+    target 1216
+    latency "1500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1216
+    target 0
+    latency "1500ms"
     bandwidth "238Mbit"
   ]
 ]

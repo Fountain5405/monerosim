@@ -875,33 +875,62 @@ def _sop(cfg, aid):
     return bool(cfg["agents"][aid].get("daemon_options", {}).get("sim-share-or-perish"))
 
 
+def _strip_chain(cfg):
+    """The slow base's seven eclipsed chain relays and honest-002's pin /
+    eclipse / exclusive peer, undone: what the micro base has."""
+    ag = cfg["agents"]
+    for k in range(1, 8):
+        del ag[f"relay-chain-{k}"]
+    for k in ("topology_node", "attributes", "peers"):
+        ag["honest-002"].pop(k, None)
+    ag["honest-002"].get("daemon_options", {}).pop("hide-my-port", None)
+    if ag["honest-002"].get("daemon_options") == {}:
+        del ag["honest-002"]["daemon_options"]
+    return cfg
+
+
 def test_slow_base_differs_from_the_micro_base_only_in_the_graph():
-    """The slow-link base is the micro base on the derived graph: the same
-    agents and settings, so slow cells compare against the control cells."""
+    """The slow-link base is the micro base on the derived graph plus a chain
+    of 1.5 s relay hops (relay-chain-1..7 on nodes 1206..1212, each peering
+    only with the previous) and honest-002 eclipsed behind it; every link's
+    round trip stays under monerod's 5 s P2P timeouts."""
     base = yaml.safe_load((REPO / "test_configs/selfish_micro_sop.yaml").read_text())
     slow = yaml.safe_load((REPO / "test_configs/selfish_micro_sop_slow.yaml").read_text())
     assert slow["network"]["path"] == "gml_processing/1200_nodes_caida_slow_links.gml"
+    ag = slow["agents"]
+    for k in range(1, 8):
+        r = ag[f"relay-chain-{k}"]
+        assert r["topology_node"] == 1205 + k and r["attributes"] == {"eclipsed": "true"}
+        assert r["daemon_options"] == {"hide-my-port": True}
+        assert r.get("peers") == ({"exclusive": [f"relay-chain-{k - 1}"]} if k > 1 else None)
+    assert ag["honest-002"]["attributes"] == {"eclipsed": "true"}
+    assert ag["honest-002"]["daemon_options"] == {"hide-my-port": True}
+    assert ag["honest-002"]["topology_node"] == 1207 and ag["honest-002"]["peers"] == {"exclusive": ["relay-chain-1"]}
+    slow = _strip_chain(slow)
     slow["network"]["path"] = base["network"]["path"]
     assert slow == base
 
 
 def test_slow_spec_pins_only_the_second_honest_miner():
-    """sop_v4_slow_72h: honest-002 sits on the slow node (3 s / 10 s / 30 s),
-    every other agent is placed as in the control spec, and the stock / sop
-    pairing matches the control spec cell for cell."""
+    """sop_v4_slow_72h: honest-002 sits 2 / 4 / 8 hops down the chain (3 s /
+    6 s / 12 s one way) peering only with the relay before it; being eclipsed
+    its hashrate and SoP flag are set by name; everything else matches the
+    control spec cell for cell."""
     cells = _cells(_load_spec("sop_v4_slow_72h.yaml"))
     ctl = _cells(_load_spec("sop_v4_control_72h.yaml"))
     assert len(cells) == 6
     for cell, cfg in cells.items():
         lat = cell.split("_")[-2]
-        node = {"l3": 1200, "l10": 1201, "l30": 1202}[lat]
-        assert cfg["agents"]["honest-002"]["topology_node"] == node
-        others = [a for a in cfg["agents"] if a != "honest-002"]
-        assert not any("topology_node" in cfg["agents"][a] for a in others)
+        node, relay = {"l3": (1207, 1), "l6": (1209, 3), "l12": (1213, 7)}[lat]
+        h2 = cfg["agents"]["honest-002"]
+        assert h2["topology_node"] == node and h2["peers"] == {"exclusive": [f"relay-chain-{relay}"]}
+        assert h2["hashrate"] == 2.65 and cfg["agents"]["honest-001"]["hashrate"] == 2.65
+        sop = "_sop_" in cell
+        assert _sop(cfg, "honest-002") is sop and _sop(cfg, "honest-001") is sop
+        assert _sop(cfg, "relay-chain-1") is sop and _sop(cfg, "relay-chain-7") is sop
+        assert cfg["agents"]["relay-chain-1"]["daemon"] == ("monerod-sim" if sop else "monerod")
         ref = ctl[cell.replace(f"_{lat}", "")]
-        strip = lambda c: {a: {k: v for k, v in s.items() if k != "topology_node"}
-                           for a, s in c["agents"].items()}
-        assert strip(cfg) == strip(ref)
+        assert _strip_chain(cfg)["agents"] == ref["agents"]
 
 
 def test_adopt_spec_flags_k_of_four_miners_and_half_the_fabric():
@@ -943,12 +972,12 @@ def test_adopt_spec_flags_k_of_four_miners_and_half_the_fabric():
 
 
 def test_gamma_base_is_the_slow_base_plus_a_second_bridge_and_the_pins():
-    """selfish_micro_sop_gamma.yaml: the slow-link base where the honest path
-    between the two miners is slow by hops (honest-002 peers only with
-    relay-slow, which a cell pins 2 s or 4 s beyond node 1203) while the
-    attacker sits on node 1203 beside honest-002 and bridge 1, 0.5 s from
+    """selfish_micro_sop_gamma.yaml: the slow-link base (chain left out) where
+    honest-002 peers only with relay-slow-1 (1.5 s away, 1.5 s from node 0),
+    relay-slow-2 and -3 extend that into a 6 s detour when a cell chains them,
+    the attacker sits on node 1203 beside honest-002 and bridge 1, 0.5 s from
     node 0 where honest-001 and bridge 2 are. Nothing else differs."""
-    slow = yaml.safe_load((REPO / "test_configs/selfish_micro_sop_slow.yaml").read_text())
+    slow = _strip_chain(yaml.safe_load((REPO / "test_configs/selfish_micro_sop_slow.yaml").read_text()))
     g = yaml.safe_load((REPO / "test_configs/selfish_micro_sop_gamma.yaml").read_text())
     ag = g["agents"]
     att = ag["attacker-miner"]
@@ -957,36 +986,50 @@ def test_gamma_base_is_the_slow_base_plus_a_second_bridge_and_the_pins():
     assert att["topology_node"] == 1203
     h2 = ag["honest-002"]
     assert h2["topology_node"] == 1203 and h2["attributes"] == {"eclipsed": "true"}
-    assert h2["peers"] == {"exclusive": ["relay-slow"]}
+    assert h2["peers"] == {"exclusive": ["relay-slow-1"]}
     assert ag["attacker-bridge"]["topology_node"] == 1203
     assert ag["attacker-bridge"]["peers"] == {"exclusive": ["honest-002"]}
     assert ag["attacker-bridge-2"] == {"daemon": "monerod", "script": "agents.selfish_bridge",
                                        "start_time": "0s", "topology_node": 0,
                                        "peers": {"priority": ["honest-001"]}}
-    assert ag["relay-slow"] == {"daemon": "monerod", "start_time": "0s"}
+    hide = {"hide-my-port": True}
+    assert ag["relay-slow-1"] == {"daemon": "monerod", "start_time": "0s", "topology_node": 1214,
+                                  "attributes": {"eclipsed": "true"}, "daemon_options": hide}
+    assert ag["relay-slow-2"] == {"daemon": "monerod", "start_time": "0s", "topology_node": 1215,
+                                  "attributes": {"eclipsed": "true"}, "daemon_options": hide,
+                                  "peers": {"exclusive": ["relay-slow-3"]}}
+    assert ag["relay-slow-3"] == {"daemon": "monerod", "start_time": "0s", "topology_node": 1216,
+                                  "attributes": {"eclipsed": "true"}, "daemon_options": hide}
+    assert h2["daemon_options"] == hide
     assert ag["honest-001"]["topology_node"] == 0
-    # Undo those and the slow base is what remains.
+    # Undo those and the (chain-less) slow base is what remains.
     att["attributes"].pop("bridges"); att["attributes"].pop("read_bridge"); att.pop("topology_node")
     att["attributes"]["bridge_agent"] = "attacker-bridge"
-    for k in ("topology_node", "attributes", "peers"): h2.pop(k)
+    for k in ("topology_node", "attributes", "peers", "daemon_options"): h2.pop(k)
     ag["attacker-bridge"].pop("peers"); ag["attacker-bridge"].pop("topology_node")
-    del ag["attacker-bridge-2"]; del ag["relay-slow"]; ag["honest-001"].pop("topology_node")
+    for k in ("attacker-bridge-2", "relay-slow-1", "relay-slow-2", "relay-slow-3"): del ag[k]
+    ag["honest-001"].pop("topology_node")
     assert g == slow
 
 
 def test_gamma_spec_moves_the_slow_relay_and_flags_the_eclipsed_miner():
     """sop_v4_gamma_72h: stock d2 attacker at 0.30 / 0.35, SoP param attacker
-    at 0.35 / 0.40 / 0.45, each with relay-slow 2 s (f2) or 4 s (f4) beyond
-    node 1203, so an honest block takes 4.5 s / 8.5 s between the miners and
-    the attacker's reply about 1 s. honest-002 is eclipsed (outside the
-    `honest` target), so the spec sets its hashrate and SoP flag by name."""
+    at 0.35 / 0.40 / 0.45, each with the honest path 3 s (f3: relay-slow-1
+    peers normally) or 6 s (f6: relay-slow-1 -> 2 -> 3 chained). honest-002 is
+    eclipsed (outside the `honest` target), so the spec sets its hashrate and
+    SoP flag by name."""
     cells = _cells(_load_spec("sop_v4_gamma_72h.yaml"))
     assert sorted(cells) == sorted(
-        [f"d2_stock_{a}_{l}_s1" for a in ("a030", "a035") for l in ("f2", "f4")]
-        + [f"share_sop_{a}_{l}_s1" for a in ("a035", "a040", "a045") for l in ("f2", "f4")])
+        [f"d2_stock_{a}_{l}_s1" for a in ("a030", "a035") for l in ("f3", "f6")]
+        + [f"share_sop_{a}_{l}_s1" for a in ("a035", "a040", "a045") for l in ("f3", "f6")])
     for cell, cfg in cells.items():
         ag = cfg["agents"]
-        assert ag["relay-slow"]["topology_node"] == (1204 if "_f2_" in cell else 1205)
+        r1 = ag["relay-slow-1"]
+        if "_f6_" in cell:
+            assert r1["peers"] == {"exclusive": ["relay-slow-2"]}
+        else:
+            assert "peers" not in r1
+        assert ag["relay-slow-2"]["peers"] == {"exclusive": ["relay-slow-3"]} and "peers" not in ag["relay-slow-3"]
         assert ag["honest-002"]["topology_node"] == ag["attacker-bridge"]["topology_node"] == 1203
         assert ag["attacker-miner"]["topology_node"] == 1203
         assert ag["honest-001"]["topology_node"] == 0 and ag["attacker-bridge-2"]["topology_node"] == 0
@@ -995,9 +1038,9 @@ def test_gamma_spec_moves_the_slow_relay_and_flags_the_eclipsed_miner():
         assert ag["honest-001"]["hashrate"] == ag["honest-002"]["hashrate"] == pytest.approx(5 - 5 * alpha)
         sop = cell.startswith("share")
         for a in ("honest-001", "honest-002", "attacker-bridge", "attacker-bridge-2", "relay-001",
-                  "relay-slow", "monero-seed-001"):
+                  "relay-slow-1", "relay-slow-2", "relay-slow-3", "monero-seed-001"):
             assert _sop(cfg, a) is sop, (cell, a)
-        for a in ("attacker-bridge", "relay-slow"):
+        for a in ("attacker-bridge", "relay-slow-1"):
             assert ag[a]["daemon"] == ("monerod-sim" if sop else "monerod")
         att = ag["attacker-miner"]["attributes"]
         assert att["bridges"] == "attacker-bridge,attacker-bridge-2" and att["read_bridge"] == "best"

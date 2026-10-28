@@ -72,24 +72,54 @@ def add_slow_nodes(text: str, anchor: int, latencies_ms, loop_latency="1ms",
             + "".join(new_edges) + text[close:])
 
 
+def add_linked_node(text: str, links, loop_latency="1ms", loop_bandwidth='"10Gbit"') -> str:
+    """One new node (region and bandwidth of the first anchor, AS = its id)
+    with an edge each way to every (anchor, latency_ms) in `links`: a hop that
+    closes a detour, e.g. the last relay of a chain that leaves the hub and
+    comes back. Returns the new text; the new id is max existing id + 1."""
+    nodes, _ = parse_records(text)
+    by_id = {int(n["id"]): n for n in nodes}
+    for anchor, _ in links:
+        if anchor not in by_id:
+            raise ValueError(f"anchor {anchor} is not a node of the graph")
+    a = by_id[links[0][0]]
+    first_edge = text.index("  edge [\n")
+    close = text.rstrip().rfind("]")
+    nid = max(by_id) + 1
+    edges = [_edge(nid, nid, f'"{loop_latency}"', loop_bandwidth)]
+    for anchor, lat in links:
+        lat_s = f'"{int(lat)}ms"'
+        edges.append(_edge(anchor, nid, lat_s, a["bandwidth"]))
+        edges.append(_edge(nid, anchor, lat_s, a["bandwidth"]))
+    return (text[:first_edge] + _node(nid, a["region"], a["bandwidth"]) + text[first_edge:close]
+            + "".join(edges) + text[close:])
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("src")
     ap.add_argument("dst")
-    ap.add_argument("--anchor", type=int, required=True,
-                    help="existing node id the slow nodes hang off")
-    ap.add_argument("--latency-ms", type=int, nargs="+", required=True,
+    ap.add_argument("--anchor", type=int, help="existing node id the slow nodes hang off")
+    ap.add_argument("--latency-ms", type=int, nargs="+",
                     help="one new node per value, one-way latency to the anchor")
+    ap.add_argument("--link", help="instead: ONE new node joined to several anchors, 'node:ms,node:ms'")
     args = ap.parse_args(argv)
     with open(args.src) as f:
         text = f.read()
     nodes, _ = parse_records(text)
     first = max(int(n["id"]) for n in nodes) + 1
-    out = add_slow_nodes(text, args.anchor, args.latency_ms)
+    if args.link:
+        links = [(int(a), int(ms)) for a, ms in (x.split(":") for x in args.link.split(","))]
+        out = add_linked_node(text, links)
+        print(f"node {first}: " + ", ".join(f"{ms} ms to node {a}" for a, ms in links))
+    else:
+        if args.anchor is None or not args.latency_ms:
+            ap.error("--anchor and --latency-ms, or --link")
+        out = add_slow_nodes(text, args.anchor, args.latency_ms)
+        for i, lat in enumerate(args.latency_ms):
+            print(f"node {first + i}: {lat} ms to node {args.anchor}")
     with open(args.dst, "w") as f:
         f.write(out)
-    for i, lat in enumerate(args.latency_ms):
-        print(f"node {first + i}: {lat} ms to node {args.anchor}")
     return 0
 
 

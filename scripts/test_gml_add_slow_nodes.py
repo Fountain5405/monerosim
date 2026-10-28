@@ -75,3 +75,19 @@ def test_unknown_anchor_is_an_error():
     import pytest
     with pytest.raises(ValueError, match="anchor 7"):
         add_slow_nodes(TINY, anchor=7, latencies_ms=[1000])
+
+
+def test_linked_node_joins_several_anchors():
+    """A hop node that closes a detour: one new node with an edge each way to
+    every anchor given, so a relay chain can leave the hub and come back."""
+    from scripts.gml_add_slow_nodes import add_linked_node
+    out = add_linked_node(TINY, links=[(0, 1500), (1, 1500)])
+    nodes, edges = parse_records(out)
+    assert [n["id"] for n in nodes] == ["0", "1", "2"]
+    by = {(e["source"], e["target"]): e for e in edges}
+    assert len(edges) == 4 + 1 + 4
+    assert by[("2", "2")]["latency"] == '"1ms"'
+    for a in ("0", "1"):
+        assert by[(a, "2")]["latency"] == '"1500ms"' and by[("2", a)]["latency"] == '"1500ms"'
+    new = [n for n in nodes if n["id"] == "2"][0]
+    assert new["region"] == '"north_america"' and new["bandwidth"] == '"238Mbit"'   # the first anchor's

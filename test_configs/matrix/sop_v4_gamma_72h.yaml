@@ -1,17 +1,20 @@
-# sop_v4_gamma_72h (2026-10-28, v2): the network-advantage attacker (gap 4 of
+# sop_v4_gamma_72h (2026-10-28, v3): the network-advantage attacker (gap 4 of
 # the "is SoP a good mitigation" list), the one result that could sink the
 # case. On selfish_micro_sop_gamma.yaml the honest path between the two
-# miners runs through relay-slow (f2: 2 s beyond node 1203, an honest block
-# takes ~4.5 s between the miners; f4: 4 s, ~8.5 s, past SoP's 5 s rule, so
-# the fast side weighs the slow miner's block at 0 whenever the attacker's
-# reply is there first) while the attacker hears each honest block from the
-# bridge beside its finder and answers through both bridges in about a
-# second: gamma 0.5 in the Eyal-Sirer sense, where the stock threshold is
-# 0.25. Stock cells run the stock-optimal depth-2 attacker at 0.30 and 0.35
-# (both above 0.25, so both should profit); SoP cells the validated param
-# attacker (the G=6 family; the knobs tuned for 0.45-0.47 are used at 0.35
-# and 0.40 too) at 0.35, 0.40 and 0.45. honest-002 is eclipsed, so its
-# hashrate and flag are set by name. 14 daemons: ~10.6 GB, a 16 GB box.
+# miners runs through 1.5 s relay hops (f3: honest-002 -> relay-slow-1 ->
+# hub, 3 s, under SoP's 5 s rule; f6: -> relay-slow-1 -> 2 -> 3 -> hub, 6 s,
+# past it, so the fast side weighs the slow miner's block at 0 whenever the
+# attacker's reply is there first) while the attacker hears each honest block
+# from the bridge beside its finder and answers through both bridges in about
+# a second: gamma 0.5 in the Eyal-Sirer sense, where the stock threshold is
+# 0.25. v2's single 4 s hop never connected (monerod's 5 s P2P timeouts): the
+# relay was isolated, honest-002 was eclipsed by the attacker and the cell
+# measured a 2-miner majority attack (0.99), not SoP. Stock cells run the
+# stock-optimal depth-2 attacker at 0.30 and 0.35 (both above 0.25, so both
+# should profit); SoP cells the validated param attacker (the G=6 family; the
+# knobs tuned for 0.45-0.47 are used at 0.35 and 0.40 too) at 0.35, 0.40 and
+# 0.45. honest-002 is eclipsed, so its hashrate and flag are set by name.
+# 23 daemons, 3 of them mining: ~13 GB, a 16 GB box.
 name: sop_v4_gamma_72h
 seed: 27791
 base: test_configs/selfish_micro_sop_gamma.yaml
@@ -88,10 +91,9 @@ axes:
       honest: {hashrate: [2.75]}
       honest-002: {hashrate: 2.75}
   latency:
-    f2:
-      relay-slow: {topology_node: 1204}
-    f4:
-      relay-slow: {topology_node: 1205}
+    f3: {}
+    f6:
+      relay-slow-1: {peers: {exclusive: [relay-slow-2]}}
   sample:
     s1:
       attacker:

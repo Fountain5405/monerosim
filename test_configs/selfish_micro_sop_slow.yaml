@@ -1,27 +1,17 @@
-# selfish_micro_sop_slow.yaml (2026-10-28): selfish_micro_sop.yaml on the
-# slow-link graph (gml_processing/1200_nodes_caida_slow_links.gml =
-# 1200_nodes_caida_with_loops.gml + nodes 1200 / 1201 / 1202 hung off
-# node 0 by a 3 s / 10 s / 30 s one-way edge; scripts/gml_add_slow_nodes.py).
-# Nothing else differs (test_slow_base_differs_from_the_micro_base_only_in_the_graph):
-# a cell pins one miner to a slow node with topology_node and compares
-# against the same cell on the micro base.
-# Selfish-mining micro gate (docs/SELFISH_MINING.md).
-# Honest miners total 6 h/s; the attacker mines 4 h/s (alpha = 0.4) on an
-# OFFLINE monerod-sim (withholds by construction). The bridge is a normal
-# relay + a registration-only agent; the attacker finds it via the registry.
-# Single bridge => gamma ~= 0 (ties never propagate) => the Eyal-Sirer gamma=0
-# baseline. Compare against the honest-strategy run at the same alpha.
-# SoP-compatible variant of selfish_micro: the six fallback seeds are
-# DECLARED (fallback_seeds: custom) so countermeasure overlays can reach
-# them — option-1 SoP blocks (version_minor = share count) are rejected by
-# the hardfork vote rule in vanilla monerod, so every block-validating node
-# in a SoP topology must run monerod-sim (parser + vote-gate bypass).
-# Baseline cells on this base are unaffected: an unflagged monerod-sim
-# behaves as stock except for that vote-gate bypass, which the pop patch
-# applies to every block precisely so an unflagged bridge/relay can carry
-# SoP blocks (no stock miner produces a block the bypass would newly
-# accept). Since 2026-09-26 an unflagged node also neither pools nor relays
-# workshares.
+# selfish_micro_sop_slow.yaml (2026-10-28, v2): selfish_micro_sop.yaml on the
+# slow-link graph (gml_processing/1200_nodes_caida_slow_links.gml) with a
+# chain of seven eclipsed relays, relay-chain-1..7 on nodes 1206..1212, each
+# 1.5 s from the previous and the first 1.5 s from node 0, wired as a chain
+# (relay-chain-i peers only with relay-chain-(i-1); relay-chain-1 peers
+# normally). honest-002 is eclipsed and peers only with the relay a cell
+# names, from the node a cell pins it to (G2 = 1207 by default: 2 hops, 3 s
+# one-way). Eclipsed hosts also hide their port, so no one dials them but
+# the chain. v1 put honest-002 behind ONE 3 / 10 / 30 s edge: monerod's P2P
+# connect and handshake time out at 5 s, so any link with a round trip over
+# 5 s never connects and the miner was simply isolated (10-28, two wasted
+# cells). Every hop here has a 3 s round trip. The micro base is what remains
+# without the chain and honest-002's pin / eclipse / peers
+# (test_slow_base_differs_from_the_micro_base_only_in_the_graph).
 # 2026-09-26: the base grafts chain_snapshots/h10 (336 pre-mined blocks whose
 # tail sits at D0 = 120 x 10 h/s = 1,200, this topology's equilibrium) instead
 # of the fixed-difficulty 1800 stopgap, so monerod's real DAA runs from the
@@ -80,6 +70,10 @@ agents:
     script: agents.autonomous_miner
     hashrate: 3
     start_time: 0s
+    topology_node: 1207
+    attributes: {eclipsed: 'true'}
+    daemon_options: {hide-my-port: true}
+    peers: {exclusive: [relay-chain-1]}
   attacker-miner:
     daemon: monerod
     wallet: monero-wallet-rpc
@@ -112,6 +106,54 @@ agents:
     daemon: monerod
     script: agents.selfish_bridge
     start_time: 0s
+  relay-chain-1:
+    daemon: monerod
+    start_time: 0s
+    topology_node: 1206
+    attributes: {eclipsed: 'true'}
+    daemon_options: {hide-my-port: true}
+  relay-chain-2:
+    daemon: monerod
+    start_time: 0s
+    topology_node: 1207
+    attributes: {eclipsed: 'true'}
+    daemon_options: {hide-my-port: true}
+    peers: {exclusive: [relay-chain-1]}
+  relay-chain-3:
+    daemon: monerod
+    start_time: 0s
+    topology_node: 1208
+    attributes: {eclipsed: 'true'}
+    daemon_options: {hide-my-port: true}
+    peers: {exclusive: [relay-chain-2]}
+  relay-chain-4:
+    daemon: monerod
+    start_time: 0s
+    topology_node: 1209
+    attributes: {eclipsed: 'true'}
+    daemon_options: {hide-my-port: true}
+    peers: {exclusive: [relay-chain-3]}
+  relay-chain-5:
+    daemon: monerod
+    start_time: 0s
+    topology_node: 1210
+    attributes: {eclipsed: 'true'}
+    daemon_options: {hide-my-port: true}
+    peers: {exclusive: [relay-chain-4]}
+  relay-chain-6:
+    daemon: monerod
+    start_time: 0s
+    topology_node: 1211
+    attributes: {eclipsed: 'true'}
+    daemon_options: {hide-my-port: true}
+    peers: {exclusive: [relay-chain-5]}
+  relay-chain-7:
+    daemon: monerod
+    start_time: 0s
+    topology_node: 1212
+    attributes: {eclipsed: 'true'}
+    daemon_options: {hide-my-port: true}
+    peers: {exclusive: [relay-chain-6]}
   relay-001:
     daemon: monerod
     start_time: 30s
