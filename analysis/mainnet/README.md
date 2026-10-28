@@ -165,3 +165,12 @@ repo.
 against fixtures in `fixtures/` — including one real `get_info` /
 `get_connections` / `/get_peer_list` response captured from the live node,
 with peer IPs anonymised to `10.x` addresses.
+
+## Observatory feeds
+
+observer.monerodevs.org (a Grafana dashboard on three hardcoded mainnet seeds) publishes the
+JSON feeds its panels read. `pull_observer.sh [dest]` discovers the feed host from the
+dashboard definition and snapshots the aggregate feeds into `~/monerosim_local/observer/<date>/`
+(a daily cron on the control box; address-bearing feeds are skipped). Read with
+`docs/spy_journal/adhoc/observer_seed_ratio.py <date-dir>` (the seeds' fleet share of white list
+vs outbound — OQ8's mainnet check). Snapshots stay outside the repo like all mainnet data.
