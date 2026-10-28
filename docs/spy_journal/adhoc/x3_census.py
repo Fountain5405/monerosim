@@ -10,7 +10,7 @@ From --sim-log-txrelay logs of a --stemmable cell:
   union_*                 the edge-2 union size at epoch build (min/med/max)
   edge2_virtual_share     of the epochs logging two stem targets, the share
                           whose second target is one of that epoch's virtual
-                          candidates (string join on the addr; misses counted)
+                          candidates (join on the logged connection uuid or addr; misses counted)
   relayed_stems_at_users  stem receipts at user nodes for a tx originated by
                           another node (the cover the proposal exists to add)
   users_reached           user nodes with at least one relayed stem
@@ -44,10 +44,20 @@ def main():
                 for tx in e["txs"]:
                     origin.setdefault(tx, node)
 
+    def vkeys(virt):
+        """(conn, addr) keys of an x3 event's virtual entries (logged as
+        {"conn": uuid, "addr": "ip:port"} objects)."""
+        out = set()
+        for v in virt:
+            if isinstance(v, dict):
+                out.add(("c", v.get("conn", "")))
+                out.add(("a", v.get("addr", "")))
+        return out
+
     x3 = virtual_epochs = 0
     unions = []
     edge2_total = edge2_virtual = edge2_miss = 0
-    last_virtual = {}  # node -> virtual addr strings from its latest x3 event
+    last_virtual = {}  # node -> (conn, addr) key set from its latest x3 event
     for node, events in logs.items():
         for e in events:
             if e["ev"] == "x3":
@@ -56,17 +66,16 @@ def main():
                 if virt:
                     virtual_epochs += 1
                 unions.append(int(e.get("union", 0)))
-                last_virtual[node] = set(virt)
+                last_virtual[node] = vkeys(virt)
             elif e["ev"] == "epoch":
                 stems = e.get("stems", [])
                 if len(stems) >= 2:
                     edge2_total += 1
                     lv = last_virtual.get(node)
+                    s = stems[1]
                     if not lv:
                         edge2_miss += 1
-                        continue
-                    addr = stems[1].get("addr", "")
-                    if addr in lv or ip_of(addr) in {ip_of(v) for v in lv}:
+                    elif ("c", s.get("conn", "")) in lv or ("a", s.get("addr", "")) in lv:
                         edge2_virtual += 1
 
     relayed = defaultdict(int)
