@@ -330,8 +330,11 @@ the other: 0.538 (34.7 reveals per 1,000 found against the model's
 run +0.040 +- 0.013 over the model, three of them by 0.04-0.06 and one
 not at all. The K=6 crossing interpolates to 0.475 between the pair
 means (0.445 at 0.47, 0.510 at 0.48), against the model's 0.4805: K=6
-raises the threshold by about 0.011 in the sims (model 0.012). Third
-seeds at both alphas run from 10-28 01:45Z.
+raises the threshold by about 0.011 in the sims (model 0.012). The third
+seed at 0.47 (10-28, PASS) ran 0.428 (22.1 reveals per 1,000 found):
+three seeds 0.454 / 0.436 / 0.428, mean 0.439 +- 0.008 against 0.399;
+over the five K=6 cells the excess is +0.038 +- 0.010 and the crossing
+stays at 0.475. The third seed at 0.48 runs.
 
 Where the K=6 excess comes from (decision histograms, `sop_decision_hist.py
 --K --w`: the model with the perish rule, 600 d x 2 seeds, against the cells'
