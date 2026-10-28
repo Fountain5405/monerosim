@@ -334,7 +334,11 @@ raises the threshold by about 0.011 in the sims (model 0.012). The third
 seed at 0.47 (10-28, PASS) ran 0.428 (22.1 reveals per 1,000 found):
 three seeds 0.454 / 0.436 / 0.428, mean 0.439 +- 0.008 against 0.399;
 over the five K=6 cells the excess is +0.038 +- 0.010 and the crossing
-stays at 0.475. The third seed at 0.48 runs.
+stays at 0.475. The third seed at 0.48 (PASS) ran 0.540 (33.2 reveals
+per 1,000 found against 28.9): 0.538 / 0.481 / 0.540, mean 0.520 +- 0.019
+against 0.476. Over all six K=6 cells the excess is +0.042 +- 0.009, and
+the crossing interpolates to 0.474 between the three-seed means (0.439 at
+0.47, 0.520 at 0.48).
 
 Where the K=6 excess comes from (decision histograms, `sop_decision_hist.py
 --K --w`: the model with the perish rule, 600 d x 2 seeds, against the cells'
