@@ -1,0 +1,129 @@
+# selfish_micro_sop_slow.yaml (2026-10-28): selfish_micro_sop.yaml on the
+# slow-link graph (gml_processing/1200_nodes_caida_slow_links.gml =
+# 1200_nodes_caida_with_loops.gml + nodes 1200 / 1201 / 1202 hung off
+# node 0 by a 3 s / 10 s / 30 s one-way edge; scripts/gml_add_slow_nodes.py).
+# Nothing else differs (test_slow_base_differs_from_the_micro_base_only_in_the_graph):
+# a cell pins one miner to a slow node with topology_node and compares
+# against the same cell on the micro base.
+# Selfish-mining micro gate (docs/SELFISH_MINING.md).
+# Honest miners total 6 h/s; the attacker mines 4 h/s (alpha = 0.4) on an
+# OFFLINE monerod-sim (withholds by construction). The bridge is a normal
+# relay + a registration-only agent; the attacker finds it via the registry.
+# Single bridge => gamma ~= 0 (ties never propagate) => the Eyal-Sirer gamma=0
+# baseline. Compare against the honest-strategy run at the same alpha.
+# SoP-compatible variant of selfish_micro: the six fallback seeds are
+# DECLARED (fallback_seeds: custom) so countermeasure overlays can reach
+# them — option-1 SoP blocks (version_minor = share count) are rejected by
+# the hardfork vote rule in vanilla monerod, so every block-validating node
+# in a SoP topology must run monerod-sim (parser + vote-gate bypass).
+# Baseline cells on this base are unaffected: an unflagged monerod-sim
+# behaves as stock except for that vote-gate bypass, which the pop patch
+# applies to every block precisely so an unflagged bridge/relay can carry
+# SoP blocks (no stock miner produces a block the bypass would newly
+# accept). Since 2026-09-26 an unflagged node also neither pools nor relays
+# workshares.
+# 2026-09-26: the base grafts chain_snapshots/h10 (336 pre-mined blocks whose
+# tail sits at D0 = 120 x 10 h/s = 1,200, this topology's equilibrium) instead
+# of the fixed-difficulty 1800 stopgap, so monerod's real DAA runs from the
+# first mined block (docs/CHAIN_SNAPSHOT.md; docs/20260926_dev_branch_handoff.md
+# campaign step 1). Every daemon starts at height 336 on the same tip, so
+# the attacker joins at 0 s: there is no genesis ramp left to exploit.
+general:
+  fallback_seeds: custom
+  stop_time: 6h
+  simulation_seed: 12345
+  bootstrap_end_time: 10m
+  enable_dns_server: true
+  shadow_log_level: warning
+  progress: true
+  process_threads: 2
+  native_preemption: true
+  # Shadow worker threads per run: leave at the default (0 = one per host,
+  # 13 here). Measured 2026-09-26 with 12 cells concurrent on 64 cores:
+  # default -> ~1x realtime per cell (load ~175, CPU mostly idle, 16% sys —
+  # ugly but steady); `parallelism: 4` -> the grafted cells advanced 5 sim-
+  # SECONDS in 10 wall-minutes (daemons 2-5% CPU each, no Shadow errors),
+  # while a lone 4-worker smoke ran at only ~1.2x versus ~3.6x at default.
+  # Fewer workers than hosts stalls these native-mining cells; do not lower it.
+  mining:
+    mode: native
+    # Preload: every monerod-family daemon boots with chain_snapshots/h10
+    # (D0 1200, 336 blocks, tip ~13 min before the Shadow epoch). This
+    # replaces `fixed-difficulty: 1800` (2026-09-25..26): the fakechain
+    # ramp from difficulty 1 was the root of every SoP bootstrap pathology
+    # measured 2026-09-24/25 — bankable high-cum-difficulty islands, diff<w
+    # weight degeneracy, bootstrap fork races — and a constant difficulty
+    # was the stopgap. With the graft the real DAA is active and already
+    # settled at this topology's own equilibrium. Stock cells pair on it.
+    chain_snapshot: h10
+  daemon_defaults:
+    log-level: monitor
+    max-log-file-size: 0
+    db-sync-mode: fastest
+    no-zmq: true
+    non-interactive: true
+  wallet_defaults:
+    log-level: 1
+network:
+  path: gml_processing/1200_nodes_caida_slow_links.gml
+  peer_mode: Dynamic
+agents:
+  honest-001:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 3
+    start_time: 0s
+  honest-002:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.autonomous_miner
+    hashrate: 3
+    start_time: 0s
+  attacker-miner:
+    daemon: monerod
+    wallet: monero-wallet-rpc
+    script: agents.selfish_miner
+    # Synchronized start (2026-09-26). The 12-minute late join this base
+    # used until then existed because at fakechain genesis difficulty ANY
+    # solo daemon could bank a high-cum-difficulty private chain in minutes
+    # and split the network at fork 0 (measured 2026-09-24: 182-vs-5).
+    # With the h10 graft every daemon starts on an established 336-block
+    # chain at settled difficulty, so the attacker mines from t = 0 like
+    # the honest miners — the textbook selfish-mining model. Stock cells
+    # on this base pair the comparison.
+    start_time: 0s
+    hashrate: 4
+    daemon_options:
+      offline: true
+    # The attacker's wallet logs 2 WARNING lines per coinbase on every refresh
+    # (the stock wallet cannot parse the SoP share data in tx_extra) and the
+    # agent's branch pops make it refresh constantly: 9 GB of a 12 GB 72 h
+    # archive (2026-10-23). LOG_PRINT_L0 is WARNING, so level 0 would not
+    # silence it; raise the wallet2 category to ERROR. Nothing reads the log.
+    wallet_options:
+      log-level: "0,wallet.wallet2:ERROR"
+    attributes:
+      strategy: eyal_sirer
+      bridge_agent: attacker-bridge
+      attack_start_height: "0"
+      reaction_delay_ms: "200"
+  attacker-bridge:
+    daemon: monerod
+    script: agents.selfish_bridge
+    start_time: 0s
+  relay-001:
+    daemon: monerod
+    start_time: 30s
+  relay-002:
+    daemon: monerod
+    start_time: 60s
+  monero-seed-001: {daemon: monerod-sim, start_time: 5s}
+  monero-seed-002: {daemon: monerod-sim, start_time: 5s}
+  monero-seed-003: {daemon: monerod-sim, start_time: 5s}
+  monero-seed-004: {daemon: monerod-sim, start_time: 5s}
+  monero-seed-005: {daemon: monerod-sim, start_time: 5s}
+  monero-seed-006: {daemon: monerod-sim, start_time: 5s}
+  simulation-monitor:
+    script: agents.simulation_monitor
+    poll_interval: 300

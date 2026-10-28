@@ -1,0 +1,51 @@
+# sop_v4_slow_72h (2026-10-28): the slow-honest-miner penalty (gap 3 of the
+# "is SoP a good mitigation" list). Share-or-Perish weighs a late block at 0
+# in the subjective regime and only counts a share seen > 5 s before the
+# competing block, so a well-behaved miner on a slow link can lose blocks it
+# would keep on the stock rule. The no-attacker control (sop_v4_control_72h:
+# 4.7 / 2.65 / 2.65, third miner honest and connected) with honest-002 pinned
+# to a slow node of selfish_micro_sop_slow.yaml's graph: 3 s (under the 5 s
+# rule: expected benign), 10 s and 30 s one-way to node 0 (everything it sends
+# or hears is that late). Compare honest-002's canonical blocks and orphans,
+# stock vs sop, at each latency and against the control cells (latency 0).
+# 12 daemons: fits a 16 GB box.
+name: sop_v4_slow_72h
+seed: 27791
+base: test_configs/selfish_micro_sop_slow.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    honest:
+      attacker:
+        attributes: {strategy: honest}
+        daemon_options: {offline: false}
+  countermeasure:
+    stock: {}
+    sop:
+      attacker:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+  alpha:
+    a047:
+      attacker: {hashrate: 4.7}
+      honest: {hashrate: [2.65, 2.65]}
+  latency:
+    l3:
+      honest-002: {topology_node: 1200}
+    l10:
+      honest-002: {topology_node: 1201}
+    l30:
+      honest-002: {topology_node: 1202}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'

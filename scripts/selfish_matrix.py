@@ -149,10 +149,16 @@ def _merge_stanza(stanza: dict, overlay: dict, where: str) -> None:
 def apply_overlay(cfg: dict, overlay: dict, where: str) -> None:
     targets = _agent_targets(cfg)
     for target, sub in overlay.items():
-        if target not in targets:
+        if target in targets:
+            agents = targets[target]
+        elif target in cfg["agents"]:
+            # A single agent id (partial-adoption specs flag one daemon at a
+            # time); group targets above take precedence over a same-named
+            # agent, so keep agent ids distinct from the group names.
+            agents = [target]
+        else:
             raise SystemExit(f"{where}: unknown overlay target {target!r} "
-                             f"(known: {sorted(targets)})")
-        agents = targets[target]
+                             f"(known: {sorted(targets)} or an agent id)")
         if not agents:
             raise SystemExit(f"{where}: overlay target {target!r} matches no agents")
         for aid in agents:

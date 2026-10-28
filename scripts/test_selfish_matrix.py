@@ -82,6 +82,19 @@ def test_overlay_targets_and_eclipsed_victims(tmp_path):
         apply_overlay(cfg, {"islands": {}}, "t")
 
 
+def test_overlay_target_may_name_one_agent():
+    """Partial-adoption specs flag single daemons: an agent id is a target
+    that reaches only that agent; a name that is neither a group nor an
+    agent is still rejected."""
+    cfg = yaml.safe_load(yaml.safe_dump(BASE))
+    apply_overlay(cfg, {"honest-002": {"daemon_options": {"sop": True}},
+                        "honest": {"daemon_options": {"w": 16}}}, "t")
+    assert cfg["agents"]["honest-002"]["daemon_options"] == {"sop": True, "w": 16}
+    assert cfg["agents"]["honest-001"]["daemon_options"] == {"w": 16}
+    with pytest.raises(SystemExit, match="unknown overlay target"):
+        apply_overlay(cfg, {"honest-009": {}}, "t")
+
+
 def test_relays_target_reaches_only_forwarding_nodes():
     """SoP-style gossip specs must flip relays to monerod-sim (a vanilla
     monerod relay drops the workshare levin message) without touching the
@@ -847,3 +860,83 @@ def test_run_sim_cmd_passes_ksm_and_bootfast():
     assert run_sim_cmd("c.yaml", "r") == base
     assert run_sim_cmd("c.yaml", "r", ksm=True) == base + ["--ksm"]
     assert run_sim_cmd("c.yaml", "r", ksm=True, bootfast=True) == base + ["--ksm", "--bootfast"]
+
+
+def _load_spec(name):
+    from scripts.selfish_matrix import load_spec
+    return load_spec(REPO / "test_configs" / "matrix" / name)
+
+
+def _cells(spec):
+    return {cell: build_config(spec, overlays) for cell, _, overlays in plan_cells(spec)}
+
+
+def _sop(cfg, aid):
+    return bool(cfg["agents"][aid].get("daemon_options", {}).get("sim-share-or-perish"))
+
+
+def test_slow_base_differs_from_the_micro_base_only_in_the_graph():
+    """The slow-link base is the micro base on the derived graph: the same
+    agents and settings, so slow cells compare against the control cells."""
+    base = yaml.safe_load((REPO / "test_configs/selfish_micro_sop.yaml").read_text())
+    slow = yaml.safe_load((REPO / "test_configs/selfish_micro_sop_slow.yaml").read_text())
+    assert slow["network"]["path"] == "gml_processing/1200_nodes_caida_slow_links.gml"
+    slow["network"]["path"] = base["network"]["path"]
+    assert slow == base
+
+
+def test_slow_spec_pins_only_the_second_honest_miner():
+    """sop_v4_slow_72h: honest-002 sits on the slow node (3 s / 10 s / 30 s),
+    every other agent is placed as in the control spec, and the stock / sop
+    pairing matches the control spec cell for cell."""
+    cells = _cells(_load_spec("sop_v4_slow_72h.yaml"))
+    ctl = _cells(_load_spec("sop_v4_control_72h.yaml"))
+    assert len(cells) == 6
+    for cell, cfg in cells.items():
+        lat = cell.split("_")[-2]
+        node = {"l3": 1200, "l10": 1201, "l30": 1202}[lat]
+        assert cfg["agents"]["honest-002"]["topology_node"] == node
+        others = [a for a in cfg["agents"] if a != "honest-002"]
+        assert not any("topology_node" in cfg["agents"][a] for a in others)
+        ref = ctl[cell.replace(f"_{lat}", "")]
+        strip = lambda c: {a: {k: v for k, v in s.items() if k != "topology_node"}
+                           for a, s in c["agents"].items()}
+        assert strip(cfg) == strip(ref)
+
+
+def test_adopt_spec_flags_k_of_four_miners_and_half_the_fabric():
+    """sop_v4_adopt_72h: adoption kN flags the first N honest miners; in a
+    mixed network relay-001 and seeds 1-3 run SoP and relay-002 / seeds 4-6
+    stay stock (relay-002 vanilla monerod, so it drops shares); k4 is the
+    full countermeasure and k0 the stock network with a vanilla bridge."""
+    cells = _cells(_load_spec("sop_v4_adopt_72h.yaml"))
+    assert sorted(cells) == sorted([
+        "share_k1_a045_s1", "share_k2_a045_s1", "share_k3_a045_s1",
+        "share_k4_a045_s1", "d2_k0_a045_s1", "d2_k2_a045_s1", "honest_k2_a045_s1"])
+    miners = ["honest-001", "honest-002", "honest-003", "honest-004"]
+    for cell, cfg in cells.items():
+        k = int(cell.split("_")[1][1])
+        assert [_sop(cfg, m) for m in miners] == [i < k for i in range(4)], cell
+        assert all(cfg["agents"][m]["hashrate"] == 1.375 for m in miners)
+        assert cfg["agents"]["attacker-miner"]["hashrate"] == 4.5
+        sop_fabric = {a for a in cfg["agents"] if a.startswith(("relay", "monero-seed")) and _sop(cfg, a)}
+        if k == 0:
+            assert sop_fabric == set()
+            assert cfg["agents"]["attacker-bridge"]["daemon"] == "monerod"
+            assert cfg["agents"]["relay-001"]["daemon"] == "monerod"
+        elif k == 4:
+            assert sop_fabric == {"relay-001", "relay-002", "monero-seed-001", "monero-seed-002",
+                                  "monero-seed-003", "monero-seed-004", "monero-seed-005", "monero-seed-006"}
+        else:
+            assert sop_fabric == {"relay-001", "monero-seed-001", "monero-seed-002", "monero-seed-003"}
+            assert cfg["agents"]["relay-001"]["daemon"] == "monerod-sim"
+            assert cfg["agents"]["relay-002"]["daemon"] == "monerod"
+        if k:
+            assert cfg["agents"]["attacker-bridge"]["daemon"] == "monerod-sim" and _sop(cfg, "attacker-bridge")
+        att = cfg["agents"]["attacker-miner"]["attributes"]
+        if cell.startswith("honest"):
+            assert att["strategy"] == "honest" and cfg["agents"]["attacker-miner"]["daemon_options"]["offline"] is False
+        elif cell.startswith("d2"):
+            assert att["strategy"] == "window_stubborn" and att["weigh"] == "difficulty" and att["give_up_depth"] == "2"
+        else:
+            assert att["strategy"] == "param_stubborn" and att["give_up_objects"] == "6"

@@ -1,0 +1,111 @@
+# sop_v4_adopt_72h (2026-10-28): partial adoption (gap 5 of the "is SoP a good
+# mitigation" list). Share-or-Perish is a fork-choice rule, so deployment is
+# gradual: how much of the mitigation holds when only some of the honest
+# network runs it, and whether a mixed network misbehaves with no attacker.
+# Base selfish_micro_sop_h4.yaml (four equal honest miners, 14 daemons, so
+# lithium / phantom only) at alpha 0.45: between the stock threshold (0.369)
+# and the full-SoP one (0.4635), so the arm's revenue should cross alpha
+# somewhere along the adoption axis. kN = the first N honest miners run SoP
+# (adoption by hashrate = N/4 with the fragmentation held fixed). In a mixed
+# network half the forwarding fabric adopts too: relay-001 (monerod-sim) and
+# seeds 1-3 run SoP; relay-002 stays vanilla monerod (drops shares, as a
+# stock node would) and seeds 4-6 stay unflagged. k4 is the full
+# countermeasure of the validated cells; k0 the stock network with a vanilla
+# bridge (sop_v4_stock_d2_72h). Arms: share = the validated param attacker
+# (K=3 G=6 L=1 M=1 R=1 Z=1) at k1..k4; d2 = the stock-optimal window_stubborn
+# depth-2 attacker at k0 (reference) and k2 (which attacker is stronger on a
+# half-adopted network); honest = no attacker at k2 (mixed-network health).
+name: sop_v4_adopt_72h
+seed: 27791
+base: test_configs/selfish_micro_sop_h4.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: param_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          window_objects: '32'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          count_own_tip_shares: 'false'
+          give_up_depth: '5'
+          give_up_objects: '6'
+          hold_shares: '1'
+          publish_lead: '1'
+          reveal_margin: '1'
+          reveal_depth: '1'
+          block_deficit: '0'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+    d2:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          weigh: difficulty
+          window_objects: '0'
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          give_up_depth: '2'
+          give_up_objects: '-1'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+    honest:
+      attacker:
+        attributes: {strategy: honest}
+        daemon_options: {offline: false, sim-share-or-perish: true, sim-sop-w: 16}
+  adoption:
+    k0: {}
+    k1: &mixed
+      honest-001: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+      relay-001: {daemon: monerod-sim, daemon_options: {sim-share-or-perish: true}}
+      monero-seed-001: {daemon_options: {sim-share-or-perish: true}}
+      monero-seed-002: {daemon_options: {sim-share-or-perish: true}}
+      monero-seed-003: {daemon_options: {sim-share-or-perish: true}}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+    k2:
+      <<: *mixed
+      honest-002: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+    k3:
+      <<: *mixed
+      honest-002: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+      honest-003: {daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}}
+    k4:
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+  alpha:
+    a045:
+      attacker: {hashrate: 4.5}
+      honest: {hashrate: [1.375, 1.375, 1.375, 1.375]}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+exclude:
+  - {arm: share, adoption: k0}
+  - {arm: d2, adoption: k1}
+  - {arm: d2, adoption: k3}
+  - {arm: d2, adoption: k4}
+  - {arm: honest, adoption: k0}
+  - {arm: honest, adoption: k1}
+  - {arm: honest, adoption: k3}
+  - {arm: honest, adoption: k4}
