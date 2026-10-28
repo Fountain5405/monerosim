@@ -428,7 +428,7 @@ index 0f25dfb43..825e4bb22 100644
 +    std::string sim_stemmable_cidrs = command_line::get_arg(vm, arg_sim_stemmable_cidrs);
 +    if (!sim_stemmable_cidrs.empty() && sim_stemmable_cidrs[0] != '/')
 +      sim_stemmable_cidrs = command_line::get_arg(vm, cryptonote::arg_data_dir) + "/" + sim_stemmable_cidrs;
-+    if (!sim_stemmable::open(sim_stemmable_inbound, sim_stemmable_inbound ? sim_stemmable_cidrs : std::string{}))
++    if (!cryptonote::sim_stemmable::open(sim_stemmable_inbound, sim_stemmable_inbound ? sim_stemmable_cidrs : std::string{}))
 +    {
 +      MERROR("Failed to open --sim-stemmable-cidrs file " << sim_stemmable_cidrs);
 +      return false;
