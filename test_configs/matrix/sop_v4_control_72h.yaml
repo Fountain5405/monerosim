@@ -1,0 +1,47 @@
+# sop_v4_control_72h (2026-10-28): the no-attacker control at the current
+# settings (gap 2 of the "is SoP a good mitigation" list): what Share-or-Perish
+# costs an honest network. Same base network and hashrate split as the
+# validated SoP cells (4.7 / 2.65 / 2.65, 72 h), with the attacker node mining
+# honestly: the established control arm (sop2_h10_honest.yaml): strategy honest
+# publishes every block at once, offline false makes it a normal connected
+# node. stock: every daemon stock. sop: every daemon SoP at the defaults (K=3,
+# w=16, delay 5 s), including the third miner's own daemon. Compare orphan
+# rates, canonical blocks, reorgs (health counters) and split depth between
+# the two; earlier controls were 6 h or older SoP versions.
+name: sop_v4_control_72h
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    honest:
+      attacker:
+        attributes: {strategy: honest}
+        daemon_options: {offline: false}
+  countermeasure:
+    stock: {}
+    sop:
+      attacker:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+  alpha:
+    a047:
+      attacker: {hashrate: 4.7}
+      honest: {hashrate: [2.65, 2.65]}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+    s2:
+      attacker:
+        attributes:
+          sample: '2'
