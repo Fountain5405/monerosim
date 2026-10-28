@@ -77,3 +77,44 @@ Both generator changes are one-liners plus a file writer. Cells are X3a-sized
 (~145 m on tr; the dense cell's wall should match — same fleet size). The
 X3b cells pass a cidrs file, so they need the R7-fixed binary: rebuild each
 box when its queue empties (tr after P54 scores, simbox3 after P53 scores).
+
+## Corrected 2026-10-28 18:35 — the fleet's connection direction
+
+The "generator surgery" above assumed the spies' connections sit inbound at
+the relays ("the spies keep their outbound dials (add-exclusive-node to a
+seed), so their connections stay inbound at the relays"). They do not. An
+exclusive-node spy dials only its seed; every connection between a spy and a
+relay is the RELAY's outgoing dial — the spy is in the relay's white list and
+gets picked like any reachable peer. `spy_stem_receipts.py` on runs 46 (E19),
+63 (E27) and 102 (X3a): 622 / 1,031 / 885 spy stem receipts, every one
+`dir=in`; in X3a, 0 of the 672 receipts from adopters arrived while the spy sat
+in the sender's virtual list. The lab's fleet has never held a connection an
+X3 virtual slot can carry, so:
+
+- `--spy-hidden` alone produces spies with no connection to any relay (the
+  seed is their only peer); the isolation pole would read zero trivially.
+- `--stemmable-cidrs` naming the spy /24s would gate nothing (no spy inbound
+  exists at any adopter); the payment pole would read exactly X3a.
+
+Fix: `make_lean --spy-dial N` (tag `_sdN`) drops the exclusive node and gives
+the spies `out-peers N`; the harness's `--seed-node` list applies and they
+fill N outbound slots from the white list they learn, like any node. Their
+connections are then inbound at the relays — stemmable under X3 — while
+hide-my-port decides whether they ALSO stay relay-dialed (the pay pole: both
+channels) or hold the inbound channel only (the hidden poles). `--spy-hidden`
+requires `--spy-dial`. N = 12 (monerod's stock budget) for P55-P58; the
+dial budget is the strategy axis (one-IP-many-CPU = few /16s with many
+connections, capped at one virtual slot per /16; many-IP-few-CPU = many /16s
+at a small budget) and gets its own pole — dense against spread, hidden,
+`--spy-dial 64` — after P56-P58 read.
+
+The dense pole (P59) keeps the relay-dialed fleet: it cannot test the /16
+bucketing (no virtual slot is ever a relay-dialed spy) and reads instead
+whether the passive multiplier survives X3 at the real fleet's layout — the
+program's first k8 cell.
+
+Metric added for all five: `spy_stem_receipts.py` (stem receipts at spies,
+by direction; distinct and hop-1 txs; `virtual_rx_share` — the time-ordered
+join of each receipt against the sender's latest x3 virtual list — the
+isolation check the hidden poles turn on). Baselines committed as
+`spy_stem_receipts_run{46,63,102}.json`.

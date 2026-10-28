@@ -161,8 +161,17 @@ def agents_yaml(a, ban):
             if a.spy_rotate:
                 attrs += f"\n      rotate_period: \"{a.spy_rotate}\""
             w(f"    attributes:\n      {attrs}")
-        w("    daemon_options: " + opts({"hide-my-port": "true" if a.spy_hidden else "false",
-                                         "add-exclusive-node": f'"{SEED_IPS[j % len(SEED_IPS)]}:18080"'}, ""))
+        sopts = {"hide-my-port": "true" if a.spy_hidden else "false"}
+        if a.spy_dial:
+            # A dialing spy: no exclusive node, so the harness's --seed-node list applies and the
+            # spy fills --out-peers slots from the white list it learns, like any node. Its
+            # connections are then INBOUND at the relays (stemmable under X3); an exclusive-node
+            # spy only ever dials its seed, and every stem it receives rides a relay's outgoing
+            # (adhoc/spy_stem_receipts.py: 100 % dir=in in E19/E27/X3a, 0 virtual in X3a).
+            sopts["out-peers"] = a.spy_dial
+        else:
+            sopts["add-exclusive-node"] = f'"{SEED_IPS[j % len(SEED_IPS)]}:18080"'
+        w("    daemon_options: " + opts(sopts, ""))
     w("\n  miner-distributor:\n    script: agents.miner_distributor\n    wait_time: auto\n")
     w("  simulation-monitor:\n    script: agents.simulation_monitor\n    poll_interval: 300")
     return "\n".join(L) + "\n"
@@ -308,6 +317,12 @@ def main():
                     help="hide-my-port true on the spy daemons (_sph, the x3b isolation pole): they "
                          "advertise no dialable port and drop out of every honest white list, so any "
                          "stem they receive arrives through an X3 virtual.")
+    ap.add_argument("--spy-dial", type=int, default=None, metavar="N",
+                    help="the spies dial like ordinary nodes (no add-exclusive-node; --seed-node from the "
+                         "harness, out-peers N) so their connections sit INBOUND at the relays - the only "
+                         "connections an X3 virtual slot can hold. Without it a spy dials just its seed and "
+                         "every stem it receives rides a relay's real outgoing (the relay-dialed fleet of every "
+                         "cell through X3a). Cell names get _sdN. --spy-hidden needs it.")
     ap.add_argument("--stemmable-cidrs", action="store_true",
                     help="with --stemmable, write cells/cidrs_<stem>.txt holding the spies' /24s (the "
                          "spy_ban_list placement dry-run) and pass it as --sim-stemmable-cidrs on the "
@@ -346,7 +361,7 @@ def main():
             + ("_fx" if a.fixed_rx_seed else "") + ("_up" if a.uniform_pick else "") + ("_rc" if a.rand_cands else "")
             + (f"_wl{a.white_limit}" if a.white_limit is not None else "") + (f"_gl{a.gray_limit}" if a.gray_limit is not None else "")
             + (f"_sr{a.spy_refresh}" if a.spy_refresh else "") + (f"_ro{a.spy_rotate}" if a.spy_rotate else "") + ("_ud" if a.user_dumps else "")
-            + ("_x3" if a.stemmable else "") + ("_sph" if a.spy_hidden else "") + ("_sc" if a.stemmable_cidrs else "") + (f"_mw{a.window}h" if a.window != 4 else "") + (f"_ui{a.user_interval}" if a.user_interval != 300 else "")
+            + ("_x3" if a.stemmable else "") + ("_sph" if a.spy_hidden else "") + (f"_sd{a.spy_dial}" if a.spy_dial else "") + ("_sc" if a.stemmable_cidrs else "") + (f"_mw{a.window}h" if a.window != 4 else "") + (f"_ui{a.user_interval}" if a.user_interval != 300 else "")
             + (f"_rs{a.reachable_senders}" if a.reachable_senders else "") + (f"_bs{a.busy_senders}" if a.busy_senders else "")
             + (f"_to{'r' if a.turnover_reachable else ''}{a.turnover.replace(',', '')}" if a.turnover else "")
             + (f"_wc{a.wl_cands}" if a.wl_cands is not None else ""))
@@ -362,6 +377,9 @@ def main():
                        check=True, stdout=subprocess.DEVNULL)
         probe.unlink(missing_ok=True)
         ban = str(ban_file)
+    if a.spy_hidden and not a.spy_dial:
+        sys.exit("--spy-hidden needs --spy-dial N: a hidden spy that dials only its seed holds no "
+                 "connection to any relay and receives nothing (adhoc/spy_stem_receipts.py)")
     if a.stemmable_cidrs:
         if not a.stemmable:
             sys.exit("--stemmable-cidrs needs --stemmable")
