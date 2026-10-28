@@ -186,8 +186,8 @@ and 0.505, crossing 0.405: sims minus model -0.015, +0.004, +0.023, so
 the model reproduces the stock sims as it does the SoP ones. (This
 paragraph used to compare those cells with the model's d=2 attacker and
 read a sign reversal into the gap; that was not like for like.) The
-headline's stock figure (d=2, 0.365) has not been simulated; it is the
-same attacker family in a model the d=5 cells validate. The textbook
+headline's stock figure (d=2, 0.365) is simulated below (10-27/28: 0.369
+in Shadow). The textbook
 optimum for a zero-propagation-advantage selfish miner is 1/3; this
 family is not optimal and lands at 0.365.
 
@@ -205,14 +205,16 @@ rates per 1,000 found blocks):
 | alpha | sims (s1, s2) | mean | model | reveals per 1,000 found, sims / model | attacker orphan rate, sims / model | network orphan rate, sims / model |
 |---|---|---|---|---|---|---|
 | 0.34 | 0.303, 0.310 | 0.307 | 0.324 | 101.7 / 107.1 | 0.266 / 0.239 | 0.209 / 0.203 |
+| 0.36 | 0.352 | 0.352 | 0.357 | 110.4 / 115.5 | 0.233 / 0.216 | 0.216 / 0.209 |
 | 0.38 | 0.402, 0.382 | 0.392 | 0.390 | 122.5 / 123.7 | 0.207 / 0.193 | 0.223 / 0.214 |
 
-The sims cross at 0.370 by interpolation (the model at 0.365); as with
+The sims cross at 0.369 by least squares over the five cells (0.370
+between the 0.34 and 0.38 pair means; the 0.36 cell, 10-28, sits on that
+line: 0.352 against 0.349), the model at 0.365; as with
 give-up depth 5, the sims' curve is a little steeper than the model's
 (-0.018 at 0.34, +0.002 at 0.38). The headline comparison holds in
 Shadow: the best attacker found needs about 0.370 of the hashrate on the
 stock network and 0.4635 under SoP, a rise of about 0.094 (model 0.103).
-A 0.36 cell (model 0.357) checks the straight line at the crossing.
 
 ## Experiment 2: the countermeasure's K and w
 
