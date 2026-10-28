@@ -765,3 +765,33 @@ Left as stated limitations rather than tested: partition-and-heal
 behaviour (Shadow's topology is static for a run), the 5 s share delay
 and w=16 as parameters (K covers the window size; d and w are the MRL
 defaults).
+
+### 1. The no-attacker control (done 10-28)
+
+`sop_v4_control_72h`: the validated network and hashrate split (4.7 /
+2.65 / 2.65) with the third miner mining honestly and connected, every
+daemon stock or every daemon SoP (K=3, w=16, delay 5 s), two seeds each.
+Shares and orphan rates are the matrix's; the reorg, fork and alt-block
+counts are honest-001's daemon health counters.
+
+| cell | third miner's share (hashrate 0.470) | main chain | network orphan rate | reorgs at honest-001 | forks seen | alt blocks added |
+|---|---|---|---|---|---|---|
+| stock s1 | 0.468 | 2136 | 0.004 | 2 | 18 | 22 |
+| stock s2 | 0.469 | 2145 | 0.002 | 0 | 2 | 4 |
+| sop s1 | 0.458 | 2151 | 0.003 | 63 | 82 | 97 |
+| sop s2 | 0.482 | 2136 | 0.001 | 34 | 45 | 53 |
+
+Revenue and chain quality are the same with SoP on or off: the third
+miner's share is within one standard deviation of its hashrate in all four
+cells (sd 0.011 at ~2,140 blocks), the main chain grows at the same rate,
+the network orphan rate is 0.1-0.4% either way and the deepest split is 1
+block in every cell. What SoP changes is tip churn: honest-001 switched
+chains 63 and 34 times per 72 h under SoP against 2 and 0 on stock, with
+three to twenty times as many forks seen and alt blocks stored. The weight
+rule re-judges a natural fork as the competing block's shares arrive,
+where the stock rule settles it on first-seen and never revisits; the
+switches are all depth-1 and net out to the same orphan count, so the cost
+is a node's view flipping for seconds during a race, not lost blocks. A
+miner's block template follows those flips, which is the mechanism behind
+the honest-side splitting seen in item 2 and the slow-miner question in
+item 3.
