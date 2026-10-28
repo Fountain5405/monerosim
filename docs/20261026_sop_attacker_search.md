@@ -755,11 +755,22 @@ answer each item (all on the validated 12/14-daemon bases, 72 h, seed
    validated param attacker at N=1..4, the stock-optimal depth-2 attacker
    at N=0 and N=2, and no attacker at N=2 for the health of a mixed
    network.
-6. **The bound is from search, not proof.** 0.4635 is the best of a
-   hand-written family (stage 1-3 above) under a race model whose exact
-   MDP (docs/20261025) is a lower bound only and whose tabular learner
-   could not beat the family; a stronger attacker may exist. The write-up
-   must say so.
+6. **The bound is from search, not proof, and there is no upper bound yet**
+   (corrected 10-28 after MRL review: an earlier wording said the exact
+   MDP "could not beat the family", which misdescribed it). The race
+   model's exact MDP (docs/20261025_sop_mdp_notes.md: relative value
+   iteration in a bisection on the share, SSZ 2016, validated against
+   Monte Carlo) solves only at 3 to 4 blocks per side (85 M states at
+   4/4, 12.7 h on lithium), where the optimum is honest mining (0.4500
+   at alpha 0.45, 0.5000 at 0.50). The strategies that profit reorg 3 to
+   15 blocks deep, so those capped optima are lower bounds on the true
+   optimum (every forced action at a cap is legal in the full game) and
+   do not bound the family from above. The block-granular tabular
+   learner reached 0.577 at alpha 0.50 against the family's 0.725. An
+   upper bound needs an optimistic-cap solve (credit the attacker the
+   best outcome at a cap; sandwiches the optimum as caps grow) or a
+   block-granular abstraction with shares as binned weights that reaches
+   8 blocks per side; a stronger attacker may exist until one is done.
 
 Left as stated limitations rather than tested: partition-and-heal
 behaviour (Shadow's topology is static for a run), the 5 s share delay

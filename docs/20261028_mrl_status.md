@@ -1,6 +1,6 @@
 # Share-or-Perish selfish-mining study: status for MRL
 
-2026-10-28, 16:50 UTC (12:50 EDT), Fountain5405. Full write-up with every cell and the attacker search: [docs/20261026_sop_attacker_search.md](20261026_sop_attacker_search.md).
+2026-10-28, 17:40 UTC (13:40 EDT; item 6 corrected after MRL review), Fountain5405. Full write-up with every cell and the attacker search: [docs/20261026_sop_attacker_search.md](20261026_sop_attacker_search.md).
 
 ## What we are testing and how
 
@@ -46,11 +46,11 @@ We listed what a reviewer will ask for before SoP goes into the codebase and bui
 | 3. Slow honest miner | Does the 5 s rule punish a well-behaved miner on a slow link? | Control with one miner 3 s, 10 s, 30 s from the network, stock vs SoP | First cell (10 s, SoP) running; 5 queued |
 | 4. Network-advantage attacker | Does an attacker with gamma 0.5 beat SoP? (gamma = share of honest hashrate that mines on the attacker's block in a tie; ~0 in Shadow by default) | Honest path slow by hops, attacker bridges beside each miner; stock at 0.30 and 0.35, SoP at 0.35 to 0.45 | First cell (SoP, 0.45) running and healthy, result 20:30 UTC; 9 queued |
 | 5. Partial adoption | Does the mitigation degrade gracefully at 25 to 75 percent adoption? | Four equal miners at 0.45, first N on SoP, half the relays adopting; 7 cells | First cell (50 percent) running, result 23:10 UTC; 6 queued |
-| 6. Search-bound caveat | Is 0.4635 a proof? | Exact MDP (a lower bound only) and a tabular learner could not beat the hand-written family | Done: stated as a bound from search, not a proof |
+| 6. Search-bound caveat | Is 0.4635 a proof? | The race model is restated as an exact MDP and solved by relative value iteration plus bisection (SSZ 2016, hand-written numpy, validated against Monte Carlo). It solves only at caps of 3 to 4 blocks per side (85 M states at 4/4, 12.7 h), where the optimum is honest mining; the hand-written strategies use reorgs 3 to 15 deep, so those capped optima are lower bounds on the true optimum and do not bound the family from above. A block-granular Q-learner reached 0.577 against the family's 0.725 at alpha 0.50. | Open: no upper bound yet. An optimistic-cap solve or a block-granular abstraction (shares as binned weights, caps to 8 per side) would give one; one to two days each |
 
 ## Caveats and open questions
 
-- **The threshold is a bound from search, not a proof.** A stronger attacker may exist. The exact MDP is tractable only at small block caps and the learner never recovered the hand-written strategies; a parametric search over a wider family is the next step if MRL wants a tighter bound.
+- **The threshold is a bound from search, not a proof, and we have no upper bound yet.** The exact MDP of the race model is only solvable at 3 to 4 blocks per side, where the optimum is honest mining; the strategies that profit need deeper reorgs than those caps allow, so the capped solves are lower bounds on the true optimum (an earlier draft of this report said the MDP "could not beat the family", which misdescribed this: no solve at competitive caps exists). An upper bound needs either an optimistic-cap solve or a block-granular abstraction that reaches 8 blocks per side; we propose doing one before the write-up.
 - **Honest fragmentation moves the number, by about 0.06 per doubling of miners so far.** We will report the trend and the four-miner threshold rather than the two-miner 0.4635.
 - **Gamma in Shadow is ~0 by default.** Propagation is milliseconds and the attacker reacts after seeing an honest block, so the stock threshold measured here (0.369) is the gamma=0 case, slightly above the textbook 1/3. The network-advantage cells (item 4) are the first with gamma > 0; the first result lands tonight.
 - **Untested:** partition-and-heal behaviour (Shadow's topology is fixed for a run), and the 5 s share delay and w=16 as parameters (we varied K only; d and w are the MRL defaults).
@@ -62,4 +62,4 @@ We listed what a reviewer will ask for before SoP goes into the codebase and bui
 - **By 2026-10-31:** the adoption curve (0, 25, 50, 75, 100 percent) at alpha 0.45, the stock reference under gamma, the remaining gamma cells at 0.35 and 0.40, and the slow-miner pairs at 3 s and 30 s. With the 256 GB box set up, the whole remaining queue (about 36 cells) fits in two or three 6.5 h rounds instead of a week, and the eight-miner cells run there at full speed (24 GB each).
 - **By 2026-11-04:** the N-trend written up with the four- and eight-miner thresholds, a recommendation on K, and the full mitigation-case section of the write-up ready for MRL review.
 
-Decisions we would like from MRL: whether the four-miner threshold (realistic fragmentation) or the two-miner one should be the headline; whether a wider attacker search is worth the compute before the write-up; and whether the honest-side splitting that fragmentation exposes should be treated as a property of the rule to fix (for example by judging forks on share weight only after the 5 s delay) or as the cost of the mitigation.
+Decisions we would like from MRL: whether the four-miner threshold (realistic fragmentation) or the two-miner one should be the headline; whether an upper bound on the attacker (optimistic-cap MDP solve or a block-granular abstraction) should come before the write-up; and whether the honest-side splitting that fragmentation exposes should be treated as a property of the rule to fix (for example by judging forks on share weight only after the 5 s delay) or as the cost of the mitigation.
