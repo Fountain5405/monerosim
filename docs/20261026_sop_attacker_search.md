@@ -383,7 +383,21 @@ at K=2, 3, 6). A candidate cause
 the model (one honest miner, no propagation) cannot produce: honest shares
 still in flight, or mined on a stale tip, when a node judges or a block is
 built. Such a loss grows with race length, as the excess does (K=2 +0.006,
-default +0.018, K=6 +0.046); not yet tested.
+default +0.018, K=6 +0.046); tested next.
+
+The one-honest-miner test (sop_v4_window_k6_1h_72h, owner-approved 10-28):
+K=6 at 0.47 as in the k6 a047 cells, but honest-001 mines 5.29 and
+honest-002 stays a full node at 0.01 h/s (0 is rejected by the config
+validator), so the honest side is one miner. Seed 1 (PASS, no dead
+daemons) ran 0.373 against its two-honest-miner partner's 0.454 and the
+model's 0.399, with the model's activity exactly: 18.7 reveals per 1,000
+found blocks (model 18.8, two honest miners 26.2) and a network orphan
+rate of 0.332 (model 0.332, two miners 0.358); attacker orphan rate 0.455
+(model 0.433, two miners 0.368). Concentrating the honest hashrate in one
+miner removes the excess, so it comes from splitting the honest side
+across miners: honest shares lost between them, which the model's single
+honest miner cannot lose. Seed 2 runs. If it holds, SoP protects less as
+honest hashrate spreads over more pools, the realistic direction.
 
 ## Validation in the sims
 
