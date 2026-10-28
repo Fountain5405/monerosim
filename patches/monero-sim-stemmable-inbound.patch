@@ -151,7 +151,7 @@ new file mode 100644
 index 000000000..ffa06b09a
 --- /dev/null
 +++ b/src/cryptonote_protocol/sim_stemmable.h
-@@ -0,0 +1,141 @@
+@@ -0,0 +1,144 @@
 +// SIMULATION ONLY (--sim-stemmable-inbound): tevador's MRL #160 variant of
 +// stemmable inbound connections, for spy-exposure measurement.  The PoW gate
 +// (sustained 0.5 MH/s of HashWX per stemmable connection) is modeled, not
@@ -258,9 +258,12 @@ index 000000000..ffa06b09a
 +          const std::string len = line.substr(slash + 1);
 +          if (len.empty() || len.size() > 2)
 +            continue;
++          bool digits = true;
 +          for (const char c : len)
 +            if (c < '0' || c > '9')
-+              continue;
++              digits = false;
++          if (!digits)
++            continue;
 +          bits = std::stoi(len);
 +          if (bits < 0 || bits > 32)
 +            continue;
