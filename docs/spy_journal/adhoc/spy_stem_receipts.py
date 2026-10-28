@@ -20,6 +20,8 @@ From --sim-log-txrelay logs (spies = agents whose id starts with 'spy'):
                          latest x3 virtual list (the stemmable re-entry, by
                          time-ordered join on the sender's x3 events); the
                          remainder rode a real outgoing connection
+  spy_conns_out/in       distinct connection uuids per spy seen on any rx,
+                         by who dialed (out = the spy dialed): the dial check
   per_spy                stem receipts per spy: min / median / max / zeros
 
 Usage: python3 spy_stem_receipts.py <archive_dir> [--json out.json]
@@ -61,6 +63,16 @@ def main():
                 x3_v[node].append(ips)
 
     spies = [n for n in logs if n.startswith("spy")]
+    # connection-direction census per spy over all rx events (stem or fluff): distinct
+    # connection uuids the spy dialed (dir=out) and was dialed on (dir=in) - the dial check
+    # the hidden-fleet cells (P56-P58) pre-register as clause (c)
+    conns_out, conns_in = {s: set() for s in spies}, {s: set() for s in spies}
+    for spy in spies:
+        for e in logs[spy]:
+            if e["ev"] == "rx":
+                (conns_out if e.get("dir") == "out" else conns_in)[spy].add(e.get("conn", ""))
+    out_counts = sorted(len(v) for v in conns_out.values())
+    in_counts = sorted(len(v) for v in conns_in.values())
     rx_total = 0
     rx_dir = Counter()
     per_spy = Counter({s: 0 for s in spies})
@@ -102,6 +114,12 @@ def main():
         "rx_from_adopters": virt_eligible,
         "virtual_rx": virt_rx,
         "virtual_rx_share": round(virt_rx / virt_eligible, 4) if virt_eligible else None,
+        "spy_conns_out": {"min": out_counts[0] if out_counts else None,
+                          "median": statistics.median(out_counts) if out_counts else None,
+                          "max": out_counts[-1] if out_counts else None},
+        "spy_conns_in": {"min": in_counts[0] if in_counts else None,
+                         "median": statistics.median(in_counts) if in_counts else None,
+                         "max": in_counts[-1] if in_counts else None},
         "per_spy": {"min": counts[0] if counts else None,
                     "median": statistics.median(counts) if counts else None,
                     "max": counts[-1] if counts else None,
