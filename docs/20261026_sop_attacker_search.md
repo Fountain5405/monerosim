@@ -362,7 +362,15 @@ is how fast the honest side builds weight: at K=6 the sims' honest side
 counts about one object less per block (14.6 against 15.7), split between
 shares embedded per honest block (12.3 against 12.9) and pending shares
 counted (9.7 against 12.2), and reaches the reveal point with 0.4 more
-honest blocks; at K=2 the gap is 0.4 objects per block. A candidate cause
+honest blocks; at K=2 the gap is 0.4 objects per block. At the default
+window (K=3; the 0.47 cells s2 and s3, model 15.3 per honest block with
+11.4 pending) the sims count 13.7 and 14.6 per honest block with 9.3 and
+9.0 pending; the seed with the larger gap is the one that ran far above
+the model (s2: 0.514 against 0.477; s3: 0.478). In all five cells the
+sims' honest side counts 0.4 to 1.6 objects per block fewer than the
+model at the reveal, and the honest pending shares counted stay near 9
+to 10 at every window while the model's grow with it (10.4, 11.4, 12.2
+at K=2, 3, 6). A candidate cause
 the model (one honest miner, no propagation) cannot produce: honest shares
 still in flight, or mined on a stale tip, when a node judges or a block is
 built. Such a loss grows with race length, as the excess does (K=2 +0.006,
