@@ -78,7 +78,7 @@ Both generator changes are one-liners plus a file writer. Cells are X3a-sized
 X3b cells pass a cidrs file, so they need the R7-fixed binary: rebuild each
 box when its queue empties (tr after P54 scores, simbox3 after P53 scores).
 
-## Corrected 2026-10-28 18:35 — the fleet's connection direction
+## Corrected 2026-10-28 18:15 — the fleet's connection direction
 
 The "generator surgery" above assumed the spies' connections sit inbound at
 the relays ("the spies keep their outbound dials (add-exclusive-node to a
