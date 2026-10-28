@@ -34,7 +34,33 @@ Actions after every object: hold; publish (h == 0: the attacker's blocks
 become final, as honest mining would); reveal (only when accepted); give_up
 (adopt the honest branch; honest pending carries on). Truncation caps (a, h,
 |D|, p, and the objects deficit) force reveal-if-accepted else give_up, like
-SSZ's bounded MDP.
+SSZ's bounded MDP: the under-paying MDP, whose optimum is a LOWER bound on
+the untruncated optimum (every forced action is legal in the full game).
+
+`solve --bound upper` (2026-10-28, after MRL review) is the over-paying MDP
+of Sapirshtein-Sompolinsky-Zohar (FC 2016, section 4.2) in SoP form: at a
+cap (a, h, |D|, the deficit, or a saturated pending count) the attacker is
+paid, in one step, more than any continuation could earn, then reset to the
+start. With x = D + pa - ph the attacker's effective object lead (its
+pending shares count as if embedded), the object walk moves +1 with
+probability alpha and -1 otherwise, and a reveal can only ever be accepted
+while x > 0, the award is
+
+    (1 - rho) * (p_ret(x) * a + g(x) / w)  -  rho * (1 - p_ret(x)) * h
+
+where p_ret(x) = P(the walk is >= 0 at some later time) (1 for x >= 1,
+2 alpha at 0, (alpha/(1-alpha))^-x below) and g(x) = E[attacker objects
+mined up to the walk's LAST visit to >= 0] (every one credited as a won
+block, w objects per block). On paths where the walk never returns the
+attacker's a blocks are lost and the h honest ones count against it; on the
+others its blocks and every block it mines before the race is unwinnable
+are credited in full and the honest blocks for free; either way the
+continuation value is at most the award plus the start state's (the reset
+drops honest pending, which only helps; the elapsed steps are not charged
+the gain, which with gain >= 0 only helps). So for every rho below the true
+share the relaxed gain is >= the true gain >= 0, and the bisection root of
+the relaxed MDP is >= the true share: an UPPER bound, tightening as the caps
+grow (SSZ Proposition 3). Both bounds at the same caps sandwich the optimum.
 
 Subcommands:
   enumerate   count the reachable states under the caps (vectorised BFS).
@@ -89,6 +115,41 @@ class Caps:
 def event_probs(alpha: float) -> List[float]:
     pb = 1.0 / W_SHARES
     return [alpha * pb, alpha * (1 - pb), (1 - alpha) * pb, (1 - alpha) * (1 - pb)]
+
+
+def award_tables(alpha: float, lo: int, hi: int):
+    """(p_ret, g) over x = lo..hi for the over-paying boundary (see the module
+    doc): p_ret(x) = P(the +-1 walk from x, up with probability alpha, is >= 0
+    at some t >= 1); g(x) = E[number of up-steps at times t such that the walk
+    is >= 0 at some time >= t] (up-steps before the walk's last visit to >= 0).
+    Closed forms for x >= 0 (Wald on the first passage to -1), a tridiagonal
+    solve below 0 with g(-B-1) = 0, B past the decay of (alpha/(1-alpha))^B."""
+    if not 0 < alpha < 0.5:
+        raise ValueError("award tables need 0 < alpha < 0.5")
+    q = alpha / (1 - alpha)
+    r = lambda y: 1.0 if y >= 0 else q ** (-y)
+    B = max(-lo, 1) + max(600, int(np.ceil(40 / -np.log(q))))   # q^B < 1e-17 beyond lo
+    # unknowns g(-1) .. g(-B) as u[0..B-1]
+    A = np.zeros((B, B)); b = np.zeros(B)
+    c0 = alpha / (1 - 2 * alpha)                     # g(0) = c0 + g(-1)
+    A[0, 0] = 1 - alpha; A[0, 1] = -(1 - alpha); b[0] = alpha * (1 + c0)
+    for i in range(1, B):                           # x = -(i+1)
+        x = -(i + 1)
+        A[i, i] = 1.0; A[i, i - 1] = -alpha
+        if i + 1 < B:
+            A[i, i + 1] = -(1 - alpha)
+        b[i] = alpha * r(x + 1)
+    u = np.linalg.solve(A, b)
+    xs = np.arange(lo, hi + 1)
+    g = np.empty(len(xs)); p_ret = np.empty(len(xs))
+    for j, x in enumerate(xs):
+        if x >= 0:
+            g[j] = alpha * (x + 1) / (1 - 2 * alpha) + u[0]
+            p_ret[j] = 1.0 if x >= 1 else 2 * alpha
+        else:
+            g[j] = u[-x - 1]
+            p_ret[j] = q ** (-x)
+    return p_ret, g
 
 
 # ---------------------------------------------------------------------------
@@ -404,8 +465,11 @@ B_HOLD, B_PUB, B_REV, B_GIV = 1, 2, 4, 8
 
 
 class Compact:
-    def __init__(self, keys, caps: Caps, own_pending: bool, stubborn=None):
+    def __init__(self, keys, caps: Caps, own_pending: bool, stubborn=None, bound: str = "lower"):
         self.keys, self.caps, self.own, self.stubborn = keys, caps, own_pending, stubborn
+        if bound not in ("lower", "upper"):
+            raise ValueError("bound must be 'lower' or 'upper'")
+        self.upper = bound == "upper"
         N = len(keys)
         self.cols = [c.astype(np.int16) for c in decode(keys)]
         self.hold = -np.ones((N, 4), dtype=np.int32)
@@ -426,6 +490,20 @@ class Compact:
             if m.any():
                 k = encode([c[m] for c in post])
                 self.hold[m, e] = self._lookup(k, strict=True)
+        if self.upper:
+            # the over-paying boundary: every truncation, saturated pending too
+            self.award = np.zeros((N, 4), dtype=bool)
+            self.award_x = np.zeros((N, 4), dtype=np.int32)
+            for e, (is_att, is_blk) in enumerate(EVENTS):
+                post = v_event(self.cols, is_att, is_blk, caps)
+                idle, past, acc, dfc, cap = _common(post, caps, own_pending)
+                sat = (post[3] >= caps.p_max) | (post[6] >= caps.p_max)
+                self.award[:, e] = (cap | sat) & ~idle
+                self.award_x[:, e] = post[1].astype(np.int32) + post[3] - post[6]
+            self.x_lo = int(self.award_x.min()) - 1
+            self.x_hi = int(self.award_x.max()) + 1
+            self.i_start = int(self._lookup(np.array([key_of(START)]), strict=True)[0])
+            self._award_alpha = None
 
     def _lookup(self, k, strict=False):
         idx = np.searchsorted(self.keys, k)
@@ -435,11 +513,18 @@ class Compact:
             assert ok.all(), "successor not in the enumerated set"
         return np.where(ok, idx, -1).astype(np.int32)
 
+    def _award_tables(self):
+        if self._award_alpha != self.alpha:
+            self.p_ret, self.g = award_tables(self.alpha, self.x_lo, self.x_hi)
+            self._award_alpha = self.alpha
+
     def sweep(self, V, rho, optimise: bool):
         """One relative-VI sweep: returns Vn (unnormalised) and, if asked, the argmax."""
         N = len(self.keys)
         p = event_probs(self.alpha)
         Vn = np.zeros(N)
+        if self.upper:
+            self._award_tables()
         for e, (is_att, is_blk) in enumerate(EVENTS):
             post = v_event(self.cols, is_att, is_blk, self.caps)
             a_p, pa_p, h_p, ph_p = post[0].astype(np.int64), post[3].astype(np.int64), post[4].astype(np.int64), post[6].astype(np.int64)
@@ -458,6 +543,14 @@ class Compact:
             m = (lg & B_GIV) > 0
             q = -rho * h_p + V[np.where(m, self.r_giv[ph_p], 0)]
             self._fold(best, q, m, optimise)
+            if self.upper:
+                # the over-paying boundary replaces every action at a cap
+                m = self.award[:, e]
+                xi = self.award_x[:, e] - self.x_lo
+                pr, g = self.p_ret[xi], self.g[xi]
+                q = ((1.0 - rho) * (pr * a_p + g / W_SHARES) - rho * (1.0 - pr) * h_p
+                     + V[self.i_start])
+                best = np.where(m, q, best)
             Vn += p[e] * best
         return Vn
 
@@ -667,17 +760,24 @@ def cmd_evaluate(args):
 
 def cmd_solve(args):
     caps, own_net = caps_of(args), args.own_pending == "count"
+    if args.bound == "upper" and args.alpha >= 0.5:
+        print(f"UPPER bound on the optimal attacker revenue share at alpha={args.alpha}: 1.0000 (trivial: "
+              f"with half the hashrate or more the object walk is not transient, so the over-paying "
+              f"boundary's award is unbounded; the upper bound is only informative for alpha < 0.5)")
+        return 0
     t = time.time()
     keys = enumerate_keys(caps, own_net, verbose=args.verbose)
     print(f"alpha={args.alpha} own_pending={args.own_pending} caps: {caps}  states: {len(keys):,}  "
           f"[enumerated in {time.time() - t:.0f}s]", file=sys.stderr, flush=True)
-    C = Compact(keys, caps, own_net)
+    C = Compact(keys, caps, own_net, bound=args.bound)
     rho, V = C.share(args.alpha, optimise=True, verbose=args.verbose,
                      lo=args.rho_lo, hi=args.rho_hi, tol=args.rho_tol)
     pol = C.policy(V, rho)
     multi = pol >= 0
     counts = {n: int(((pol == i) & multi).sum()) for i, n in enumerate(ACTION_NAMES)}
-    print(f"optimal attacker revenue share at alpha={args.alpha}: {rho:.4f}  "
+    what = ("UPPER bound on the optimal attacker revenue share (over-paying boundary)" if args.bound == "upper"
+            else "optimal attacker revenue share of the capped game (a LOWER bound on the real optimum)")
+    print(f"{what} at alpha={args.alpha}: {rho:.4f}  "
           f"(honest mining {args.alpha:.2f}; states {len(keys):,}; {time.time() - t:.0f}s)")
     print("action counts over decision (state, event) pairs: " + ", ".join(f"{k} {v}" for k, v in counts.items()))
     if args.out:
@@ -705,7 +805,11 @@ def main(argv=None):
     p.add_argument("--test-own-pending", choices=["ignore", "count"], default="count",
                    help="does the ATTACKER's reveal test count its own pending shares (count = o5 attacker, ignore = noown)")
     p.set_defaults(fn=cmd_evaluate)
-    p = sub.add_parser("solve"); add_common(p); p.add_argument("--out"); p.set_defaults(fn=cmd_solve)
+    p = sub.add_parser("solve"); add_common(p); p.add_argument("--out")
+    p.add_argument("--bound", choices=["lower", "upper"], default="lower",
+                   help="lower: forced actions at the caps (under-paying MDP, the default); "
+                        "upper: the over-paying boundary (see the module doc)")
+    p.set_defaults(fn=cmd_solve)
     args = ap.parse_args(argv)
     return args.fn(args)
 

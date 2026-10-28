@@ -183,3 +183,74 @@ def test_window_reach_matches_race_model_counting():
     assert max(M.window_reach(M.Caps(3, 3, 40, 12, 12))) < M.WINDOW
     assert M.window_reach(M.Caps(4, 4, 64, 24, 24)) == (75, 75)
     assert M.window_reach(M.Caps(3, 3, 48, 20, 20)) == (42, 42)
+
+
+# ---------------------------------------------------------------------------
+# The over-paying boundary (upper bound, 2026-10-28)
+# ---------------------------------------------------------------------------
+
+def _walk_mc(alpha, x, paths=20000, horizon=4000, seed=7):
+    """Monte Carlo of the object walk from x: P(ever >= 0 at some t >= 1) and
+    the mean number of attacker steps at times t with a later-or-equal visit
+    to >= 0 (the quantity the award credits)."""
+    rng = np.random.default_rng(seed)
+    steps = np.where(rng.random((paths, horizon)) < alpha, 1, -1)
+    S = x + np.cumsum(steps, axis=1)
+    ge = S >= 0
+    # suffix OR: is there a visit to >= 0 at or after t
+    later = np.flip(np.logical_or.accumulate(np.flip(ge, axis=1), axis=1), axis=1)
+    p_ret = later[:, 0].mean()
+    g = ((steps == 1) & later).sum(axis=1).mean()
+    return p_ret, g
+
+
+@pytest.mark.parametrize("x", [-3, 0, 2])
+def test_award_tables_match_the_walk_monte_carlo(x):
+    from scripts.sop_mdp import award_tables
+    alpha = 0.4
+    lo, hi = -40, 40
+    p_ret, g = award_tables(alpha, lo, hi)
+    mc_p, mc_g = _walk_mc(alpha, x)
+    assert abs(p_ret[x - lo] - mc_p) < 0.01
+    assert abs(g[x - lo] - mc_g) < 0.05 * max(1.0, mc_g)
+
+
+def test_award_tables_closed_forms():
+    from scripts.sop_mdp import award_tables
+    alpha = 0.45
+    q = alpha / (1 - alpha)
+    p_ret, g = award_tables(alpha, -30, 30)
+    assert p_ret[30 + 5] == 1.0 and abs(p_ret[30 + 0] - 2 * alpha) < 1e-12
+    assert abs(p_ret[30 - 4] - q ** 4) < 1e-12
+    # for x >= 0 the attacker steps before the first visit to -1 are alpha (x+1)/(1-2alpha)
+    assert abs((g[30 + 7] - g[30 + 2]) - alpha * 5 / (1 - 2 * alpha)) < 1e-9
+
+
+def test_upper_bound_solve_dominates_lower_bound_and_honest_on_small_caps():
+    """SSZ 2016 Proposition 3 in SoP form: the over-paying MDP's share is at
+    least the under-paying one's and at least honest mining's."""
+    from scripts.sop_mdp import Caps, Compact, enumerate_keys
+    caps = Caps(a_max=2, h_max=2, d_max=24, p_max=6, deficit=12)
+    keys = enumerate_keys(caps, False)
+    lower, _ = Compact(keys, caps, False).share(0.45, optimise=True, tol=1e-4)
+    upper, _ = Compact(keys, caps, False, bound="upper").share(0.45, optimise=True, tol=1e-4)
+    assert upper >= lower - 2e-4
+    assert upper >= 0.45 - 2e-4
+    assert upper <= 1.0
+    # at 2-block caps the boundary is hit in nearly every race, so the bound is
+    # loose (0.946 measured); it tightens with the caps (SSZ Proposition 3)
+    caps3 = Caps(a_max=3, h_max=3, d_max=24, p_max=6, deficit=12)
+    keys3 = enumerate_keys(caps3, False)
+    upper3, _ = Compact(keys3, caps3, False, bound="upper").share(0.45, optimise=True, tol=1e-4)
+    assert upper3 <= upper + 0.02
+
+
+def test_upper_bound_at_half_hashrate_is_the_trivial_bound(capsys):
+    """At alpha >= 0.5 the object walk is not transient, the award is infinite
+    and the only valid upper bound is 1: the CLI says so instead of crashing."""
+    from scripts.sop_mdp import main
+    rc = main(["solve", "--alpha", "0.5", "--bound", "upper", "--a-max", "2", "--h-max", "2",
+               "--d-max", "16", "--p-max", "4", "--deficit", "8"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "1.0000" in out and "trivial" in out
