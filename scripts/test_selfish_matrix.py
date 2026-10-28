@@ -1052,3 +1052,44 @@ def test_gamma_spec_moves_the_slow_relay_and_flags_the_eclipsed_miner():
         assert att["bridges"] == "attacker-bridge,attacker-bridge-2" and att["read_bridge"] == "best"
         assert att["feed_parents"] == "true"
         assert att["strategy"] == ("param_stubborn" if sop else "window_stubborn")
+
+
+def test_spec_general_overrides_merge_into_the_base_general_block(tmp_path):
+    """A spec's `general:` mapping is deep-merged into the base config's
+    general block (tail-emission reruns: every cell identical to its original
+    except general.emission); existing keys the spec does not name survive."""
+    spec = _spec(tmp_path, {"arm": {"x": {"attacker": {"attributes": {"strategy": "honest"}}}}},
+                 general={"emission": {"mode": "tail", "from_height": "auto"},
+                          "mining": {"extra": 1}})
+    cfg = build_config(spec, {"arm": spec["axes"]["arm"]["x"]})
+    assert cfg["general"]["emission"] == {"mode": "tail", "from_height": "auto"}
+    assert cfg["general"]["mining"] == {"mode": "native", "extra": 1}
+    assert cfg["general"]["stop_time"] == "6h" and cfg["general"]["simulation_seed"] == 12345
+
+
+def test_tail_reruns_match_their_originals_except_the_emission_mode():
+    """The tail-emission reruns of the pivotal cells (10-28): each cell of a
+    *_tail_72h spec builds the same config as the same-named cell of its
+    original spec, plus general.emission = tail from the snapshot."""
+    pairs = {
+        "sop_v4_param_tail_72h.yaml": "sop_v4_param_72h.yaml",
+        "sop_v4_stock_d2_tail_72h.yaml": "sop_v4_stock_d2_72h.yaml",
+        "sop_v4_param_1h_tail_72h.yaml": "sop_v4_param_1h_72h.yaml",
+        "sop_v4_param_h4_tail_72h.yaml": "sop_v4_param_h4_72h.yaml",
+        "sop_v4_control_tail_72h.yaml": "sop_v4_control_72h.yaml",
+    }
+    expected = {
+        "sop_v4_param_tail_72h.yaml": {"share_sop2_param_a046_s1", "share_sop2_param_a047_s1"},
+        "sop_v4_stock_d2_tail_72h.yaml": {"share_stockd2_a036_s1", "share_stockd2_a038_s1"},
+        "sop_v4_param_1h_tail_72h.yaml": {"share_sop2_param_a047_s1"},
+        "sop_v4_param_h4_tail_72h.yaml": {"share_sop2_param_a047_s1"},
+        "sop_v4_control_tail_72h.yaml": {"honest_sop_a047_s1", "honest_stock_a047_s1"},
+    }
+    for tail, orig in pairs.items():
+        t, o = _cells(_load_spec(tail)), _cells(_load_spec(orig))
+        assert set(t) == expected[tail], tail
+        for cell, cfg in t.items():
+            ref = o[cell]
+            assert cfg["general"]["emission"] == {"mode": "tail", "from_height": "auto"}, (tail, cell)
+            stripped = {**cfg, "general": {k: v for k, v in cfg["general"].items() if k != "emission"}}
+            assert stripped == ref, (tail, cell)

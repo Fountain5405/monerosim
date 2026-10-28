@@ -197,6 +197,14 @@ def build_config(spec: dict, cell_overlays: dict) -> dict:
         cfg["general"]["stop_time"] = spec["stop_time"]
     if spec.get("seed"):
         cfg["general"]["simulation_seed"] = spec["seed"]
+    # `general:` in a spec deep-merges into the base's general block (one
+    # level of nesting: sub-mappings merge, scalars override), so a rerun can
+    # change e.g. the emission mode without a second base config.
+    for key, val in (spec.get("general") or {}).items():
+        if isinstance(val, dict) and isinstance(cfg["general"].get(key), dict):
+            cfg["general"][key] = {**cfg["general"][key], **copy.deepcopy(val)}
+        else:
+            cfg["general"][key] = copy.deepcopy(val)
     for axis, overlay in cell_overlays.items():
         if not isinstance(overlay, dict):
             raise SystemExit(f"axis {axis!r} overlay must be a mapping, got {overlay!r}")
