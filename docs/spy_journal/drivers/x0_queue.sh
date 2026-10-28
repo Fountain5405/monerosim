@@ -8,7 +8,7 @@ set -u
 REPO=/home/lever65/monerosim
 S=/home/lever65/queue
 ARCH=/home/lever65/monerosim_archives
-Q=$1
+Q=$(readlink -f "$1")   # absolute: the loop cd's into $REPO before each run, so a relative queue path vanished after the first cell (tr, 2026-10-28)
 EV=$S/x0_queue.events
 mkdir -p "$ARCH"
 ev() { echo "$(date +%H:%M) $*" | tee -a "$EV"; }
