@@ -1,0 +1,30 @@
+{
+ "run_id": "20261028_103134_lean_24_none_h300_k42_w13h_p3_m1_n600_sr300_ud_x3_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_sr300_ud_x3_s12345",
+ "archived_at": "2026-10-28T10:31:34Z",
+ "monerod_sim_sha": "cbfcec341390",
+ "wall": "2h 24m",
+ "exit_code": 0,
+ "min_avail_mb": 55650,
+ "txs_created": 1,
+ "txs_in_blocks": 1021,
+ "note": "P54 X3c v2 adversary through stemmable: 5/5 - light 0.9051 = E53's eclipse (0.9083) unchanged; sp 0.445, combined 0.951 at precision 1.000, 40/40 users; cover collapsed to 17 relayed stems at 1 user (union median 8, virtual slot share 39.8 pct) - the guarantee's blind side confirmed (E63)",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.9051,
+ "light_out_quarters": [
+  0.8489,
+  0.8903,
+  0.9215,
+  0.9405
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.217,
+ "stem_txs": 1124,
+ "stem_hops_implied": 4.61,
+ "embargo_rate": 0.7011
+}

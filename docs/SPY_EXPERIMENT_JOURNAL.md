@@ -322,6 +322,7 @@ own selection rule and its spy layout.
 | `20261027_142035_lean_24_none_h300_k42_w13h_p3_m1_n600_fx_mw25h_ui43200_rs60_bs6_s12345` | zenith2alpha | 42 / 42 | 366 / 295 | 0.2935 (0.1299) | 0.289, 0.294, 0.297, 0.294 | 0.205 | 430 | 4h 44m | 35.2 | 0 | P51 X1a mainnet-rate: 5/5 - reachable-occasional sp precision 0.265 (OQ12), busy 0.843, users 21.6 pct exposed/24h, light 0.2935=1.92x ceiling (E61) |
 | `20261028_033917_lean_24_none_h71_k1_p2_m13_x3_s12345` | zenith2alpha | 13 / 1 | 71 / 60 | 0.0151 (0.0181) | 0.025, 0.015, 0.012, 0.010 | 0.221 | 855 | 43m 47s | 132.8 | 0 | X3 smoke (run of the 14-patch binary): mechanism verified - 2140 x3 events, edge2 38 pct virtual (peers dialed-by), edge1 outgoing, users receive relayed stems 107 vs 0 stock; local-pin path unexercised (adopters do not originate txs in this shape); exit 0 wall 44m |
 | `20261028_042916_lean_24_none_h300_k42_w13h_p3_m1_n600_x3_s12345` | zenith2alpha | 42 / 42 | 300 / 242 | 0.3409 (0.1531) | 0.340, 0.342, 0.343, 0.338 | 0.217 | 1128 | 2h 24m | 58.8 | 0 | P52 X3a tevador stemmable inbound at full take-up: precision 0.9828 vs 1.000 stock - the cover is real but 15x too thin (71 relayed stems at 40 users vs 1063 own sends; the design throttles compound); light 0.3409 = E27 (outbound untouched); 4 of 6 clauses (E62) |
+| `20261028_103134_lean_24_none_h300_k42_w13h_p3_m1_n600_sr300_ud_x3_s12345` | zenith2alpha | 42 / 42 | 300 / 242 | 0.9051 (0.1531) | 0.849, 0.890, 0.921, 0.941 | 0.217 | 1124 | 2h 24m | 54.3 | 0 | P54 X3c v2 adversary through stemmable: 5/5 - light 0.9051 = E53's eclipse (0.9083) unchanged; sp 0.445, combined 0.951 at precision 1.000, 40/40 users; cover collapsed to 17 relayed stems at 1 user (union median 8, virtual slot share 39.8 pct) - the guarantee's blind side confirmed (E63) |
 <!-- register:end -->
 
 ## 4. Entries
@@ -2123,6 +2124,28 @@ share). Corrected: **67 relayed stems reached 25 of the 40 users** (per-user 1-5
 arithmetic moves to 1,063 own against 67 relayed (0.941 plain), and per-user cover is thinner
 than written: the verdict only strengthens.
 
+### E63. P54, X3c: the stemmable feature does not touch the outbound-capture eclipse — five of five (2026-10-28 10:31-12:58, `zenith2alpha`)
+
+`20261028_103134_lean_24_none_h300_k42_w13h_p3_m1_n600_sr300_ud_x3_s12345` (the queued cell; P54's
+prediction text has the tags swapped — corrected under its block), run 103 (exit 0, wall 145 m,
+min_avail 55.7 GB, 1,124 stem txs): light **0.9051** against E53's 0.9083 — a 0.35 % difference:
+**X3 is irrelevant to the front-port eclipse, exactly as the guarantee's structure predicts.** The
+quarters rise 0.849 → 0.941 (the eclipse deepening through the window, E53's shape). sp recall
+**0.445** at precision 1.000, combined **0.951 at 1.000**, **40 of 40 users exposed** (combined;
+sp_r 39/40) — E53's regime intact (0.468/0.967/40). The ground-truth first-hop cap reads 0.977:
+under the eclipse nearly every user transaction stems straight into the fleet on hop 1, the path
+the stemmable design never touches (edge 1 is real-outgoing and the adversary owns the outbound
+draw). The census carries the guarantee's collapse as cover: **17 relayed stems reached ONE user**
+(user-034; X3a: 67 at 25 users) — the eclipse kills the honest-to-honest connections the virtual
+pool feeds on (union median 8 against X3a's 22, virtual slot share 39.8 %, 30,965 x3 events: the
+mechanism kept running and had nothing honest to carry). Embargo 0.70, mean hops 1.06 — the
+front-swallow signature E59 described. (a) 0.9051 hit; (b) 0.445/0.951 at 1.000 hit; (c) 40/40
+hit; (d) 17, hit inside 0-30; (e) 145 m hit — **five of five. Reading rule confirmed: X3's
+guarantee has its blind side exactly where this program's adversary lives.** The proposal's
+residual value is the inbound-only guarantee and the /16 dedup (E62); against the documented
+mainnet architecture — the rotating front end — it offers nothing, and the cover it does add dies
+first under the attack.
+
 ## 5. Pre-registered predictions
 
 
@@ -2805,6 +2828,10 @@ Corrected 2026-10-28 (the five-day review, R8): the queued cell is
 `lean_24_none_h300_k42_w13h_p3_m1_n600_sr300_ud_x3_s12345` — make_lean's tag order puts
 `_x3` last; the name above was the failed first launch's guess. Started 10:31, after this filing.
 
+*Outcome, 2026-10-28 12:58:* **five of five**: (a) **0.9051** hit; (b) sp 0.445 / combined 0.951
+at precision 1.000 hit; (c) 40/40 hit; (d) 17 relayed stems at one user, hit inside 0-30; (e)
+145 m hit. E63; run 103.
+
 ## 6. Open questions
 
 1. **The 1.5x in the dedup plateau** (E5). Needs a probe cell at long warmup with
@@ -3114,6 +3141,7 @@ in the conversation.
 | 10-28 06:57 | X3a scored (E62, run 102; outcome under P52): the cover is 15x too thin — precision 0.9828 against 1.000 stock, 71 relayed stems reaching all users together; the mechanism itself is faithful (30,961 x3 events) and the edge-1 guarantee is structural, but the precision-cover rationale does not survive the design's own throttles at any rate (mainnet-rate scaling gives ~0.85-0.9). Both archives (smoke run 101, X3a run 102) move to the array; boxes idle. Available next: the X3-mainnet-rate confirm cell (low value — the arithmetic is clear), the X3c v2-stack interaction (edge 1 vs the outbound adversary, predicted leak), or back to the standing menu (monthly dump read ~11-27, IP-churn modeling) | the standing wrap-up discipline | re-copy from the array | agent |
 | 10-28 07:45 | The owner corrected the E62 read (tevador's post asks for simulations across parameters, not one point) — accepted: E62 is the lab-rate ceiling at shipped defaults, closed by volume arithmetic; the rate point is live, not arguable (two estimate routes straddle 0.67-0.87 precision). P53 (X1a + stemmable, mainnet rate) queued on `simbox3`; P54 (X3c, the v2 adversary through stemmable — the guarantee's blind side) queued on `zenith2alpha`; both boxes idle with the 14-patch binary. The X3b adversary-strategy poles (one-IP-many-CPU via `--sim-stemmable-cidrs`, many-IP-few-CPU) need a spy-side design pass and follow these reads | the owner 10-28: "yes. and what about the .33?" | remove both from `q.txt` | user, agent |
 | 10-28 11:20 | The owner commissioned a second-pass review of the five days (E17-E62, patches 6-14; `adhoc/20261028_five_day_review.md`) and then ordered its fixes: nine findings R1-R9, none overturning a conclusion. Applied: E61's ceiling and exposure corrections and E62's ratio correction as dated lines; the register table rebuilt (runs 98-102 were missing; `run_register.py table`, 102 rows); the findings summary's counters and its two Finding-6 numbers fixed in place; the cover census, the cue-fluffer counts and `read_dumps.py` committed as scripts with their outputs re-derived from the array copies (dated lines under E62/E58); the fourteenth patch's CIDR-parser crash fixed (a no-op digit check let a malformed length reach `std::stoi`; apply-checked on the 13-state tree) — both boxes rebuild when their queues empty, inert until an X3b cell passes a cidrs file; P54's cell-name provenance line added. P54/P53 ran undisturbed throughout | the owner 10-28: "proceed to fix these issues and continue with the experimentation" | revert the doc commits; the patch fix is one hunk | user, agent |
+| 10-28 13:10 | P54 scored on `zenith2alpha` and written up as E63 (run 103; outcome under P54): five of five — the stemmable feature is irrelevant to the front-port eclipse (light 0.9051 against E53's 0.9083; sp 0.445, combined 0.951 at precision 1.000; 40/40 users) and the cover collapses under the attack (17 relayed stems, one user; union median 8 against X3a's 22) — the guarantee's blind side is where the documented mainnet adversary lives. The estimator ran manually (the driver scores calibration only; the run-90 repair pattern). Archive moving to the array; tr's queue is empty, so the branch pushes and the R7-fixed binary rebuilds before the X3b cells (they pass a cidrs file). X3b predictions file after E64 (P53, `simbox3`, ETA ~20:30) | the standing order | re-copy from the array; revert the rebuild | agent |
 ## 8. Files
 
 - Per-run record: `docs/spy_journal/runs/<run_id>/`

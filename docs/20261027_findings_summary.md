@@ -114,7 +114,11 @@ attribution 4x for occasional senders and almost not at all for busy ones.
 
 Tevador's #160 stemmable-inbound variant (the plan's top-rated proposal) was implemented as the fourteenth sim patch and run at full take-up (E62, run 102). The mechanism is faithful — 30,961 epoch events, edge 2 drawing on virtual inbound connections, users receiving relayed stems for the first time — but the cover is **too thin to dilute attribution: sp precision on unreachable users 0.9828
 against 1.000 stock** (own:cover 15:1; the plan's ~0.3 precision would need ~34x more cover
-than the mechanism delivers — corrected 10-28 from a 15x phrasing that mixed the two ratios). The design's own throttles compound (one mixed edge, ~38% virtual epochs, a 12-way per-/16 lottery users mostly lose): **71 relayed stems reached all 40 users together, against 1,063 of their own sends**. Rate scaling doesn't rescue it (~0.85-0.9 at mainnet sender rates). What survives is structural: an inbound-only adversary can *never* sit on stem edge 1, and the /16 deduplication hardens the inbound side. The precision-cover rationale — the reason to deploy it — does not survive contact.
+than the mechanism delivers — corrected 10-28 from a 15x phrasing that mixed the two ratios). The design's own throttles compound (one mixed edge, ~38% virtual epochs, a 12-way per-/16 lottery users mostly lose): **71 relayed stems reached all 40 users together, against 1,063 of their own sends**. Rate scaling doesn't rescue it (~0.85-0.9 at mainnet sender rates). What survives is structural: an inbound-only adversary can *never* sit on stem edge 1, and the /16 deduplication hardens the inbound side. The precision-cover rationale — the reason to deploy it — does not survive contact. The
+blind-side check confirms it (E63, run 103): under the front-port eclipse X3 changes nothing
+(light 0.9051 against E53's 0.9083, 40/40 users, combined 0.951 at precision 1.000) and its
+cover collapses to 17 relayed stems at one user — the guarantee's blind side is where the real
+attack lives.
 
 ## The bottom line
 
