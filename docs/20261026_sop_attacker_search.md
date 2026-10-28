@@ -795,3 +795,22 @@ is a node's view flipping for seconds during a race, not lost blocks. A
 miner's block template follows those flips, which is the mechanism behind
 the honest-side splitting seen in item 2 and the slow-miner question in
 item 3.
+
+### 2. Honest fragmentation, first N=4 point (10-28)
+
+K=6 at alpha 0.47, the same seed and attacker (G=4) with the 5.3 h/s of
+honest hashrate on one, two and four miners:
+
+| honest miners | attacker share (alpha 0.47) | network orphan rate | main chain / 72 h |
+|---|---|---|---|
+| 1 (5.29 + 0.01) | 0.373, 0.382 (model 0.399) | 0.332, 0.342 | 2,000 |
+| 2 (2.65 x 2) | 0.454, 0.436 | 0.385 | 1,950 |
+| 4 (1.325 x 4) | 0.505 (s1) | 0.386 | 1,920 |
+
+Each doubling of the honest miner count adds about 0.06 to the attacker's
+share at this alpha: alpha 0.47 is unprofitable against one honest miner,
+marginal against two and clearly profitable against four, at the window
+that gave SoP its best threshold (K=6, 0.474 with two miners). The
+default-window N=4 cell (lithium, due ~20:45Z) and the K=6 s2 give the
+next two points; the N trend, not a single threshold, is the honest
+headline.
