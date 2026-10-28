@@ -1,0 +1,30 @@
+{
+ "run_id": "20261028_181536_lean_24_none_h300_k42_w13h_p3_m1_n600_sph_sd12_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_sph_sd12_s12345",
+ "archived_at": "2026-10-28T18:16:17Z",
+ "monerod_sim_sha": "8f93538bc745",
+ "wall": "2h 31m",
+ "exit_code": 0,
+ "min_avail_mb": 55543,
+ "txs_created": 1096,
+ "txs_in_blocks": 1087,
+ "note": "P56 X3b-hidden OFF control (hidden dialing spies, stock stems): 4/4 - 0 spy stem receipts at 42 spies, light 0.000, sp recall 0.000, spies dialed 59-85 distinct outbound connections each and accepted none; the isolation control holds (E65)",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0,
+ "light_out_quarters": [
+  0.0,
+  0.0,
+  0.0,
+  0.0
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.207,
+ "stem_txs": 1096,
+ "stem_hops_implied": 4.83,
+ "embargo_rate": 0.0
+}
