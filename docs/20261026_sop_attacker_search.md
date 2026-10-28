@@ -710,3 +710,58 @@ compare per found block (corrected 10-27; this line used to scale by the
 main chain): at 0.45 the sims made 40.2 reveals per 1,000 found blocks
 (119-138 per 72 h, n = 4) against the model's 37.5, at 0.50 90.6 (272-301,
 n = 4) against 86.3. The rule's reveal structure matches within 5-7%.
+
+## The mitigation case (2026-10-28)
+
+The question the owner put on 10-28: what has to be shown for
+Share-or-Perish to be worth a place in the Monero codebase. What the
+work above already gives: the profitability threshold rises from 0.369
+on the stock rule to 0.4635 under SoP against the strongest attacker a
+two-stage search found, the race model agrees within 0.01 at every
+point, the window parameter behaves as predicted (K=2 0.454, K=6 0.474)
+and the gap between the model and the sims is understood (honest
+hashrate split across miners helps the attacker; the model is SoP's best
+case). What a reviewer will ask for beyond that, and the cell sets that
+answer each item (all on the validated 12/14-daemon bases, 72 h, seed
+27791 unless stated):
+
+1. **Honest-side cost with no attacker** (`sop_v4_control_72h`, 4
+   cells, running): orphan rate, fork-resolution depth and per-miner
+   share of an honest network with SoP on versus off.
+2. **Honest fragmentation** (`sop_v4_param_1h_72h`, `sop_v4_param_h4_72h`,
+   `sop_v4_window_k6_h4_72h`): the threshold with the honest hashrate on
+   one, two and four miners. Monero's real hashrate sits in roughly four
+   to six pools plus P2Pool, so N=4 is the number that matters; N=8 needs
+   the 64-core box (each mining daemon holds ~2.3 GB).
+3. **Slow honest miner** (`sop_v4_slow_72h`, 6 cells): SoP weighs a late
+   block at 0 and counts a share only if seen 5 s before the competitor,
+   so a well-behaved miner on a slow link can lose blocks it would keep
+   on the stock rule. The no-attacker control with honest-002 on a node
+   3 s / 10 s / 30 s one-way from the rest of the graph
+   (`gml_processing/1200_nodes_caida_slow_links.gml`, made by
+   `scripts/gml_add_slow_nodes.py`; latency lives only on graph edges),
+   stock versus SoP, against the control at latency 0. 3 s is under the
+   rule's 5 s and should be benign; 10 s and 30 s are above it.
+4. **Network-advantage attacker** (gamma > 0): the one result that could
+   sink the case, since item 2 already shows that splitting the honest
+   side is the attacker's lever. In Shadow gamma stays ~0 on the stock
+   rule because the attacker reacts after seeing the honest block and
+   propagation is faster than its reaction. Design pending (below).
+5. **Partial adoption** (`sop_v4_adopt_72h`, 7 cells): SoP is a
+   fork-choice rule, so deployment is gradual. Four equal honest miners
+   at alpha 0.45 (between the two thresholds) with the first N of them on
+   SoP; in a mixed network half the forwarding fabric adopts and the
+   other relay stays vanilla (drops shares, as a stock node would). The
+   validated param attacker at N=1..4, the stock-optimal depth-2 attacker
+   at N=0 and N=2, and no attacker at N=2 for the health of a mixed
+   network.
+6. **The bound is from search, not proof.** 0.4635 is the best of a
+   hand-written family (stage 1-3 above) under a race model whose exact
+   MDP (docs/20261025) is a lower bound only and whose tabular learner
+   could not beat the family; a stronger attacker may exist. The write-up
+   must say so.
+
+Left as stated limitations rather than tested: partition-and-heal
+behaviour (Shadow's topology is static for a run), the 5 s share delay
+and w=16 as parameters (K covers the window size; d and w are the MRL
+defaults).
