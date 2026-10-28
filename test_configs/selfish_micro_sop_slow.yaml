@@ -2,8 +2,8 @@
 # slow-link graph (gml_processing/1200_nodes_caida_slow_links.gml) with a
 # chain of seven eclipsed relays, relay-chain-1..7 on nodes 1206..1212, each
 # 1.5 s from the previous and the first 1.5 s from node 0, wired as a chain
-# (relay-chain-i peers only with relay-chain-(i-1); relay-chain-1 peers
-# normally). honest-002 is eclipsed and peers only with the relay a cell
+# (relay-chain-i peers only with relay-chain-(i-1); relay-chain-1 dials two
+# seeds by priority: an eclipsed host gets no seed list of its own). honest-002 is eclipsed and peers only with the relay a cell
 # names, from the node a cell pins it to (G2 = 1207 by default: 2 hops, 3 s
 # one-way). Eclipsed hosts also hide their port, so no one dials them but
 # the chain. v1 put honest-002 behind ONE 3 / 10 / 30 s edge: monerod's P2P
@@ -112,6 +112,7 @@ agents:
     topology_node: 1206
     attributes: {eclipsed: 'true'}
     daemon_options: {hide-my-port: true}
+    peers: {priority: [monero-seed-001, monero-seed-002]}
   relay-chain-2:
     daemon: monerod
     start_time: 0s

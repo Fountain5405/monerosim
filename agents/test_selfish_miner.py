@@ -1408,3 +1408,33 @@ def test_read_bridge_defaults_to_the_first_bridge():
     assert a.read_bridge == "first"
     assert a._select_read_bridge() is b1 and a.bridge_rpc is b1
     assert not b2.get_info.called
+
+
+def test_release_feeds_missing_public_parents_to_an_isolated_bridge():
+    """The network-advantage topology isolates bridge 1 from the public
+    network (it peers only with the slow honest miner), so it lacks the public
+    parents of the attacker's reveal and would reject it. With
+    `feed_parents: true` the release first submits, from the attacker's own
+    daemon, every public block from two below the bridge's height up to the
+    fork (an already-known block is a harmless error), then the private ones."""
+    a = _two_bridge_agent()[0]
+    a.daemon_rpc = MagicMock()
+    a.feed_parents = True
+    b1, b2 = a.bridge_rpcs
+    b1.get_info.return_value = {"height": 5}
+    b2.get_info.return_value = {"height": 8}
+    a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"blk{height}"}
+    a._release_up_to(8, 9)
+    assert [c.args[0] for c in b1.submit_block.call_args_list] == ["blk3", "blk4", "blk5", "blk6", "blk7", "blk8", "blk9"]
+    assert [c.args[0] for c in b2.submit_block.call_args_list] == ["blk6", "blk7", "blk8", "blk9"]
+
+
+def test_release_feeds_nothing_by_default():
+    a = _two_bridge_agent()[0]
+    a.daemon_rpc = MagicMock()
+    assert a.feed_parents is False
+    b1, b2 = a.bridge_rpcs
+    a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"blk{height}"}
+    a._release_up_to(8, 9)
+    assert [c.args[0] for c in b1.submit_block.call_args_list] == ["blk8", "blk9"]
+    assert not b1.get_info.called

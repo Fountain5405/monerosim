@@ -12,6 +12,10 @@
 # normally, so an honest block takes 3 s between the miners; the f6 cells
 # chain relay-slow-1 -> 2 -> 3 -> hub by exclusive peering (6 s). All three
 # relays are eclipsed and hide their port so nothing dials them except the
+# chain; an eclipsed host gets no seeds, so relay-slow-3 dials two seeds by
+# priority (the detour's hub end) and bridge 1 hides its port too. The
+# attacker feeds bridge 1 the public parents of each release (feed_parents),
+# since bridge 1 learns hub blocks only through honest-002, 6 s late. The
 # chain (a hub node that learned relay-slow-1's address could otherwise reach it
 # over its 1.5 s edge and bypass the detour). The attacker,
 # bridge 1 and honest-002 share node 1203 (1 ms apart, 0.5 s from node 0);
@@ -114,6 +118,7 @@ agents:
       strategy: eyal_sirer
       bridges: attacker-bridge,attacker-bridge-2
       read_bridge: best
+      feed_parents: 'true'
       attack_start_height: "0"
       reaction_delay_ms: "200"
   attacker-bridge:
@@ -122,6 +127,7 @@ agents:
     start_time: 0s
     topology_node: 1203
     peers: {exclusive: [honest-002]}
+    daemon_options: {hide-my-port: true}
   attacker-bridge-2:
     daemon: monerod
     script: agents.selfish_bridge
@@ -147,6 +153,7 @@ agents:
     topology_node: 1216
     attributes: {eclipsed: 'true'}
     daemon_options: {hide-my-port: true}
+    peers: {priority: [monero-seed-001, monero-seed-002]}
   relay-001:
     daemon: monerod
     start_time: 30s

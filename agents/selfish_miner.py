@@ -203,6 +203,13 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         # each honest group, so the attacker hears every honest block from
         # the bridge next to its finder instead of waiting for the slow path).
         self.read_bridge = (self.attributes.get("read_bridge") or "first").strip()
+        # feed_parents (2026-10-28): a bridge isolated from the public network
+        # (the network-advantage topology: bridge 1 peers only with the slow
+        # honest miner) lacks the public parents of a reveal and would reject
+        # it; with "true" every release first submits, from the attacker's own
+        # daemon, the public blocks from two below that bridge's height up to
+        # the fork. Off by default: every other topology's bridges are synced.
+        self.feed_parents = (self.attributes.get("feed_parents") or "false").strip().lower() == "true"
         if self.read_bridge not in ("first", "best"):
             raise ValueError(f"read_bridge must be 'first' or 'best', got {self.read_bridge!r}")
         kw = self.strategy_kwargs(self.attributes)
@@ -813,6 +820,9 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         the reveal submit an empty range and the attacker could never win
         (review C1)."""
         start = max(release_from, self._released_index + 1)
+        if self.feed_parents:
+            for rpc in self.bridge_rpcs:
+                self._feed_parents(rpc, release_from)
         for idx in range(start, release_index + 1):
             try:
                 blk = self.daemon_rpc.get_block(height=idx)
@@ -829,6 +839,29 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                         # Expected for equal-height alts (gamma=0) and already-present blocks.
                         self.logger.debug(f"release private block {idx}: {e}")
             self._released_index = max(self._released_index, idx)
+
+    def _feed_parents(self, rpc, release_from: int) -> None:
+        """Submit to `rpc` the public blocks it may lack below the fork: from
+        two below its height (its own block at a height may differ from the
+        public one; an already-known block is a harmless error) to release_from
+        - 1, in order, from the attacker's own daemon (which holds the public
+        chain it forwarded into itself)."""
+        try:
+            bh = int(rpc.get_info().get("height", 0))
+        except RPCError as e:
+            self.logger.debug(f"feed parents: bridge height: {e}")
+            return
+        fed = 0
+        for idx in range(max(bh - 2, 0), release_from):
+            try:
+                blob = self.daemon_rpc.get_block(height=idx).get("blob")
+                if blob:
+                    rpc.submit_block(blob)
+                    fed += 1
+            except RPCError as e:
+                self.logger.debug(f"feed parent {idx}: {e}")
+        if fed > 2:
+            self.logger.info(f"fed {fed} public parents ({max(bh - 2, 0)}..{release_from - 1}) to a bridge at height {bh}")
 
     def _same_block(self, height: int):
         """True/False: the miner and the first bridge hold the same block at

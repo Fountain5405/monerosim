@@ -902,7 +902,8 @@ def test_slow_base_differs_from_the_micro_base_only_in_the_graph():
         r = ag[f"relay-chain-{k}"]
         assert r["topology_node"] == 1205 + k and r["attributes"] == {"eclipsed": "true"}
         assert r["daemon_options"] == {"hide-my-port": True}
-        assert r.get("peers") == ({"exclusive": [f"relay-chain-{k - 1}"]} if k > 1 else None)
+        assert r.get("peers") == ({"exclusive": [f"relay-chain-{k - 1}"]} if k > 1
+                                  else {"priority": ["monero-seed-001", "monero-seed-002"]})
     assert ag["honest-002"]["attributes"] == {"eclipsed": "true"}
     assert ag["honest-002"]["daemon_options"] == {"hide-my-port": True}
     assert ag["honest-002"]["topology_node"] == 1207 and ag["honest-002"]["peers"] == {"exclusive": ["relay-chain-1"]}
@@ -983,12 +984,14 @@ def test_gamma_base_is_the_slow_base_plus_a_second_bridge_and_the_pins():
     att = ag["attacker-miner"]
     assert att["attributes"]["bridges"] == "attacker-bridge,attacker-bridge-2"
     assert att["attributes"]["read_bridge"] == "best" and "bridge_agent" not in att["attributes"]
+    assert att["attributes"]["feed_parents"] == "true"
     assert att["topology_node"] == 1203
     h2 = ag["honest-002"]
     assert h2["topology_node"] == 1203 and h2["attributes"] == {"eclipsed": "true"}
     assert h2["peers"] == {"exclusive": ["relay-slow-1"]}
     assert ag["attacker-bridge"]["topology_node"] == 1203
     assert ag["attacker-bridge"]["peers"] == {"exclusive": ["honest-002"]}
+    assert ag["attacker-bridge"]["daemon_options"] == {"hide-my-port": True}
     assert ag["attacker-bridge-2"] == {"daemon": "monerod", "script": "agents.selfish_bridge",
                                        "start_time": "0s", "topology_node": 0,
                                        "peers": {"priority": ["honest-001"]}}
@@ -999,14 +1002,16 @@ def test_gamma_base_is_the_slow_base_plus_a_second_bridge_and_the_pins():
                                   "attributes": {"eclipsed": "true"}, "daemon_options": hide,
                                   "peers": {"exclusive": ["relay-slow-3"]}}
     assert ag["relay-slow-3"] == {"daemon": "monerod", "start_time": "0s", "topology_node": 1216,
-                                  "attributes": {"eclipsed": "true"}, "daemon_options": hide}
+                                  "attributes": {"eclipsed": "true"}, "daemon_options": hide,
+                                  "peers": {"priority": ["monero-seed-001", "monero-seed-002"]}}
     assert h2["daemon_options"] == hide
     assert ag["honest-001"]["topology_node"] == 0
     # Undo those and the (chain-less) slow base is what remains.
-    att["attributes"].pop("bridges"); att["attributes"].pop("read_bridge"); att.pop("topology_node")
+    for k in ("bridges", "read_bridge", "feed_parents"): att["attributes"].pop(k)
+    att.pop("topology_node")
     att["attributes"]["bridge_agent"] = "attacker-bridge"
     for k in ("topology_node", "attributes", "peers", "daemon_options"): h2.pop(k)
-    ag["attacker-bridge"].pop("peers"); ag["attacker-bridge"].pop("topology_node")
+    for k in ("peers", "topology_node", "daemon_options"): ag["attacker-bridge"].pop(k)
     for k in ("attacker-bridge-2", "relay-slow-1", "relay-slow-2", "relay-slow-3"): del ag[k]
     ag["honest-001"].pop("topology_node")
     assert g == slow
@@ -1029,7 +1034,8 @@ def test_gamma_spec_moves_the_slow_relay_and_flags_the_eclipsed_miner():
             assert r1["peers"] == {"exclusive": ["relay-slow-2"]}
         else:
             assert "peers" not in r1
-        assert ag["relay-slow-2"]["peers"] == {"exclusive": ["relay-slow-3"]} and "peers" not in ag["relay-slow-3"]
+        assert ag["relay-slow-2"]["peers"] == {"exclusive": ["relay-slow-3"]}
+        assert ag["relay-slow-3"]["peers"] == {"priority": ["monero-seed-001", "monero-seed-002"]}
         assert ag["honest-002"]["topology_node"] == ag["attacker-bridge"]["topology_node"] == 1203
         assert ag["attacker-miner"]["topology_node"] == 1203
         assert ag["honest-001"]["topology_node"] == 0 and ag["attacker-bridge-2"]["topology_node"] == 0
@@ -1044,4 +1050,5 @@ def test_gamma_spec_moves_the_slow_relay_and_flags_the_eclipsed_miner():
             assert ag[a]["daemon"] == ("monerod-sim" if sop else "monerod")
         att = ag["attacker-miner"]["attributes"]
         assert att["bridges"] == "attacker-bridge,attacker-bridge-2" and att["read_bridge"] == "best"
+        assert att["feed_parents"] == "true"
         assert att["strategy"] == ("param_stubborn" if sop else "window_stubborn")
