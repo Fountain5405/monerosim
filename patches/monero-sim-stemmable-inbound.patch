@@ -128,7 +128,7 @@ index 46327d18c..accd875e5 100644
 +                arr += ',';
 +              arr += sim_peer(*(zone_->p2p), v.first);
 +            }
-+            sim_txrelay_log::write("x3", ","virtual":" + arr + "],"union":" + std::to_string(edge2.size()));
++            sim_txrelay_log::write("x3", ",\"virtual\":" + arr + "],\"union\":" + std::to_string(edge2.size()));
 +          }
 +          boost::asio::dispatch(
 +            zone_->strand,
