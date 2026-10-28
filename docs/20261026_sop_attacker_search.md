@@ -831,3 +831,25 @@ that gave SoP its best threshold (K=6, 0.474 with two miners). The
 default-window N=4 cell (lithium, due ~20:45Z) and the K=6 s2 give the
 next two points; the N trend, not a single threshold, is the honest
 headline.
+
+### 6. The upper bound, first solve (10-28)
+
+`scripts/sop_mdp.py solve --bound upper` (564b5ce5): the
+Sapirshtein-Sompolinsky-Zohar over-paying MDP in SoP form (the module
+docstring has the award and the argument). At caps 3/3/48/20/20 (7.98 M
+states, 1.8 h for the lower bound, 2.6 h for the upper):
+
+| alpha | lower bound (capped optimum) | upper bound (over-paying) | hand-written family |
+|---|---|---|---|
+| 0.45 | 0.4500 (honest; no reveal accepted) | 0.8036 | 0.389 (model), 0.273 (sims, stubborn) |
+| 0.50 | 0.5000 (honest) | 1 (trivial: the walk is not transient at alpha >= 0.5) | 0.727 (model) |
+
+The sandwich [0.45, 0.80] at alpha 0.45 brackets nothing useful: at 3
+blocks per side the boundary is hit in most races, and the award at the
+boundary is worth most of the race. SSZ's bounds were tight at T = 75 in a
+block-only state space; this one is object-granular (one share at a time)
+and 4 blocks per side is already 85 M states. The 4/4/64/24/24 upper solve
+runs next on lithium (~a day) to show how fast the gap closes with the
+cap, but a bound tight enough to test whether the family is near-optimal
+needs the block-granular abstraction (shares as binned weights), which is
+the next piece of model work if MRL wants it.
