@@ -1374,3 +1374,37 @@ def test_learned_strategy_logs_the_policy_size_at_start(tmp_path):
     messages = [c.args[0] for c in a.logger.info.call_args_list]
     assert any("learned: policy" in m and "entries=1" in m and "env=placeholder" in m and "alpha=0.45" in m
                for m in messages), messages
+
+
+def _two_bridge_agent(read_bridge=None):
+    extra = [["bridges", "b1,b2"]] + ([["read_bridge", read_bridge]] if read_bridge else [])
+    a = SelfishMinerAgent(agent_id="atk", attributes=[["strategy", "honest"]] + extra)
+    a.logger = MagicMock()
+    b1, b2 = MagicMock(name="b1"), MagicMock(name="b2")
+    b1.get_info.return_value = {"height": 10, "top_block_hash": "a" * 64}
+    b2.get_info.return_value = {"height": 12, "top_block_hash": "b" * 64}
+    a.bridge_rpcs = [b1, b2]
+    a.bridge_rpc = b1
+    return a, b1, b2
+
+
+def test_read_bridge_best_reads_from_the_bridge_that_is_ahead():
+    """The network-advantage topology puts one bridge beside each honest
+    group; `read_bridge: best` makes the attacker see the honest chain
+    through whichever bridge is ahead this tick (height, then the current
+    bridge on a tie), instead of the first bridge only."""
+    a, b1, b2 = _two_bridge_agent("best")
+    assert a._select_read_bridge() is b2 and a.bridge_rpc is b2
+    b1.get_info.return_value = {"height": 12, "top_block_hash": "c" * 64}
+    assert a._select_read_bridge() is b2          # tie: keep the current one
+    b1.get_info.return_value = {"height": 13, "top_block_hash": "d" * 64}
+    assert a._select_read_bridge() is b1
+    b2.get_info.side_effect = RPCError("down")
+    assert a._select_read_bridge() is b1          # an unreachable bridge is skipped
+
+
+def test_read_bridge_defaults_to_the_first_bridge():
+    a, b1, b2 = _two_bridge_agent()
+    assert a.read_bridge == "first"
+    assert a._select_read_bridge() is b1 and a.bridge_rpc is b1
+    assert not b2.get_info.called

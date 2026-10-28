@@ -1,0 +1,99 @@
+# sop_v4_gamma_72h (2026-10-28): the network-advantage attacker (gap 4 of the
+# "is SoP a good mitigation" list), the one result that could sink the case.
+# On selfish_micro_sop_gamma.yaml the attacker hears every honest block from
+# the bridge beside its finder and answers through the bridge beside the other
+# honest miner, who hears the honest block only over the slow edge: gamma 0.5
+# in the Eyal-Sirer sense, where the stock threshold is 0.25. Stock cells run
+# the stock-optimal depth-2 attacker at 0.30 and 0.35 (both above 0.25, so
+# both should profit); SoP cells the validated param attacker (the G=6 family;
+# the knobs tuned for 0.45-0.47 are used at 0.35 and 0.40 too) at 0.35, 0.40
+# and 0.45. l3: the slow miner 3 s from node 0, under SoP's 5 s rule, so its
+# blocks still count; l10: 10 s, past it, so the fast side weighs its blocks
+# at 0 whenever the attacker's reply arrives first. 13 daemons: a 16 GB box.
+name: sop_v4_gamma_72h
+seed: 27791
+base: test_configs/selfish_micro_sop_gamma.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: param_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          window_objects: '32'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          count_own_tip_shares: 'false'
+          give_up_depth: '5'
+          give_up_objects: '6'
+          hold_shares: '1'
+          publish_lead: '1'
+          reveal_margin: '1'
+          reveal_depth: '1'
+          block_deficit: '0'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+    d2:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          weigh: difficulty
+          window_objects: '0'
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          give_up_depth: '2'
+          give_up_objects: '-1'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    stock: {}
+    sop:
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+  alpha:
+    a030:
+      attacker: {hashrate: 3.0}
+      honest: {hashrate: [3.5, 3.5]}
+    a035:
+      attacker: {hashrate: 3.5}
+      honest: {hashrate: [3.25, 3.25]}
+    a040:
+      attacker: {hashrate: 4.0}
+      honest: {hashrate: [3.0, 3.0]}
+    a045:
+      attacker: {hashrate: 4.5}
+      honest: {hashrate: [2.75, 2.75]}
+  latency:
+    l3:
+      honest-002: {topology_node: 1200}
+      attacker-bridge: {topology_node: 1200}
+    l10:
+      honest-002: {topology_node: 1201}
+      attacker-bridge: {topology_node: 1201}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+exclude:
+  - {arm: share, countermeasure: stock}
+  - {arm: d2, countermeasure: sop}
+  - {arm: share, alpha: a030}
+  - {arm: d2, alpha: a040}
+  - {arm: d2, alpha: a045}

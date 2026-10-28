@@ -197,6 +197,14 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.island_cash_lead = int(self.attributes.get("island_cash_lead", "2") or 2)
         self.attack_start_height = int(self.attributes.get("attack_start_height", "0") or 0)
         self.reaction_delay_ms = int(self.attributes.get("reaction_delay_ms", "200") or 200)
+        # Which bridge the honest chain is read through: "first" (the first
+        # id in `bridges`, the default) or "best" (whichever bridge is ahead
+        # this tick: the network-advantage topology puts one bridge beside
+        # each honest group, so the attacker hears every honest block from
+        # the bridge next to its finder instead of waiting for the slow path).
+        self.read_bridge = (self.attributes.get("read_bridge") or "first").strip()
+        if self.read_bridge not in ("first", "best"):
+            raise ValueError(f"read_bridge must be 'first' or 'best', got {self.read_bridge!r}")
         kw = self.strategy_kwargs(self.attributes)
         self.trail_depth = kw["trail_depth"]
         self.release_lead = kw["release_lead"]
@@ -489,6 +497,27 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                 self.logger.info(f"{what} connected: {bid} at {host}:{port}")
             else:
                 self.logger.debug(f"{what} {bid} not yet in registry")
+
+    def _select_read_bridge(self):
+        """The bridge the honest chain is read through this tick: the first
+        bridge, or with `read_bridge: best` the one with the greatest height
+        (the current bridge on a tie; an unreachable bridge is skipped)."""
+        if self.read_bridge != "best" or len(self.bridge_rpcs) < 2:
+            self.bridge_rpc = self.bridge_rpcs[0] if self.bridge_rpcs else None
+            return self.bridge_rpc
+        best, best_h = self.bridge_rpc, -1
+        for rpc in self.bridge_rpcs:
+            try:
+                h = int(rpc.get_info().get("height", 0))
+            except RPCError as e:
+                self.logger.debug(f"read bridge: {e}")
+                continue
+            if h > best_h or (h == best_h and rpc is self.bridge_rpc):
+                best, best_h = rpc, h
+        if best is not self.bridge_rpc:
+            self.logger.info(f"read bridge -> bridge {self.bridge_rpcs.index(best) + 1} (height {best_h})")
+        self.bridge_rpc = best
+        return best
 
     def _connect_bridges(self) -> bool:
         """Connect any bridge in `bridge_agent_ids` not yet connected. Returns
@@ -1007,6 +1036,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
 
         # 3/4. Read both chains (height + honest tip hash for reorg detection).
         try:
+            self._select_read_bridge()
             pub_info = self.bridge_rpc.get_info()
             pub_height = int(pub_info.get("height", 0))
             pub_tip_hash = pub_info.get("top_block_hash")

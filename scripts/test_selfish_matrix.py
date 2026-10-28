@@ -940,3 +940,51 @@ def test_adopt_spec_flags_k_of_four_miners_and_half_the_fabric():
             assert att["strategy"] == "window_stubborn" and att["weigh"] == "difficulty" and att["give_up_depth"] == "2"
         else:
             assert att["strategy"] == "param_stubborn" and att["give_up_objects"] == "6"
+
+
+def test_gamma_base_is_the_slow_base_plus_a_second_bridge_and_the_pins():
+    """selfish_micro_sop_gamma.yaml: the slow-link base with the attacker
+    reading through whichever of two bridges is ahead; bridge 1 peers only
+    with honest-002 (pinned beside it per cell), bridge 2 and honest-001 sit
+    at node 0. Nothing else differs from the slow base."""
+    slow = yaml.safe_load((REPO / "test_configs/selfish_micro_sop_slow.yaml").read_text())
+    g = yaml.safe_load((REPO / "test_configs/selfish_micro_sop_gamma.yaml").read_text())
+    ag = g["agents"]
+    assert ag["attacker-miner"]["attributes"]["bridges"] == "attacker-bridge,attacker-bridge-2"
+    assert ag["attacker-miner"]["attributes"]["read_bridge"] == "best"
+    assert "bridge_agent" not in ag["attacker-miner"]["attributes"]
+    assert ag["attacker-bridge"]["peers"] == {"exclusive": ["honest-002"]}
+    assert ag["attacker-bridge-2"] == {"daemon": "monerod", "script": "agents.selfish_bridge",
+                                       "start_time": "0s", "topology_node": 0,
+                                       "peers": {"priority": ["honest-001"]}}
+    assert ag["honest-001"]["topology_node"] == 0
+    # Undo those and the slow base is what remains.
+    ag["attacker-miner"]["attributes"].pop("bridges"); ag["attacker-miner"]["attributes"].pop("read_bridge")
+    ag["attacker-miner"]["attributes"]["bridge_agent"] = "attacker-bridge"
+    ag["attacker-bridge"].pop("peers"); del ag["attacker-bridge-2"]; ag["honest-001"].pop("topology_node")
+    assert g == slow
+
+
+def test_gamma_spec_moves_the_slow_miner_and_its_bridge_together():
+    """sop_v4_gamma_72h: stock d2 attacker at 0.30 / 0.35, SoP param attacker
+    at 0.35 / 0.40 / 0.45, each with honest-002 and bridge 1 on the 3 s or the
+    10 s node; both bridges flagged in SoP cells, every daemon stock otherwise."""
+    cells = _cells(_load_spec("sop_v4_gamma_72h.yaml"))
+    assert sorted(cells) == sorted(
+        [f"d2_stock_{a}_{l}_s1" for a in ("a030", "a035") for l in ("l3", "l10")]
+        + [f"share_sop_{a}_{l}_s1" for a in ("a035", "a040", "a045") for l in ("l3", "l10")])
+    for cell, cfg in cells.items():
+        ag = cfg["agents"]
+        node = 1200 if "_l3_" in cell else 1201
+        assert ag["honest-002"]["topology_node"] == node and ag["attacker-bridge"]["topology_node"] == node
+        assert ag["honest-001"]["topology_node"] == 0 and ag["attacker-bridge-2"]["topology_node"] == 0
+        alpha = int(cell.split("_")[2][1:]) / 100
+        assert ag["attacker-miner"]["hashrate"] == pytest.approx(10 * alpha)
+        assert ag["honest-001"]["hashrate"] == ag["honest-002"]["hashrate"] == pytest.approx(5 - 5 * alpha)
+        sop = cell.startswith("share")
+        for a in ("honest-001", "honest-002", "attacker-bridge", "attacker-bridge-2", "relay-001", "monero-seed-001"):
+            assert _sop(cfg, a) is sop, (cell, a)
+        assert ag["attacker-bridge"]["daemon"] == ("monerod-sim" if sop else "monerod")
+        att = ag["attacker-miner"]["attributes"]
+        assert att["bridges"] == "attacker-bridge,attacker-bridge-2" and att["read_bridge"] == "best"
+        assert att["strategy"] == ("param_stubborn" if sop else "window_stubborn")
