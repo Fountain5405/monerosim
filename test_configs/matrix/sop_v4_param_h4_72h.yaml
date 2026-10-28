@@ -1,0 +1,53 @@
+# sop_v4_param_h4_72h (2026-10-28): the honest-miner-count trend at the DEFAULT
+# window, N=4: the validated sop_v4_param_72h a047 cell on base
+# selfish_micro_sop_h4.yaml, the same honest hashrate (5.3) over four miners.
+# 14 daemons, five of them mining (~2.3 GB each, likely the RandomX dataset):
+# ~14.5 GB, so lithium / phantom only.
+name: sop_v4_param_h4_72h
+seed: 27791
+base: test_configs/selfish_micro_sop_h4.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: param_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          window_objects: '32'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          count_own_tip_shares: 'false'
+          give_up_depth: '5'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    sop2_param:
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+  alpha:
+    a047:
+      attacker:
+        hashrate: 4.7
+        attributes: {give_up_objects: '6', hold_shares: '1', publish_lead: '1', reveal_margin: '1', reveal_depth: '1', block_deficit: '0'}
+      honest: {hashrate: [1.325, 1.325, 1.325, 1.325]}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+    s2:
+      attacker:
+        attributes:
+          sample: '2'
