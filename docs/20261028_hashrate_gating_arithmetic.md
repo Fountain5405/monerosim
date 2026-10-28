@@ -108,11 +108,36 @@ The white-list cap at 70 removes the 2.2x amplification (lab: 0.1616 against 0.3
 - Weighted selection would lower it to the fleet's hashrate share, which is the real win, at the cost of routing most first hops through the pools.
 - Neither raises the price of an address, and the address is what the fleet is made of.
 
-## 5. What could still be worth building from the idea
+## 5. Attested work as a cap, not a gate: priced
 
-- Attested work as a cap, not a gate: inbound acceptance beyond a per-/16 quota requires workshares (prices the inbound fan-in harvesting the observatory tracks); gray-list promotion requires attested work (prices peer-list poisoning, the one case where section 2's full-footprint row bites). Joining stays free; miners stay out of the gatekeeper seat.
-- A reserved minority of outbound slots for attested peers of distinct keys, as an eclipse rail.
-- Both can be simulated in the lab's harness; membership itself cannot be, since once a node is in it behaves like today's fleet, which is what the lab has already measured.
+Two variants keep joining free and miners out of the gatekeeper seat: work is demanded only for behaviour that exceeds what an honest node does. Both are priced here against the observatory's 10-28 feeds; the work unit is a workshare of *D* RandomX hashes bound to the connection or the entry, verifiable by anyone, with no pool involved.
+
+### 5a. Inbound connections beyond a per-/16 quota pay a workshare per handshake
+
+What this targets, by the observatory's numbers: the fleet holds about 7 of a seed's 173 inbound connections (3.7 to 4.6 %), and the inbound fan-in harvesting panel counts 47 IPs in 31 coordinated groups. Neither needs many connections, so neither is priced by this. What it does price is the active adversary the lab measured: the rotating-front-port eclipse re-handshakes every reachable node every 300 s (E53) or 60 s (E59). In the lab's 342-node network that is 151,200 handshakes per hour from 42 spies, against about 5 per hour for an honest node at steady state. The attacker-to-honest ratio is 30,000 to 1, so any per-handshake price multiplies the attacker's bill by that much relative to a home node's.
+
+| *D* per handshake | Honest node | Lab sweep at 300 s (x5 at 60 s) | Fan-in harvesters |
+|---|---|---|---|
+| 10^5 hashes (100 core-seconds) | 0.14 core | 4,200 cores, EUR 17 to 34 k/month renting | 0.5 core |
+| 10^6 | 1.4 cores | 42,000 cores, EUR 168 to 336 k/month | 5 cores |
+| 10^7 | 14 cores | 420,000 cores, EUR 1.7 to 3.4 M/month | 54 cores |
+
+Reading: at 10^5 the sweep costs a vendor budget about what its addresses cost today, and the honest node a seventh of a core; at 10^6 the sweep is priced like the full-footprint admission row while an honest node pays a core and a half for its reconnects, which is already too much. The quota matters: the sweep sends one handshake per spy /16 per node per sweep, so a quota of one free handshake per /16 per node per hour catches eleven of its twelve handshakes at 300 s and fifty-nine of sixty at 60 s, while an honest node almost never re-dials the same /16 inside an hour. The caveat is the lab's own result: the white-list cap already defeats this adversary (0.0248, one user of forty) at zero cost, and the sweep axis saturates below the price's reach (E59). This variant is a second rail against the eclipse, not a replacement for the cap, and it does nothing against the passive fleet.
+
+### 5b. Peer-list entries carry attested work: *D*e hashes per ip:port per day
+
+Here the asymmetry finally runs the right way. A reachable honest node has one entry, its own; an unreachable node has none and pays nothing; a poisoner pays per entry it wants gossiped. The observatory's cumulative poison footprint is 53,892 ip:port entries still in gray lists, 29 per honest reachable node; one poisoner holds 5,154 entries on 1,548 IPs (3.33 ports per IP), and the surveillance operator's 17,636 unreachable entries are the full-footprint row of section 2.
+
+| Honest reachable node spends | One poisoner, 5,154 entries | Surveillance operator, 17,636 entries | Whole footprint, 53,892 entries |
+|---|---|---|---|
+| a tenth of a core (8.6 x 10^6 hashes/day) | EUR 2 to 4 k/month | EUR 7 to 14 k/month | EUR 22 to 43 k/month, 0.07 % of the network |
+| one core (8.6 x 10^7 hashes/day) | EUR 21 to 41 k/month | EUR 71 to 141 k/month | EUR 216 to 431 k/month, 0.74 % of the network |
+
+Reading: at a tenth of a core per honest reachable node, the operator's entries cost about what its addresses cost today, a doubling; at one core the whole footprint costs EUR 0.2 to 0.4 million a month, and the honest reachable population together sustains 1.9 MH/s. Pricing per ip:port also ends the multi-port trick on its own: the poisoner's 5,154 entries collapse to its 1,548 IPs, a 3.3x cut before any work is paid. The gray list is 36 % dead entries and 22 % flagged on the seeds today; entries that carry no fresh work would simply not be gossiped. This is the one place in the note where a hashrate price hurts the adversary more than the honest side, because it prices entries, of which the adversary has 29 times more than honest reachable nodes, and leaves the unreachable majority untouched.
+
+### 5c. The eclipse rail and what can be simulated
+
+A reserved minority of outbound slots for workshare-attested peers of distinct keys makes eclipsing a node cost hashrate as well as addresses, while selection stays diffuse. Variants 5a to 5c can all be simulated in the lab's harness: 5a as a handshake budget on the sweep agent, 5b as a gossip filter on the generator's poison entries, 5c as a selection patch. Membership (sections 1 and 2) cannot be, because once a node is in it behaves like today's fleet, which is what the lab has already measured.
 
 ## Uncertainties that move the numbers
 

@@ -58,3 +58,32 @@ for share in (0.01, 0.05, 0.15, 0.34):
     print(f"share {share:4.0%}: {hs/1e9:5.2f} GH/s = {hs/1e3:,.0f} cores; rental EUR {hs/1e3*lo/1e6:.1f}-{hs/1e3*hi/1e6:.1f} M/month, "
           f"farm gross {hs/1e3*flo/1e6:.2f}-{hs/1e3*fhi/1e6:.2f} M, net of mining {max(0,hs/1e3*(flo-rev_hi))/1e6:.2f}-{(hs/1e3*(fhi-rev_lo))/1e6:.2f} M")
 print(f"voucher capacity of a 30% pool at w=1 kH/s: {0.3*NET_HS/1e3:,.0f} memberships")
+
+# ---- E. attested work as a cap, not a gate (section 5 of the note), observatory 10-28 feeds ----
+SEED_INBOUND = 38 + 71 + 64          # a seed's inbound peers: reachable + unreachable + anon (timeseries medians)
+SEED_IN_FLEET_PCT = 4.2              # fleet share of a seed's inbound connections (seed_fleet_hist medians 3.7-4.6)
+FANIN_IPS, FANIN_GROUPS = 47, 31     # fp8 inbound fan-in harvesting sources at the seeds (latest)
+POISON_TOTAL = 53_892                # cumulative poison ip:port footprint still in gray lists (poison_history)
+PEG_ENTRIES, PEG_IPS = 5_154, 1_548  # one poisoner: entries and IPs (3.33 ports per IP)
+LL_ENTRIES = 17_636                  # the surveillance operator's unreachable entries
+LAB_SWEEP = 42 * 300 / 300 * 3600    # lab eclipse: 42 spies x 300 reachable nodes per 300 s, handshakes per hour
+HONEST_HS_PER_H = 5                  # an honest node's handshakes per hour at steady state (12 at start, churn after)
+print("\n== E1. inbound beyond a per-/16 quota pays a workshare of D hashes per handshake")
+print(f"fleet inbound at a seed today: {SEED_INBOUND*SEED_IN_FLEET_PCT/100:.0f} of {SEED_INBOUND} connections; fan-in harvesters {FANIN_IPS} IPs in {FANIN_GROUPS} groups")
+for D in (1e5, 1e6, 1e7):
+    core_s = D / 1e3                                  # 1 kH/s per core
+    honest_cores = HONEST_HS_PER_H * core_s / 3600
+    sweep_cores = LAB_SWEEP * core_s / 3600
+    fan_cores = FANIN_IPS * 10 * core_s / 86400       # ~10 handshakes per harvester per day
+    lo, hi = ASSUMPTIONS["rental_eur_per_khs_month"]
+    print(f"D={D:.0e}: honest node {honest_cores:5.2f} cores | lab sweep at 300 s {sweep_cores:7.0f} cores = EUR {sweep_cores*lo/1e3:4.1f}-{sweep_cores*hi/1e3:4.1f} k/month "
+          f"(60 s sweeps x5) | fan-in harvesters {fan_cores:5.2f} cores; attacker/honest ratio {LAB_SWEEP/HONEST_HS_PER_H:,.0f}x")
+print("\n== E2. gray-list entries carry attested work: D_e hashes per ip:port per day; unreachable nodes pay nothing")
+for honest_cores in (0.1, 1.0):
+    De = honest_cores * 1e3 * 86400                     # hashes per day per entry
+    lo, hi = ASSUMPTIONS["rental_eur_per_khs_month"]
+    cost = lambda n: (n * honest_cores * lo / 1e3, n * honest_cores * hi / 1e3)   # kEUR/month renting
+    print(f"honest reachable node spends {honest_cores} core ({De:.1e} hashes/day): PEG {PEG_ENTRIES:,} entries EUR {cost(PEG_ENTRIES)[0]:.0f}-{cost(PEG_ENTRIES)[1]:.0f} k/month "
+          f"(per-IP pricing would cut it to {PEG_IPS:,} entries, {PEG_ENTRIES/PEG_IPS:.1f}x); operator {LL_ENTRIES:,} entries EUR {cost(LL_ENTRIES)[0]:.0f}-{cost(LL_ENTRIES)[1]:.0f} k; "
+          f"cumulative footprint {POISON_TOTAL:,} entries EUR {cost(POISON_TOTAL)[0]:.0f}-{cost(POISON_TOTAL)[1]:.0f} k = {100*POISON_TOTAL*honest_cores*1e3/NET_HS:.2f}% of network; "
+          f"honest reachable total {HONEST_REACH*honest_cores/1e3:.1f} MH/s; entries per honest reachable node {POISON_TOTAL/HONEST_REACH:.0f}:1")
