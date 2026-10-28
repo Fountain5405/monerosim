@@ -2,8 +2,8 @@
 
 A human-readable summary of the spy-relay research program's results. Two to three pages,
 the important numbers only; every claim carries a pointer into
-`docs/SPY_EXPERIMENT_JOURNAL.md` (entries E1-E61, predictions P1-P51, run register
-`docs/spy_journal/runs/`, 100 runs) where the full method, clauses and raw scoring live.
+`docs/SPY_EXPERIMENT_JOURNAL.md` (entries E1-E62, predictions P1-P54, run register
+`docs/spy_journal/runs/`, 102 runs) where the full method, clauses and raw scoring live.
 The lab's design and question framing are in `docs/20261018_spy_node_defenses.md` and
 its section 7 review.
 
@@ -100,10 +100,11 @@ rule): unreachable senders are attributable one transaction at a time at
 transaction attributed in 24 h). Occasional reachable senders read **precision
 0.265** — one spy guess in four is right — but **38.8 %** of their own
 transactions are attributed (reachability *doubles* per-tx first-hop exposure:
-caps 0.388/0.189 against the users' 0.148) and **77.6 %** had at least one
+caps 0.388/0.189 against the users' 0.148) and **79.6 %** had at least one
 exposed transaction in 24 h. Busy reachable nodes: **precision 0.843, 86 %**
 exposed. The passive multiplier itself transfers to mainnet rate
-(**0.2935 = 1.92x** the ceiling, against 2.20x at lab rate). So the exposure
+(**0.2935 = 2.26x** its own ceiling, the cell's 0.1299 model — corrected 10-28; the first
+write-up divided by the standard cell's 0.1531 — against 2.20x at lab rate). So the exposure
 ordering is busy ≈ unreachable (cleanly attributable) > occasional reachable
 (noisy per observation, exposed nearly as often): relayed-stem cover dilutes
 attribution 4x for occasional senders and almost not at all for busy ones.
@@ -111,7 +112,9 @@ attribution 4x for occasional senders and almost not at all for busy ones.
 
 ## Finding 7 — The best MRL proposal, built and measured: works as designed, cover too thin (X3a)
 
-Tevador's #160 stemmable-inbound variant (the plan's top-rated proposal) was implemented as the fourteenth sim patch and run at full take-up (E62, run 102). The mechanism is faithful — 30,961 epoch events, edge 2 drawing on virtual inbound connections, users receiving relayed stems for the first time — but the cover is **15x too thin to dilute attribution: sp precision on unreachable users 0.9828 against 1.000 stock**. The design's own throttles compound (one mixed edge, ~38% virtual epochs, a 12-way per-/16 lottery users mostly lose): **71 relayed stems reached all 40 users together, against 1,063 of their own sends**. Rate scaling doesn't rescue it (~0.85-0.9 at mainnet sender rates). What survives is structural: an inbound-only adversary can *never* sit on stem edge 1, and the /16 deduplication hardens the inbound side. The precision-cover rationale — the reason to deploy it — does not survive contact.
+Tevador's #160 stemmable-inbound variant (the plan's top-rated proposal) was implemented as the fourteenth sim patch and run at full take-up (E62, run 102). The mechanism is faithful — 30,961 epoch events, edge 2 drawing on virtual inbound connections, users receiving relayed stems for the first time — but the cover is **too thin to dilute attribution: sp precision on unreachable users 0.9828
+against 1.000 stock** (own:cover 15:1; the plan's ~0.3 precision would need ~34x more cover
+than the mechanism delivers — corrected 10-28 from a 15x phrasing that mixed the two ratios). The design's own throttles compound (one mixed edge, ~38% virtual epochs, a 12-way per-/16 lottery users mostly lose): **71 relayed stems reached all 40 users together, against 1,063 of their own sends**. Rate scaling doesn't rescue it (~0.85-0.9 at mainnet sender rates). What survives is structural: an inbound-only adversary can *never* sit on stem edge 1, and the /16 deduplication hardens the inbound side. The precision-cover rationale — the reason to deploy it — does not survive contact.
 
 ## The bottom line
 
@@ -128,9 +131,9 @@ the sender-class table and the IP-churn model.
 
 ## Pointers
 
-- Journal: `docs/SPY_EXPERIMENT_JOURNAL.md` — entries E1-E57 (section 4), predictions
-  P1-P48 (section 5), open questions (section 6), decisions (section 7), run register
-  (section 3, 97 runs; per-run artifacts in `docs/spy_journal/runs/<id>/`).
+- Journal: `docs/SPY_EXPERIMENT_JOURNAL.md` — entries E1-E62 (section 4), predictions
+  P1-P54 (section 5), open questions (section 6), decisions (section 7), run register
+  (section 3, 102 runs; per-run artifacts in `docs/spy_journal/runs/<id>/`).
 - Tooling: `test_configs/x0/make_lean.py` (`--spy-refresh/--spy-rotate/--user-dumps`
   and the rule/trim flags), `agents/spy_refresh.py` (the adversary),
   `analysis/spy/{spy_estimators,churn_cost}.py` (scoring), `analysis/mainnet/` (crawl).
