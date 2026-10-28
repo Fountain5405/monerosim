@@ -316,10 +316,16 @@ against the default window's 0.4635: a window of 16 objects lowers the
 threshold by about 0.011 and one of 80 raises it by about 0.010,
 against the model's 0.014 and 0.012. A K=2 cell at 0.45
 (sop_v4_window_k2_a045_72h, model 0.438 with G=2; launched 20:54Z)
-brackets the K=2 crossing directly. The
-K=6 excess is the one open point; sop_v4_window_k6_a048_72h (K=6 at
-0.48 with G=8, the model's break-even at 0.476; two seeds, launched
-18:41Z) tests it directly: the excess would put the attacker near 0.52.
+brackets the K=2 crossing directly. At K=6 and 0.48
+(sop_v4_window_k6_a048_72h, G=8, the model's break-even at 0.476; both
+PASS, no dead daemons) the attack pays in one seed and breaks even in
+the other: 0.538 (34.7 reveals per 1,000 found against the model's
+28.9) and 0.481 (28.8, as the model). Over the four K=6 cells the sims
+run +0.040 +- 0.013 over the model, three of them by 0.04-0.06 and one
+not at all. The K=6 crossing interpolates to 0.475 between the pair
+means (0.445 at 0.47, 0.510 at 0.48), against the model's 0.4805: K=6
+raises the threshold by about 0.011 in the sims (model 0.012). Third
+seeds at both alphas run from 10-28 01:45Z.
 
 Where the K=6 excess comes from (decision histograms, `sop_decision_hist.py
 --K --w`: the model with the perish rule, 600 d x 2 seeds, against the cells'

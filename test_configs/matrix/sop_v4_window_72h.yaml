@@ -83,3 +83,7 @@ axes:
       attacker:
         attributes:
           sample: '2'
+    s3:
+      attacker:
+        attributes:
+          sample: '3'
