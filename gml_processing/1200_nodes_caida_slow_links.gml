@@ -8419,6 +8419,24 @@ graph [
     region "north_america"
     bandwidth "238Mbit"
   ]
+  node [
+    id 1203
+    AS "1203"
+    region "north_america"
+    bandwidth "238Mbit"
+  ]
+  node [
+    id 1204
+    AS "1204"
+    region "north_america"
+    bandwidth "238Mbit"
+  ]
+  node [
+    id 1205
+    AS "1205"
+    region "north_america"
+    bandwidth "238Mbit"
+  ]
   edge [
     source 0
     target 349
@@ -122363,6 +122381,60 @@ graph [
     source 1202
     target 0
     latency "30000ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1203
+    target 1203
+    latency "1ms"
+    bandwidth "10Gbit"
+  ]
+  edge [
+    source 0
+    target 1203
+    latency "500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1203
+    target 0
+    latency "500ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1204
+    target 1204
+    latency "1ms"
+    bandwidth "10Gbit"
+  ]
+  edge [
+    source 1203
+    target 1204
+    latency "2000ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1204
+    target 1203
+    latency "2000ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1205
+    target 1205
+    latency "1ms"
+    bandwidth "10Gbit"
+  ]
+  edge [
+    source 1203
+    target 1205
+    latency "4000ms"
+    bandwidth "238Mbit"
+  ]
+  edge [
+    source 1205
+    target 1203
+    latency "4000ms"
     bandwidth "238Mbit"
   ]
 ]

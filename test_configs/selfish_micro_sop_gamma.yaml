@@ -1,16 +1,20 @@
-# selfish_micro_sop_gamma.yaml (2026-10-28): the network-advantage (gamma > 0)
-# base. selfish_micro_sop_slow.yaml plus: honest-001 pinned at node 0 (the
-# fast side), a second bridge (attacker-bridge-2) at node 0 with a priority
-# link to honest-001, bridge 1 peering only with honest-002 (a cell pins both
-# to the same slow node, 3 s or 10 s from node 0), and the attacker reading the
-# honest chain through whichever bridge is ahead (read_bridge: best). Every
-# honest block then reaches the attacker at once through the bridge beside
-# its finder, while it reaches the other honest miner over the slow edge; the
-# attacker's reply reaches both miners through the bridges. The other honest
-# half mines on the attacker's branch in every race: gamma 0.5 in the
-# Eyal-Sirer sense (stock threshold 0.25). Shortest-path routing makes a
-# private fast link impossible, so this is the only way to give an attacker
-# a propagation edge in Shadow. The slow base is what remains without these
+# selfish_micro_sop_gamma.yaml (2026-10-28, v2): the network-advantage
+# (gamma > 0) base. Shadow routes by shortest path, so no host can be fast to
+# one side of a slow edge and slow to the other, and the first design (the
+# slow miner behind one 10 s edge) gave the attacker 20 s RPC round trips.
+# The honest path is slow by HOPS instead: honest-002 is eclipsed (no seed or
+# miner-ring link) and peers only with relay-slow, which a cell pins on node
+# 1204 (2 s beyond node 1203) or 1205 (4 s), so an honest block travels
+# honest-002 -> relay-slow -> node 0 in 2 L_f + 0.5 s (4.5 s / 8.5 s) while
+# relay-slow's other peers (seeds) sit near node 0. The attacker, bridge 1 and
+# honest-002 share node 1203 (1 ms apart, 0.5 s from node 0); honest-001 and
+# bridge 2 sit on node 0. Bridge 1 peers only with honest-002, so it leaks
+# nothing; the attacker reads through whichever bridge is ahead
+# (read_bridge: best) and publishes through both, so its reply reaches the
+# other honest miner in about a second: gamma 0.5 in the Eyal-Sirer sense
+# (stock threshold 0.25). Being eclipsed keeps honest-002 out of the matrix
+# `honest` target: specs set its hashrate and daemon flags by name. The slow
+# base is what remains without these
 # (test_gamma_base_is_the_slow_base_plus_a_second_bridge_and_the_pins).
 # 2026-09-26: the base grafts chain_snapshots/h10 (336 pre-mined blocks whose
 # tail sits at D0 = 120 x 10 h/s = 1,200, this topology's equilibrium) instead
@@ -71,10 +75,14 @@ agents:
     script: agents.autonomous_miner
     hashrate: 3
     start_time: 0s
+    topology_node: 1203
+    attributes: {eclipsed: 'true'}
+    peers: {exclusive: [relay-slow]}
   attacker-miner:
     daemon: monerod
     wallet: monero-wallet-rpc
     script: agents.selfish_miner
+    topology_node: 1203
     # Synchronized start (2026-09-26). The 12-minute late join this base
     # used until then existed because at fakechain genesis difficulty ANY
     # solo daemon could bank a high-cum-difficulty private chain in minutes
@@ -104,6 +112,7 @@ agents:
     daemon: monerod
     script: agents.selfish_bridge
     start_time: 0s
+    topology_node: 1203
     peers: {exclusive: [honest-002]}
   attacker-bridge-2:
     daemon: monerod
@@ -111,6 +120,9 @@ agents:
     start_time: 0s
     topology_node: 0
     peers: {priority: [honest-001]}
+  relay-slow:
+    daemon: monerod
+    start_time: 0s
   relay-001:
     daemon: monerod
     start_time: 30s
