@@ -109,6 +109,10 @@ ordering is busy ≈ unreachable (cleanly attributable) > occasional reachable
 attribution 4x for occasional senders and almost not at all for busy ones.
 [Journal: open question 12, E61.]
 
+## Finding 7 — The best MRL proposal, built and measured: works as designed, cover too thin (X3a)
+
+Tevador's #160 stemmable-inbound variant (the plan's top-rated proposal) was implemented as the fourteenth sim patch and run at full take-up (E62, run 102). The mechanism is faithful — 30,961 epoch events, edge 2 drawing on virtual inbound connections, users receiving relayed stems for the first time — but the cover is **15x too thin to dilute attribution: sp precision on unreachable users 0.9828 against 1.000 stock**. The design's own throttles compound (one mixed edge, ~38% virtual epochs, a 12-way per-/16 lottery users mostly lose): **71 relayed stems reached all 40 users together, against 1,063 of their own sends**. Rate scaling doesn't rescue it (~0.85-0.9 at mainnet sender rates). What survives is structural: an inbound-only adversary can *never* sit on stem edge 1, and the /16 deduplication hardens the inbound side. The precision-cover rationale — the reason to deploy it — does not survive contact.
+
 ## The bottom line
 
 Nothing in the candidate rule set survives the active adversary untrimmed; the
