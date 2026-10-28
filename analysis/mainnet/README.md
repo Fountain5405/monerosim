@@ -108,6 +108,23 @@ python3 analysis/mainnet/summarize.py --crawl "$OUT/crawl" --poll "$OUT/poll" \
   --fetch-ban-list "$OUT" --asn "$OUT/crawl/asn.jsonl" --out "$OUT/report.md"
 ```
 
+## Monitors
+
+The three owner nodes are polled continuously with
+`poll_node.py --peerlist-dedup` (60 s connections, 60 s peer list; with dedup an
+unchanged list is written as `{ts, unchanged, hash}`), plus
+`--dial-log PATH` where the node logs `net.p2p` at INFO. monerod prints the
+`[ip:port INC]` context prefix for incoming connections only when `net.p2p`
+logs at INFO or above (`--log-level 0,net.p2p:INFO`); without it
+`dials-YYYYMMDD.jsonl` simply stays empty. `--dial-regex` overrides the match.
+
+`collect_monitors.sh <hosts-file> [dest-root]` (hosts file lines:
+`<name> <ssh-target> <remote-dir>`) pulls them with rsync to
+`~/monerosim_local/monitors/<name>/`. `monitor_series.py <dir> --spy-cidrs FILE
+[--csv ...] [--json ...]` turns a monitor directory into address-free series
+and a summary. Raw monitor data holds mainnet addresses and never enters the
+repo.
+
 ## Politeness
 
 - `poll_node.py` never polls the given node more often than `--interval`
