@@ -400,8 +400,16 @@ rate of 0.332 (model 0.332, two miners 0.358); attacker orphan rate 0.455
 (model 0.433, two miners 0.368). Concentrating the honest hashrate in one
 miner removes the excess, so it comes from splitting the honest side
 across miners: honest shares lost between them, which the model's single
-honest miner cannot lose. Seed 2 runs. If it holds, SoP protects less as
-honest hashrate spreads over more pools, the realistic direction.
+honest miner cannot lose. Seed 2 (PASS) agrees: 0.382 against its
+partner's 0.436, 19.9 reveals per 1,000 found (two miners 24.5) and a
+network orphan rate of 0.342 (two miners 0.372). On the same two seeds,
+one honest miner averages 0.378 (the model 0.399, within noise) and two
+honest miners 0.445: splitting the same honest hashrate over two miners
+hands the attacker 0.054 and 0.081. SoP therefore protects less as honest
+hashrate spreads over more miners, the realistic direction (Monero has
+many pools); the model, with one honest miner, is the best case. The N=4
+cell (sop_v4_window_k6_h4_72h, the same hashrate over four miners, base
+selfish_micro_sop_h4.yaml) runs from 10-28 09:30Z.
 
 ## Validation in the sims
 
