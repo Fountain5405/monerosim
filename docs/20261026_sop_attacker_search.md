@@ -818,8 +818,14 @@ honest hashrate on one, two and four miners:
 | 2 (2.65 x 2) | 0.454, 0.436 | 0.385 | 1,950 |
 | 4 (1.325 x 4) | 0.505 (s1) | 0.386 | 1,920 |
 
+At the DEFAULT window (K=3, the validated param a047 cell, G=6, seed 1,
+10-28 19:20Z): one honest miner 0.452 against 0.451 / 0.514 / 0.478 with
+two (mean 0.481) and the model's 0.477; the four-miner cell runs (lithium,
+relaunched 19:06Z after my solver load tripped the memory guard, due
+~01:45Z 10-29).
+
 Each doubling of the honest miner count adds about 0.06 to the attacker's
-share at this alpha: alpha 0.47 is unprofitable against one honest miner,
+share at K=6 and alpha 0.47: alpha 0.47 is unprofitable against one honest miner,
 marginal against two and clearly profitable against four, at the window
 that gave SoP its best threshold (K=6, 0.474 with two miners). The
 default-window N=4 cell (lithium, due ~20:45Z) and the K=6 s2 give the
