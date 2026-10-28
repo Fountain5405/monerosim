@@ -314,9 +314,13 @@ misreads them), the sims put the K=2 crossing near 0.452 and the K=6
 crossing near 0.474 (each about +-0.005 from the two-cell noise),
 against the default window's 0.4635: a window of 16 objects lowers the
 threshold by about 0.011 and one of 80 raises it by about 0.010,
-against the model's 0.014 and 0.012. A K=2 cell at 0.45
-(sop_v4_window_k2_a045_72h, model 0.438 with G=2; launched 20:54Z)
-brackets the K=2 crossing directly. At K=6 and 0.48
+against the model's 0.014 and 0.012. At K=2 and 0.45
+(sop_v4_window_k2_a045_72h, G=2; both PASS, no dead daemons) the sims
+ran 0.436 and 0.441 against the model's 0.438 (37.9 and 45.2 reveals per
+1,000 found against 39.3), so the K=2 crossing is bracketed directly: it
+interpolates to 0.454 between the pair means (0.4385 at 0.45, 0.520 at
+0.47), the model's 0.4547. K=2 lowers the threshold by about 0.010 in
+the sims (model 0.014). At K=6 and 0.48
 (sop_v4_window_k6_a048_72h, G=8, the model's break-even at 0.476; both
 PASS, no dead daemons) the attack pays in one seed and breaks even in
 the other: 0.538 (34.7 reveals per 1,000 found against the model's
