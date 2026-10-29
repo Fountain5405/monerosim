@@ -1,0 +1,30 @@
+{
+ "run_id": "20261029_103017_lean_24_none_h300_k42_w13h_p3_m1_n600_x3_sph_sd64_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_x3_sph_sd64_s12345",
+ "archived_at": "2026-10-29T10:30:58Z",
+ "monerod_sim_sha": "8f93538bc745",
+ "wall": "2h 59m",
+ "exit_code": 0,
+ "min_avail_mb": 54059,
+ "txs_created": 1040,
+ "txs_in_blocks": 1008,
+ "note": "P60 X3b budget pole, spread (42 hidden spies, one per /24, dial 64): 273 spy stem receipts (3.50x E66 sd12 78 for 5.33x budget; band 300-550, missed below by 9%), all virtual (share 1.000), hop-1 0, all estimator recalls 0.000, light 0.000, 52 relayed stems at 24/40 users, 30,966 x3 events, virtual epochs 96.7%, union median 24 (E66 24: the added spy /16s displaced honest ones), edge-2 virtual 37.5%, per spy median 6, dial check 74-92 out ids median 83.5 zero inbound; E70",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0,
+ "light_out_quarters": [
+  0.0,
+  0.0,
+  0.0,
+  0.0
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.208,
+ "stem_txs": 1097,
+ "stem_hops_implied": 4.81,
+ "embargo_rate": 0.0018
+}
