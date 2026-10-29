@@ -1126,3 +1126,27 @@ the honest network's worst propagation delay with margin, and raising it
 weakens the share weighting (a share counts only if seen more than d
 before the block). A d sweep (5 / 10 / 20 s) on this topology and the
 slow-miner topology is the experiment that settles it (owner's call).
+
+#### The stock like-for-like at 0.45 (10-29, 19:04Z)
+
+`es_stock_a045_f6_s1`: the SM1 attacker on the stock rule at alpha 0.45,
+same 6 s topology and bridges: share 0.649 (1,936 canonical blocks),
+attacker orphan rate 0.109, network 0.385. The SM1 formula gives 0.652 at
+gamma 0 and 0.681 at gamma 0.5, so at this alpha the bridges' tie
+steering is worth nothing measurable (at 0.30 it read as gamma 0.28); a
+tie-racing attacker at 0.45 on the stock rule gets about 0.65 on this
+path and would get the same on the base topology.
+
+The best known attacker under each rule, alpha 0.45:
+
+| honest path | stock rule (SM1) | SoP (param attacker) |
+|---|---|---|
+| ms (base topology) | ~0.65 (formula, gamma 0; give-up-5 stubborn cells 0.528) | 0.44 |
+| 3 s | (box81, running) | 0.486 |
+| 6 s | 0.649 | 0.699 |
+
+Inside d SoP is worth about 0.2 of attacker share against the stock
+rule's best attacker; past d it is worth -0.05, and against the
+non-racing attacker class it is worth -0.18 (0.522 stock vs 0.699).
+The honest mechanism is unchanged by this cell: the lateness rule, not a
+tie race, is what the 6 s path hands the SoP attacker.
