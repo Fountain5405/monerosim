@@ -101,7 +101,7 @@ axes:
   latency:
     f3: {}
     f6:
-      relay-slow-1: {peers: {exclusive: [relay-slow-2]}}
+      relay-slow-1: {peers: {exclusive: [relay-slow-2], priority: []}}
   sample:
     s1:
       attacker:

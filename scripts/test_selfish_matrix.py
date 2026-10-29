@@ -997,7 +997,8 @@ def test_gamma_base_is_the_slow_base_plus_a_second_bridge_and_the_pins():
                                        "peers": {"priority": ["honest-001"]}}
     hide = {"hide-my-port": True}
     assert ag["relay-slow-1"] == {"daemon": "monerod", "start_time": "0s", "topology_node": 1214,
-                                  "attributes": {"eclipsed": "true"}, "daemon_options": hide}
+                                  "attributes": {"eclipsed": "true"}, "daemon_options": hide,
+                                  "peers": {"priority": ["monero-seed-001", "monero-seed-002"]}}
     assert ag["relay-slow-2"] == {"daemon": "monerod", "start_time": "0s", "topology_node": 1215,
                                   "attributes": {"eclipsed": "true"}, "daemon_options": hide,
                                   "peers": {"exclusive": ["relay-slow-3"]}}
@@ -1032,9 +1033,9 @@ def test_gamma_spec_moves_the_slow_relay_and_flags_the_eclipsed_miner():
         ag = cfg["agents"]
         r1 = ag["relay-slow-1"]
         if "_f6_" in cell:
-            assert r1["peers"] == {"exclusive": ["relay-slow-2"]}
+            assert r1["peers"] == {"exclusive": ["relay-slow-2"], "priority": []}
         else:
-            assert "peers" not in r1
+            assert r1["peers"] == {"priority": ["monero-seed-001", "monero-seed-002"]}
         assert ag["relay-slow-2"]["peers"] == {"exclusive": ["relay-slow-3"]}
         assert ag["relay-slow-3"]["peers"] == {"priority": ["monero-seed-001", "monero-seed-002"]}
         assert ag["honest-002"]["topology_node"] == ag["attacker-bridge"]["topology_node"] == 1203
