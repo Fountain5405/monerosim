@@ -1145,11 +1145,15 @@ The best known attacker under each rule, alpha 0.45:
 | honest path | stock rule (SM1) | SoP (param attacker) |
 |---|---|---|
 | ms (base topology) | ~0.65 (formula, gamma 0; give-up-5 stubborn cells 0.528) | 0.44 |
-| 3 s | (box81, running) | 0.486 |
+| 3 s | 0.671 (20:04Z; formula 0.652 at gamma 0, 0.681 at 0.5) | 0.486 |
 | 6 s | 0.649 | 0.699 |
 
-Inside d SoP is worth about 0.2 of attacker share against the stock
-rule's best attacker; past d it is worth -0.05, and against the
-non-racing attacker class it is worth -0.18 (0.522 stock vs 0.699).
+Inside d SoP is worth 0.19 to 0.21 of attacker share against the stock
+rule's best attacker (0.671 vs 0.486 on the 3 s path, ~0.65 vs 0.44 on
+the base topology); past d it is worth -0.05, and against the non-racing
+attacker class -0.18 (0.522 stock vs 0.699). The 3 s SM1 cell (1,900
+canonical blocks, attacker orphan rate 0.113, network 0.399) carries six
+invalid-chain warnings in the health column, like the two in the 6 s SoP
+cell: parent-feeding submissions, not a chain fault.
 The honest mechanism is unchanged by this cell: the lateness rule, not a
 tie race, is what the 6 s path hands the SoP attacker.
