@@ -15,6 +15,9 @@
 # (K=3 G=6 L=1 M=1 R=1 Z=1) at k1..k4; d2 = the stock-optimal window_stubborn
 # depth-2 attacker at k0 (reference) and k2 (which attacker is stronger on a
 # half-adopted network); honest = no attacker at k2 (mixed-network health).
+# Every honest wallet logs at ERROR (10-29): a STOCK miner's wallet cannot parse
+# the SoP share data in the coinbases it receives and logged 7.5 GB per miner
+# over 72 h in the first k2 cell (the archive was 22 GB and filled phantom).
 name: sop_v4_adopt_72h
 seed: 27791
 base: test_configs/selfish_micro_sop_h4.yaml
@@ -44,6 +47,8 @@ axes:
         daemon_options:
           sim-share-or-perish: true
           sim-sop-w: 16
+      honest:
+        wallet_options: {log-level: "0,wallet.wallet2:ERROR"}
     d2:
       attacker:
         attributes:
@@ -60,10 +65,14 @@ axes:
         daemon_options:
           sim-share-or-perish: true
           sim-sop-w: 16
+      honest:
+        wallet_options: {log-level: "0,wallet.wallet2:ERROR"}
     honest:
       attacker:
         attributes: {strategy: honest}
         daemon_options: {offline: false, sim-share-or-perish: true, sim-sop-w: 16}
+      honest:
+        wallet_options: {log-level: "0,wallet.wallet2:ERROR"}
   adoption:
     k0: {}
     k1: &mixed
