@@ -853,3 +853,53 @@ runs next on lithium (~a day) to show how fast the gap closes with the
 cap, but a bound tight enough to test whether the family is near-optimal
 needs the block-granular abstraction (shares as binned weights), which is
 the next piece of model work if MRL wants it.
+
+### 5. Partial adoption, first cell (10-29)
+
+`sop_v4_adopt_72h share_k2_a045_s1`: four equal honest miners (1.375 h/s
+each), honest-001 and honest-002 on SoP, honest-003 and honest-004 on the
+stock rule, relay-001 and seeds 1-3 SoP, relay-002 (vanilla monerod) and
+seeds 4-6 stock, the validated param attacker at alpha 0.45.
+
+| measured at honest-001 (SoP) | value |
+|---|---|
+| attacker share of the canonical chain | 0.998 (1,772 of 1,776 blocks) |
+| network orphan rate | 0.547 |
+| honest-001 / honest-002 blocks found | 537 / 521, almost all orphaned |
+| honest-003 / honest-004 blocks found | 515 / 573, none on this chain |
+| health | SPLIT 418 (deepest divergence, blocks) |
+
+The network ran two chains for most of the 72 h. The halves diverged for
+good at simulated 06:12 (height 1065 on the SoP side against 1062 on the
+stock side, after three transient splits in the previous half hour), and
+ended at height 2770 (difficulty 545) on the SoP side and 2615 (480) on the
+stock side. The halves stayed connected at the P2P level: honest-001 kept
+receiving the stock side's blocks (562 announcements after noon on day 1
+against 9,049 from its own side) and honest-003 stored 1,890 of the SoP
+chain's blocks as alternatives. honest-003 rejoined the SoP chain only in
+three bulk syncs (125, 660 and 1,105 alternative blocks added in bursts at
+the same hour of each day, 30 reorganizations in all, the last at day 3
+09:42 to height 2352) and diverged again each time. No line in the stock
+daemons' logs rejects a block.
+
+Reading: the two rules settle a contested race differently. A SoP node
+keeps the branch with the share weight, which with this attacker is the
+attacker's; a stock node keeps the first block it saw, which is the honest
+one. After a race the halves sit on different branches, the SoP half (the
+attacker's 45 % plus two honest miners) outpaces the stock half (two honest
+miners, whose difficulty then falls), and the stock half follows the
+heavier chain only when its daemon's sync logic pulls it, which happened
+once a day here rather than at the next block. Why the resync is that
+rare is not established (monerod's chain-request path on a block with an
+unknown parent; the vanilla relay-002 also logged 59,031 failed outbound
+connections and "wrong network" handshakes against the sim binary, so the
+stock half's fabric was its two miners and three seeds). What the cell
+shows regardless of that detail: at 50 % adoption the honest side is split
+into two 27.5 % halves, the attacker dominates the SoP chain outright and
+the stock miners' blocks count on neither chain once they resync. The
+remaining adoption cells say whether this is attacker-driven (honest_k2:
+the same mixed network with no attacker) and how it scales (k1, k3, and
+the all-stock k0 and all-SoP k4 references). Until those are in, the
+deployment reading is provisional: a fork-choice change that half the
+network runs is a split waiting for a race, and SoP would need a flag-day
+rollout.
