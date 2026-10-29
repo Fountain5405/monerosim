@@ -112,7 +112,10 @@ exclude:
   - {arm: d2, countermeasure: sop}
   - {arm: es, countermeasure: sop}
   - {arm: es, alpha: a040}
-  - {arm: es, alpha: a045}
+  # es at a045 kept (10-29): the stock d2 attacker at a045 / f6 scored 0.522
+  # with gamma 0.000 (it never races a tie, so the slow path gives it nothing);
+  # the like-for-like stock comparison for the SoP 0.699 is a tie-racing
+  # attacker on the stock rule at the same alpha and path.
   - {arm: share, alpha: a030}
   - {arm: d2, alpha: a040}
   # d2 at a045 kept (10-29): the SoP cell at a045 / f6 scored 0.699, so the

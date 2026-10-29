@@ -1022,3 +1022,37 @@ result, as expected for a block-counted share. Seven tail cells remain
 queued (param a046, stock d2 a036 / a038, 1h a047, control sop / stock,
 four-miner a047); the conclusion stands unless one of them moves by more
 than the seed spread.
+
+#### The stock comparison at 0.45 (10-29, 13:12Z)
+
+`d2_stock_a045_f6_s1`: the stock reference attacker (window_stubborn,
+give up two behind, weigh difficulty) on the stock fork rule at the same
+alpha and the same 6 s topology, bridges and all:
+
+| | stock rule, d2 attacker (this cell) | SoP, param attacker (above) |
+|---|---|---|
+| attacker share | 0.522 (2,015 canonical blocks) | 0.699 |
+| gamma (ties won through the bridges) | 0.000 | 0.173 |
+| attacker orphan rate | 0.152 | 0.176 |
+| network orphan rate | 0.260 | 0.487 |
+| base topology, same attacker and rule | ~0.51 model (0.492 at 0.44), 0.528 give-up-5 cells | 0.44 |
+
+The stock number is the base-topology number. The d2 attacker never races
+a tie (gamma 0.000: it withholds until it leads and reveals from ahead),
+so bridges beside the miners and a 6 s honest path give it nothing; the
+stock first-seen rule only rewards a propagation advantage to an attacker
+that publishes into ties. Under SoP the same path lifts the attacker from
+0.44 to 0.699 without racing: every honest block is late at the far
+miner, weighs 0 there, and the attacker's reply (delivered at 0 s by the
+bridge) wins the weighing. On this topology SoP hands its attacker 0.18
+more than the stock rule hands the stock reference attacker.
+
+The like-for-like stock comparison is a tie-racing attacker on the stock
+rule at 0.45 on this path (arm `es`, SM1), added to the spec and queued
+next on box80; with honest-002 (half the honest hashrate) always hearing
+the attacker's reply first, gamma is about 0.5 and the Eyal-Sirer formula
+gives 0.68. If it measures near 0.68, SoP on a 6 s-path network gives a
+non-racing attacker what the stock rule gives only a racing one, and the
+honest side keeps nothing of SoP's protection; if it measures below, SoP
+is strictly worse than the stock rule there. The 3 s cell (box81) still
+decides whether the mechanism is the 5 s lateness rule.

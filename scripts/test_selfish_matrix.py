@@ -1019,15 +1019,15 @@ def test_gamma_base_is_the_slow_base_plus_a_second_bridge_and_the_pins():
 
 
 def test_gamma_spec_moves_the_slow_relay_and_flags_the_eclipsed_miner():
-    """sop_v4_gamma_72h: stock d2 attacker at 0.30 / 0.35, SoP param attacker
-    at 0.35 / 0.40 / 0.45, each with the honest path 3 s (f3: relay-slow-1
+    """sop_v4_gamma_72h: stock d2 attacker at 0.30 / 0.35 / 0.45, SM1 (es) at
+    0.30 / 0.35 / 0.45, SoP param attacker at 0.35 / 0.40 / 0.45, each with the honest path 3 s (f3: relay-slow-1
     peers normally) or 6 s (f6: relay-slow-1 -> 2 -> 3 chained). honest-002 is
     eclipsed (outside the `honest` target), so the spec sets its hashrate and
     SoP flag by name."""
     cells = _cells(_load_spec("sop_v4_gamma_72h.yaml"))
     assert sorted(cells) == sorted(
         [f"d2_stock_{a}_{l}_s1" for a in ("a030", "a035", "a045") for l in ("f3", "f6")]
-        + [f"es_stock_{a}_{l}_s1" for a in ("a030", "a035") for l in ("f3", "f6")]
+        + [f"es_stock_{a}_{l}_s1" for a in ("a030", "a035", "a045") for l in ("f3", "f6")]
         + [f"share_sop_{a}_{l}_s1" for a in ("a035", "a040", "a045") for l in ("f3", "f6")])
     for cell, cfg in cells.items():
         ag = cfg["agents"]
