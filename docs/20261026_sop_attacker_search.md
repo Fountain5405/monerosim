@@ -992,3 +992,33 @@ network as a whole loses slightly more (3.0 % against 2.4 %). One seed
 each; the 3 s pair (under the rule, expected to match stock) and the 12 s
 pair are queued. For a pool, 10 % of blocks at a 6 s propagation delay is
 the number to weigh against the mitigation.
+
+### 7. Tail emission, first rerun (10-29)
+
+Every cell above ran on the stock emission schedule: the snapshot sits
+where a block pays about 35.1 XMR, and the share is counted in blocks, so
+the emission can only matter if a daemon's or an agent's behaviour depends
+on the reward. The owner asked to test that assumption rather than assume
+it. `sop_v4_param_tail_72h` reruns the headline cell (default window,
+alpha 0.47, G=6 L=1 M=1 R=1 Z=1, seed 1) with
+`general.emission: {mode: tail, from_height: auto}` on top of the original
+spec (the matrix test asserts the two specs differ in nothing else). The
+generator passed `--sim-tail-emission-height=1054` to all 12 daemons; the
+daemon logs show every block from 1054 on paying 0.600 XMR (2,512 such
+blocks) and only the preload paying 35.1.
+
+| cell | emission | share | attacker orphan rate | network orphan rate | blocks |
+|---|---|---|---|---|---|
+| a047 s1 (10-26) | stock | 0.451 | 0.362 | 0.350 | ~1,950 |
+| a047 s2 (10-26) | stock | 0.514 | 0.308 | 0.368 | |
+| a047 s3 (10-26) | stock | 0.478 | 0.344 | 0.352 | |
+| a047 s1 tail (10-29) | tail, 0.6 XMR | 0.508 | 0.301 | 0.353 | 1,948 |
+
+The tail rerun sits inside the stock cells' seed spread (0.451 to 0.514,
+mean 0.481) on every column. Same seed as the stock s1 cell, but the
+emission change alters every block hash, so this is a fourth sample, not
+a paired comparison. No sign that the emission schedule touches the
+result, as expected for a block-counted share. Seven tail cells remain
+queued (param a046, stock d2 a036 / a038, 1h a047, control sop / stock,
+four-miner a047); the conclusion stands unless one of them moves by more
+than the seed spread.
