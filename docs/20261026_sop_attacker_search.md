@@ -818,11 +818,13 @@ honest hashrate on one, two and four miners:
 | 2 (2.65 x 2) | 0.454, 0.436 | 0.385 | 1,950 |
 | 4 (1.325 x 4) | 0.505 (s1) | 0.386 | 1,920 |
 
-At the DEFAULT window (K=3, the validated param a047 cell, G=6, seed 1,
-10-28 19:20Z): one honest miner 0.452 against 0.451 / 0.514 / 0.478 with
-two (mean 0.481) and the model's 0.477; the four-miner cell runs (lithium,
-relaunched 19:06Z after my solver load tripped the memory guard, due
-~01:45Z 10-29).
+At the DEFAULT window (K=3, the validated param a047 cell, G=6; 10-29
+02:30Z): one honest miner 0.452 and 0.481 (mean 0.467) against 0.451 /
+0.514 / 0.478 with two (mean 0.481) and the model's 0.477. At the default
+window the one-miner and two-miner cells are within seed noise of each
+other and of the model, unlike at K=6 (0.378 vs 0.445): the honest-side
+splitting costs more the longer the window keeps a race subjective. The
+four-miner cell at the default window runs (lithium, due ~01:45Z 10-29).
 
 Each doubling of the honest miner count adds about 0.06 to the attacker's
 share at K=6 and alpha 0.47: alpha 0.47 is unprofitable against one honest miner,
