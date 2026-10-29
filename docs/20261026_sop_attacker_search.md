@@ -964,3 +964,31 @@ miner within d of the attacker's, and a well-connected attacker turns the
 rule's lateness penalty against honest miners whose propagation exceeds
 d. The parameter d, which we have not varied, then becomes the central
 design question.
+
+### 3. The slow honest miner, first pair (10-29)
+
+`sop_v4_slow_72h` l6: the no-attacker control (4.7 / 2.65 / 2.65, third
+miner honest and connected) with honest-002 behind a chain of four 1.5 s
+relay hops, 6 s one way, just past SoP's 5 s rule; stock and SoP, one seed
+each. Blocks found and kept per miner (canonical chain of the connected
+reference node, in-run blocks only):
+
+| rule | honest-001 (fast) | honest-002 (6 s) | third miner (fast) | network orphan rate |
+|---|---|---|---|---|
+| stock | 594 of 601 kept, lost 7 (1.2 %) | 567 of 597, lost 30 (5.0 %) | 953 of 967, lost 14 (1.4 %) | 0.024 |
+| SoP | 539 of 541, lost 2 (0.4 %) | 528 of 591, lost 63 (10.7 %) | 1,073 of 1,074, lost 1 (0.1 %) | 0.030 |
+
+On the stock rule a 6 s link costs the slow miner 5 % of its blocks (its
+blocks arrive 6 s late and it hears others' 6 s late, so about 7 % of them
+meet a competitor and most of those lose on first-seen) and the fast
+miners pay about 1 % each when the slow block happened to win. Under SoP
+the slow miner loses twice as much, 10.7 %, and the fast miners almost
+nothing: every race between a fast block and a slow one is settled for
+the fast side, because the slow block is more than d behind at every fast
+node and weighs 0, and the slow miner's own view of the fast block is
+late too, so it keeps extending its own branch for a while. SoP moves the
+whole cost of a slow link onto the slow miner and roughly doubles it. The
+network as a whole loses slightly more (3.0 % against 2.4 %). One seed
+each; the 3 s pair (under the rule, expected to match stock) and the 12 s
+pair are queued. For a pool, 10 % of blocks at a 6 s propagation delay is
+the number to weigh against the mitigation.
