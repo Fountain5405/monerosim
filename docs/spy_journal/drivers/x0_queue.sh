@@ -5,9 +5,9 @@
 # with analysis/spy/x0_calibration.py; the next one starts. Stops on any failure or trip.
 # Edit the queue file while it runs: it is re-read before each cell.
 set -u
-REPO=/home/lever65/monerosim
-S=/home/lever65/queue
-ARCH=/home/lever65/monerosim_archives
+REPO=${X0_REPO:-$HOME/monerosim}
+S=${X0_QUEUE:-$HOME/queue}
+ARCH=${X0_ARCHIVE:-$HOME/monerosim_archives}
 Q=$(readlink -f "$1")   # absolute: the loop cd's into $REPO before each run, so a relative queue path vanished after the first cell (tr, 2026-10-28)
 EV=$S/x0_queue.events
 mkdir -p "$ARCH"
