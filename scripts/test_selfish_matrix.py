@@ -1026,6 +1026,7 @@ def test_gamma_spec_moves_the_slow_relay_and_flags_the_eclipsed_miner():
     cells = _cells(_load_spec("sop_v4_gamma_72h.yaml"))
     assert sorted(cells) == sorted(
         [f"d2_stock_{a}_{l}_s1" for a in ("a030", "a035", "a045") for l in ("f3", "f6")]
+        + [f"es_stock_{a}_{l}_s1" for a in ("a030", "a035") for l in ("f3", "f6")]
         + [f"share_sop_{a}_{l}_s1" for a in ("a035", "a040", "a045") for l in ("f3", "f6")])
     for cell, cfg in cells.items():
         ag = cfg["agents"]
@@ -1051,7 +1052,7 @@ def test_gamma_spec_moves_the_slow_relay_and_flags_the_eclipsed_miner():
         att = ag["attacker-miner"]["attributes"]
         assert att["bridges"] == "attacker-bridge,attacker-bridge-2" and att["read_bridge"] == "best"
         assert att["feed_parents"] == "true"
-        assert att["strategy"] == ("param_stubborn" if sop else "window_stubborn")
+        assert att["strategy"] == {"share": "param_stubborn", "d2": "window_stubborn", "es": "eyal_sirer"}[cell.split("_")[0]]
 
 
 def test_spec_general_overrides_merge_into_the_base_general_block(tmp_path):

@@ -60,6 +60,14 @@ axes:
         daemon_options:
           sim-share-or-perish: true
           sim-sop-w: 16
+    # es (10-29): the classic Eyal-Sirer attacker (SM1), which reveals on a
+    # tie, so a propagation edge is exactly what ES's gamma describes. The d2
+    # attacker at 0.30 / f6 scored 0.249 (gamma 0.013): it reveals only when
+    # strictly ahead on work and never races a tie, so it cannot use the edge.
+    es:
+      attacker:
+        attributes:
+          strategy: eyal_sirer
   countermeasure:
     stock: {}
     sop:
@@ -102,6 +110,9 @@ axes:
 exclude:
   - {arm: share, countermeasure: stock}
   - {arm: d2, countermeasure: sop}
+  - {arm: es, countermeasure: sop}
+  - {arm: es, alpha: a040}
+  - {arm: es, alpha: a045}
   - {arm: share, alpha: a030}
   - {arm: d2, alpha: a040}
   # d2 at a045 kept (10-29): the SoP cell at a045 / f6 scored 0.699, so the

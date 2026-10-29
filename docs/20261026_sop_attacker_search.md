@@ -944,6 +944,16 @@ The health flag is two "Sent invalid chain" peer events, not a split
 (split depth 0); the attacker's parent feeding worked (52 feeds, no
 tracebacks, 268 concessions).
 
+The stock rule's reference on the same topology (10-29 08:40Z): the
+depth-2 stubborn attacker at alpha 0.30 scored 0.249 (realized gamma
+0.013, 2,032 blocks), below its hashrate, which is the gamma-zero stock
+result and says the 6 s detour gives THIS attacker nothing: it reveals
+only when strictly ahead on work and never races a tie, so a propagation
+edge is irrelevant to it. The attacker Eyal-Sirer's gamma describes (SM1,
+which reveals on a tie) is added to the spec at 0.30 and 0.35; the SoP
+attacker above, by contrast, contests every honest block with share weight
+within seconds, which is why the edge hurts under SoP and not here.
+
 Provisional until two cells land: the same attacker with a 3 s honest
 path (under the 5 s rule: if SoP's protection returns there, the collapse
 is the lateness rule rather than connectivity itself), and the stock
