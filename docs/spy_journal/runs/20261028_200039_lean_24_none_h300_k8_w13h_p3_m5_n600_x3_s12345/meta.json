@@ -1,0 +1,30 @@
+{
+ "run_id": "20261028_200039_lean_24_none_h300_k8_w13h_p3_m5_n600_x3_s12345",
+ "box": "simbox3",
+ "cell": "lean_24_none_h300_k8_w13h_p3_m5_n600_x3_s12345",
+ "archived_at": "2026-10-28T20:01:46Z",
+ "monerod_sim_sha": "472e57c6fabf",
+ "wall": "4h 39m",
+ "exit_code": 0,
+ "min_avail_mb": 81026,
+ "txs_created": 1031,
+ "txs_in_blocks": 1022,
+ "note": "P59 X3b-dense (40 spies in 8 /24s, 5 each, relay-dialed, universal adoption): light 0.0598, 187 spy stem receipts all relay-dialed (0 virtual), hop-1 user txs 14, sp precision on users 1.000 / sp_r recall 0.014, 67 relayed stems at 29/40 users, 30,968 x3 events, union median 23, edge-2 virtual 37.5%, wall 281 m on simbox3; E67",
+ "scored_cell": "24/none",
+ "spies": 40,
+ "spy_24s": 8,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0598,
+ "light_out_quarters": [
+  0.0598,
+  0.0604,
+  0.06,
+  0.0591
+ ],
+ "model_out": 0.0345,
+ "fluff_per_hop": 0.201,
+ "stem_txs": 1095,
+ "stem_hops_implied": 4.98,
+ "embargo_rate": 0.0
+}
