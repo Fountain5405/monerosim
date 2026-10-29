@@ -1025,7 +1025,7 @@ def test_gamma_spec_moves_the_slow_relay_and_flags_the_eclipsed_miner():
     SoP flag by name."""
     cells = _cells(_load_spec("sop_v4_gamma_72h.yaml"))
     assert sorted(cells) == sorted(
-        [f"d2_stock_{a}_{l}_s1" for a in ("a030", "a035") for l in ("f3", "f6")]
+        [f"d2_stock_{a}_{l}_s1" for a in ("a030", "a035", "a045") for l in ("f3", "f6")]
         + [f"share_sop_{a}_{l}_s1" for a in ("a035", "a040", "a045") for l in ("f3", "f6")])
     for cell, cfg in cells.items():
         ag = cfg["agents"]

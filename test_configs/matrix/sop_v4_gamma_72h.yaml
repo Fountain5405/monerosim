@@ -104,4 +104,6 @@ exclude:
   - {arm: d2, countermeasure: sop}
   - {arm: share, alpha: a030}
   - {arm: d2, alpha: a040}
-  - {arm: d2, alpha: a045}
+  # d2 at a045 kept (10-29): the SoP cell at a045 / f6 scored 0.699, so the
+  # stock rule at the same alpha and path is the direct comparison (ES with
+  # gamma 0.5 predicts ~0.68 there).
