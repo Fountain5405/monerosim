@@ -37,6 +37,19 @@ axes:
         daemon: monerod-sim
         daemon_options: {sim-share-or-perish: true}
   alpha:
+    # a044 / a045 added 10-29: with four honest miners a047 scored 0.549 (two
+    # miners 0.481), so the four-miner crossing lies below 0.47; the same G=6
+    # knobs (the validated family at 0.45-0.47).
+    a044:
+      attacker:
+        hashrate: 4.4
+        attributes: {give_up_objects: '6', hold_shares: '1', publish_lead: '1', reveal_margin: '1', reveal_depth: '1', block_deficit: '0'}
+      honest: {hashrate: [1.4, 1.4, 1.4, 1.4]}
+    a045:
+      attacker:
+        hashrate: 4.5
+        attributes: {give_up_objects: '6', hold_shares: '1', publish_lead: '1', reveal_margin: '1', reveal_depth: '1', block_deficit: '0'}
+      honest: {hashrate: [1.375, 1.375, 1.375, 1.375]}
     a047:
       attacker:
         hashrate: 4.7

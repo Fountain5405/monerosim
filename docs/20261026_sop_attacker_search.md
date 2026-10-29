@@ -824,7 +824,11 @@ At the DEFAULT window (K=3, the validated param a047 cell, G=6; 10-29
 window the one-miner and two-miner cells are within seed noise of each
 other and of the model, unlike at K=6 (0.378 vs 0.445): the honest-side
 splitting costs more the longer the window keeps a race subjective. The
-four-miner cell at the default window runs (lithium, due ~01:45Z 10-29).
+four-miner cell at the default window (10-29 02:45Z) scored 0.549: the
+same +0.07 step from two to four miners as at K=6. So with the honest
+hashrate on four miners alpha 0.47 is clearly profitable at the default
+window too, and the realistic four-pool threshold lies below 0.4635;
+four-miner cells at 0.44 and 0.45 are queued to bracket it.
 
 Each doubling of the honest miner count adds about 0.06 to the attacker's
 share at K=6 and alpha 0.47: alpha 0.47 is unprofitable against one honest miner,
