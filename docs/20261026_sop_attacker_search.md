@@ -869,10 +869,32 @@ blocks per side the boundary is hit in most races, and the award at the
 boundary is worth most of the race. SSZ's bounds were tight at T = 75 in a
 block-only state space; this one is object-granular (one share at a time)
 and 4 blocks per side is already 85 M states. The 4/4/64/24/24 upper solve
-runs next on lithium (~a day) to show how fast the gap closes with the
-cap, but a bound tight enough to test whether the family is near-optimal
+(below) shows how fast the gap closes with the cap, but a bound tight enough to test whether the family is near-optimal
 needs the block-granular abstraction (shares as binned weights), which is
 the next piece of model work if MRL wants it.
+
+#### The 4-block cap (10-29, 20:40Z)
+
+`solve --bound upper` with caps 4/4/64/24/24 at alpha 0.45 (85,108,639
+states, 17.9 h on lithium): upper bound 0.7265. The action counts over the
+decision pairs are hold 240 M, give up 8.9 M, publish 20 k, reveal 0: the
+optimistic policy rides the boundary award rather than revealing, as at
+3/3.
+
+| caps (blocks per side) | lower bound | upper bound | gap |
+|---|---|---|---|
+| 3/3 | 0.4500 | 0.8036 | 0.354 |
+| 4/4 | 0.4500 | 0.7265 | 0.277 |
+
+One more block per side took 0.077 off the upper bound and 10x the
+states; the sandwich at 0.45 is [0.45, 0.73] against a best-known
+attacker of 0.39 (model) / 0.43 (sims, two miners). The next cap (5/5)
+is about 850 M states and 120 GB of tables, beyond lithium and phantom
+(the owner's 256 GB box could run it, for perhaps a 0.06 tighter bound).
+The route to a bound that can say whether the family is near-optimal
+remains the block-granular abstraction (shares as binned weights, caps
+to 8 blocks per side at a few million states); days of model work,
+owner's call.
 
 ### 5. Partial adoption, first cell (10-29)
 
