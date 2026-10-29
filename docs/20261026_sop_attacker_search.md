@@ -843,14 +843,24 @@ headline.
 `sop_v4_param_h4_72h share_sop2_param_a045_s1`: the four-honest-miner
 network (four pools of 1.375, attacker 4.5) with the default window at
 alpha 0.45, one seed: share 0.449 (1,973 canonical blocks), honest to
-three decimals; attacker orphan rate 0.380, network 0.371. With a047 at
-0.549 the four-pool crossing lies between 0.45 and 0.47, against 0.4635
-measured with two honest miners (race model 0.469). The a044 cell is
-running on phantom (14:19Z) to bracket it from below; a reading at or
-under 0.44 there puts the crossing in 0.45 to 0.46 and the headline
-"attacker profits from 0.4635" becomes "from about 0.45" for a network
-of four equal pools. The K=6 window's four-miner points (0.505 / 0.507
-at 0.47, two seeds) showed the same direction.
+three decimals; attacker orphan rate 0.380, network 0.371. The a044 cell
+(20:45Z, same box and seed) gives 0.395, below honest by 0.045:
+
+| alpha | four-miner share | share - alpha |
+|---|---|---|
+| 0.44 | 0.395 | -0.045 |
+| 0.45 | 0.449 | -0.001 |
+| 0.47 | 0.549 | +0.079 |
+
+Linear interpolation on both sides puts the four-pool crossing at 0.450,
+against 0.4635 measured with two honest miners (race model 0.469). One
+seed per point; the two-miner seed spread at 0.47 was 0.06 in share, so
+the crossing carries about 0.01 of uncertainty. For a network of four
+equal pools the headline "attacker profits from 0.4635" reads "from
+about 0.45", 0.013 lower; the direction is the one the K=6 window's
+four-miner points (0.505 / 0.507 at 0.47) showed. Fragmentation of the
+honest hashrate costs SoP a little of its margin, not much; eight miners
+would say whether it keeps shrinking (owner's call, needs a bigger box).
 
 ### 6. The upper bound, first solve (10-28)
 
