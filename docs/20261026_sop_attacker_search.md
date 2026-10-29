@@ -816,7 +816,7 @@ honest hashrate on one, two and four miners:
 |---|---|---|---|
 | 1 (5.29 + 0.01) | 0.373, 0.382 (model 0.399) | 0.332, 0.342 | 2,000 |
 | 2 (2.65 x 2) | 0.454, 0.436 | 0.385 | 1,950 |
-| 4 (1.325 x 4) | 0.505 (s1) | 0.386 | 1,920 |
+| 4 (1.325 x 4) | 0.505, 0.507 | 0.386, 0.376 | 1,920, 1,938 |
 
 At the DEFAULT window (K=3, the validated param a047 cell, G=6; 10-29
 02:30Z): one honest miner 0.452 and 0.481 (mean 0.467) against 0.451 /
