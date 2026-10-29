@@ -1090,3 +1090,39 @@ lines only; for SM1 cells read the share and the orphan rates. At 0.45
 the formula gives 0.67 at gamma 0.28 and 0.68 at 0.5, so the 0.45 cell
 (box80, 14:48Z) says whether SoP's 0.699 matches the best stock attacker
 on this path or exceeds it.
+
+#### The 3 s path (10-29, 15:30Z): the mechanism is the lateness rule
+
+`share_sop_a045_f3_s1`: the same attacker, alpha and bridges, with
+relay-slow-1 peering with the hub directly so the honest path between the
+two miners is 3 s (two 1.5 s hops), inside SoP's 5 s rule:
+
+| honest path | SoP attacker share | attacker orphan rate | network orphan rate | gamma (ties through bridges) |
+|---|---|---|---|---|
+| ms (base topology, a045 s1 / s2) | 0.431 / 0.378 | 0.374 / 0.413 | 0.331 / 0.316 | - |
+| 3 s (this cell) | 0.486 (1,932 blocks) | 0.327 | 0.397 | 0.175 |
+| 6 s | 0.699 | 0.176 | 0.487 | 0.173 |
+
+Inside the rule the attacker gets 0.486: about 0.07 over the base
+topology, which is what bridges beside both miners buy on any rule (they
+steer ties; gamma is the same 0.175 as on the 6 s path), while the honest
+blocks, late at the far miner but by less than d, keep their weight and
+SoP's weighing still beats the attacker. Past the rule the same attacker
+gets 0.699. The difference is the lateness rule alone: on the 6 s path the
+far miner sees the attacker's bridged reply first and the honest block
+more than d later, so the honest block weighs 0 there and the attacker's
+reply wins every weighing (verified from the logs for the 6 s cell).
+
+Reading for the mitigation case: SoP protects against a propagation-
+advantage attacker as long as the honest network's own propagation, as
+seen against the attacker's fastest reply, stays inside d. Where it does
+not, SoP turns the honest delay into a gift for the attacker: +0.26 at
+alpha 0.45 for a 6 s path, from a rule whose base-topology effect is
+-0.08 against the stock reference. The stock rule on the same path gives
+its non-racing reference attacker nothing (0.522, item above) and the
+tie-racing SM1 attacker about 0.68 by formula (cells at 0.45 on both
+paths running). That makes d the central design parameter: it must clear
+the honest network's worst propagation delay with margin, and raising it
+weakens the share weighting (a share counts only if seen more than d
+before the block). A d sweep (5 / 10 / 20 s) on this topology and the
+slow-miner topology is the experiment that settles it (owner's call).
