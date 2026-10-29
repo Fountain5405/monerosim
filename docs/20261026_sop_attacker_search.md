@@ -838,6 +838,20 @@ default-window N=4 cell (lithium, due ~20:45Z) and the K=6 s2 give the
 next two points; the N trend, not a single threshold, is the honest
 headline.
 
+#### The four-miner crossing (10-29, 14:16Z)
+
+`sop_v4_param_h4_72h share_sop2_param_a045_s1`: the four-honest-miner
+network (four pools of 1.375, attacker 4.5) with the default window at
+alpha 0.45, one seed: share 0.449 (1,973 canonical blocks), honest to
+three decimals; attacker orphan rate 0.380, network 0.371. With a047 at
+0.549 the four-pool crossing lies between 0.45 and 0.47, against 0.4635
+measured with two honest miners (race model 0.469). The a044 cell is
+running on phantom (14:19Z) to bracket it from below; a reading at or
+under 0.44 there puts the crossing in 0.45 to 0.46 and the headline
+"attacker profits from 0.4635" becomes "from about 0.45" for a network
+of four equal pools. The K=6 window's four-miner points (0.505 / 0.507
+at 0.47, two seeds) showed the same direction.
+
 ### 6. The upper bound, first solve (10-28)
 
 `scripts/sop_mdp.py solve --bound upper` (564b5ce5): the
