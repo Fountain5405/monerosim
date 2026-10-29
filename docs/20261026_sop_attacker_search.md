@@ -1070,3 +1070,23 @@ non-racing attacker what the stock rule gives only a racing one, and the
 honest side keeps nothing of SoP's protection; if it measures below, SoP
 is strictly worse than the stock rule there. The 3 s cell (box81) still
 decides whether the mechanism is the 5 s lateness rule.
+
+#### The stock gamma reference at 0.30 (10-29, 14:45Z)
+
+`es_stock_a030_f6_s1`: the Eyal-Sirer SM1 attacker (withhold at lead 1,
+publish into the tie, reveal all when the lead drops to one) on the
+stock rule, alpha 0.30, the same 6 s topology and bridges: share 0.303
+(2,044 canonical blocks), attacker orphan rate 0.235, network 0.249. The
+SM1 formula gives 0.273 at gamma 0 and 0.327 at gamma 0.5; 0.303 is an
+effective gamma of 0.28: the bridges steer part of the honest hashrate
+onto the attacker's tie block, but less than the half the topology was
+built for (honest-002 hears the attacker's reply about 2 s after the
+agent reads honest-001's block through bridge 2, and honest-001's block
+6 s later; why that yields 0.28 rather than 0.5 is left open). The
+attacker did withhold: an honest miner at the hub loses about 1 % of its
+blocks (item 3), this one lost 23.5 %. The reveal audit and the gamma
+column read 0 for this arm because they parse the param_stubborn log
+lines only; for SM1 cells read the share and the orphan rates. At 0.45
+the formula gives 0.67 at gamma 0.28 and 0.68 at 0.5, so the 0.45 cell
+(box80, 14:48Z) says whether SoP's 0.699 matches the best stock attacker
+on this path or exceeds it.
