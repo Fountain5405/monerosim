@@ -909,3 +909,48 @@ the all-stock k0 and all-SoP k4 references). Until those are in, the
 deployment reading is provisional: a fork-choice change that half the
 network runs is a split waiting for a race, and SoP would need a flag-day
 rollout.
+
+### 4. The network-advantage attacker, first cell (10-29)
+
+`sop_v4_gamma_72h share_sop_a045_f6_s1`: the validated param attacker at
+alpha 0.45 on the v3 gamma topology: honest-001 beside the attacker's
+bridge 2 at the hub, honest-002 beside the attacker and its bridge 1 on a
+node 0.5 s away, the honest path between the two miners a 6 s chain of
+relay hops (past SoP's 5 s rule), the attacker reading through whichever
+bridge is ahead and publishing through both.
+
+| | this cell (6 s honest path) | base topology (ms paths), same attacker, alpha 0.45 |
+|---|---|---|
+| attacker share | 0.699 (1,280 of 1,832) | 0.44 |
+| attacker orphan rate | 0.176 | 0.64 |
+| network orphan rate | 0.487 | 0.40 |
+| honest-001 blocks kept | 272 of 1,030 | |
+| honest-002 blocks kept | 280 of 990 | |
+| realized gamma (analyzer) / ties | 0.173 / 81 | ~0 |
+
+Eyal-Sirer's formula for the stock rule at alpha 0.45 with gamma 0.5 gives
+0.68, so on this topology the SoP network gives the attacker what the stock
+rule would. Mechanism, from the logs: honest-002's blocks reach the hub
+after 6.0 s (857 of 990 through relay-slow-3) while the attacker's reply
+to each of them, read from bridge 1 beside honest-002, reaches the hub
+through bridge 2 in about a second; by the time the honest block arrives
+it is more than 5 s behind the competing block at every hub node and
+weighs 0. The same holds in the other direction, where honest-001's blocks
+reached honest-002 by block relay only three times in 72 h (the rest only
+through chain sync, after the attacker had already won the race). Each
+honest half therefore loses nearly every contested block to an attacker
+who is never late anywhere: both honest miners kept 27 % of their blocks.
+The health flag is two "Sent invalid chain" peer events, not a split
+(split depth 0); the attacker's parent feeding worked (52 feeds, no
+tracebacks, 268 concessions).
+
+Provisional until two cells land: the same attacker with a 3 s honest
+path (under the 5 s rule: if SoP's protection returns there, the collapse
+is the lateness rule rather than connectivity itself), and the stock
+rule's attacker at 0.45 on the 6 s path (the direct comparison; expected
+near 0.68). If both come in as expected, the mitigation case has a hard
+condition: SoP protects a network only where honest blocks reach every
+miner within d of the attacker's, and a well-connected attacker turns the
+rule's lateness penalty against honest miners whose propagation exceeds
+d. The parameter d, which we have not varied, then becomes the central
+design question.
