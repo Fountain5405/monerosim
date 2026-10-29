@@ -1,0 +1,34 @@
+{
+ "archive": "/fast/antiproxy/monerosim_archives/20261028_233022_lean_24_none_h300_k42_w13h_p3_m1_n600_x3_sph_sd12_sc_s12345",
+ "spies": 42,
+ "local_txs": 1093,
+ "spy_stem_rx": 238,
+ "spy_stem_rx_dir": {
+  "out": 238
+ },
+ "stem_txs_at_spies": 204,
+ "stem_tx_share": 0.1866,
+ "hop1_stem_txs": 0,
+ "hop1_user_txs": 0,
+ "user_txs": 1028,
+ "x3_adopters": 289,
+ "rx_from_adopters": 238,
+ "virtual_rx": 238,
+ "virtual_rx_share": 1.0,
+ "spy_conns_out": {
+  "min": 58,
+  "median": 69.0,
+  "max": 78
+ },
+ "spy_conns_in": {
+  "min": 0,
+  "median": 0.0,
+  "max": 0
+ },
+ "per_spy": {
+  "min": 0,
+  "median": 4.5,
+  "max": 17,
+  "zeros": 1
+ }
+}
