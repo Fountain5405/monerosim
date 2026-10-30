@@ -1127,3 +1127,31 @@ def test_dsweep_specs_differ_from_their_d5_cells_only_in_the_delay():
             assert sop_hosts >= 4, (name, sop_hosts)
             assert stripped["agents"] == twin["agents"], name
             assert stripped["general"] == twin["general"], name
+
+
+def test_seed2_and_lowalpha_specs_differ_from_their_twins_only_where_intended():
+    """Second seeds (owner 2026-10-30): each cell equals its s1 twin except the
+    attacker's sample attribute. Low-alpha adoption: each a030 cell equals its
+    a045 twin except the miners' hashrates (attacker 3.0, honest pools 1.75)."""
+    for spec, orig, n in (("sop_v4_seed2_gamma_72h.yaml", "sop_v4_gamma_72h.yaml", 2),
+                          ("sop_v4_seed2_slow_72h.yaml", "sop_v4_slow_72h.yaml", 2),
+                          ("sop_v4_seed2_adopt_72h.yaml", "sop_v4_adopt_72h.yaml", 2)):
+        cells, base = _cells(_load_spec(spec)), _cells(_load_spec(orig))
+        assert len(cells) == n and all(c.endswith("_s2") for c in cells), sorted(cells)
+        for name, cfg in cells.items():
+            twin = copy.deepcopy(base[name[:-3] + "_s1"])
+            assert cfg["agents"]["attacker-miner"]["attributes"]["sample"] == "2"
+            twin["agents"]["attacker-miner"]["attributes"]["sample"] = "2"
+            assert cfg["agents"] == twin["agents"] and cfg["general"] == twin["general"], name
+    cells = _cells(_load_spec("sop_v4_adopt_lowalpha_72h.yaml"))
+    base = _cells(_load_spec("sop_v4_adopt_72h.yaml"))
+    assert sorted(cells) == ["d2_k0_a030_s1", "share_k1_a030_s1", "share_k2_a030_s1"]
+    miners = ["honest-001", "honest-002", "honest-003", "honest-004"]
+    for name, cfg in cells.items():
+        assert cfg["agents"]["attacker-miner"]["hashrate"] == 3.0
+        assert [cfg["agents"][m]["hashrate"] for m in miners] == [1.75] * 4
+        twin = copy.deepcopy(base[name.replace("a030", "a045")])
+        twin["agents"]["attacker-miner"]["hashrate"] = 3.0
+        for m in miners:
+            twin["agents"][m]["hashrate"] = 1.75
+        assert cfg["agents"] == twin["agents"], name
