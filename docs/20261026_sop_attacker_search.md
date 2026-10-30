@@ -1409,3 +1409,39 @@ levels. The stressnet nodes also run a monitoring sidecar that pushes
 each node's block events, with timestamps, to a collection hub; if the
 hub operator can share them, those are the multi-node arrival times d
 should be set against.
+
+#### Why the stock tie-racer got no tie advantage: it answers ties too slowly (10-30)
+
+From the daemon logs of the SM1 cells: for every height with both an
+attacker block and an honest block, when each honest miner first saw each
+block (first log line naming the hash; the honest block reaches the far
+miner at exactly 6.0 s on f6 and 3.0 s on f3, as check_paths shows).
+Ties the attacker answered within 10 s of the honest find:
+
+| cell | ties answered within 10 s | far miner saw the attacker's block first | attacker block at the far miner, median after the honest find |
+|---|---|---|---|
+| SM1, 0.30, 6 s | 339 | 0.62 | 9.2 s (all contested heights) |
+| SM1, 0.35, 6 s | 344 | 0.55 | 11.0 s |
+| SM1, 0.45, 6 s | 272 | 0.61 | (most heights are lead releases) |
+| SM1, 0.45, 3 s | 227 | 0.03 | |
+| SoP param, 0.45, 6 s | 16 of 1,207 contested | 0.50 | |
+
+Counting only fluffy-block receipts, the attacker's tie answers took a
+median 4.5 to 5 s from the honest find. A real attacker with nodes beside
+both pools answers in well under a second; ours answers in about 5 s,
+slower than the 3 s honest path and barely faster than the 6 s one, so it
+steers the far miner in about 60 % of its tie races on the 6 s path and
+almost never on the 3 s path. The likely cause is the agent's polling
+cycle, several RPC calls per tick, some of them across the 0.5 s link to
+bridge 2 (not verified; a block-notification subscription instead of
+polling would remove it).
+
+Consequences. The measured stock tie-racer (0.649 at 0.45, 6 s; 0.671 on
+3 s) understates a fast one; the SM1 formula at gamma 0.5 (0.681) is the
+better stock reference. Past d, SoP's 0.699 against that 0.68 is a wash
+rather than 0.05 worse; inside d, 0.486 against 0.68 is still about 0.2
+better. The SoP attacker's gain does not depend on tie speed: it answered
+16 of 1,207 contested heights as ties and wins by publishing leads early,
+so the honest block at that height trails its block by more than d at the
+far miner. The receipt proxy (first log mention) and the 10 s tie window
+are judgement calls.
