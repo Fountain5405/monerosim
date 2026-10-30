@@ -1092,6 +1092,10 @@ blocks) and only the preload paying 35.1.
 | one honest miner, a047 s1 tail (10-30) | tail, 0.6 XMR | 0.472 | 0.331 | 0.351 | 1,985 |
 | four honest miners, a047 s1 (10-28) | stock | 0.549 | 0.275 | 0.391 | |
 | four honest miners, a047 s1 tail (10-30) | tail, 0.6 XMR | 0.576 | 0.265 | 0.383 | 1,909 |
+| no attacker, SoP, s1 / s2 (10-28) | stock | 0.458 / 0.482 | 0.002 / 0.002 | 0.003 / 0.001 | |
+| no attacker, SoP, s1 tail (10-30) | tail, 0.6 XMR | 0.468 | 0.003 | 0.002 | 2,128 |
+| no attacker, stock, s1 / s2 (10-28) | stock | 0.468 / 0.469 | 0.002 / 0.002 | 0.004 / 0.002 | |
+| no attacker, stock, s1 tail (10-30) | tail, 0.6 XMR | 0.462 | 0.002 | 0.001 | 2,158 |
 
 The a047 tail rerun sits inside the stock cells' seed spread (0.451 to
 0.514, mean 0.481) on every column, and the a046 tail rerun (19:43Z)
@@ -1105,9 +1109,11 @@ network it is by construction). The one-honest-miner cell at 0.47
 a two-seed spread of 0.06. Same seed as the stock s1 cell, but the
 emission change alters every block hash, so this is a fourth sample, not
 a paired comparison. No sign that the emission schedule touches the
-result, as expected for a block-counted share. Two tail cells remain
-(control stock / sop, both running); the conclusion stands unless one of them moves by more
-than the seed spread.
+result, as expected for a block-counted share. All eight are in (10-30 07:31Z): every tail cell lands inside its
+stock-emission cells' seed spread, on share and on both orphan rates,
+across the param attacker, the stock d2 attacker, one / two / four honest
+miners and both no-attacker controls. The emission schedule does not
+touch these results; the question is closed.
 
 #### The stock comparison at 0.45 (10-29, 13:12Z)
 
@@ -1226,3 +1232,25 @@ invalid-chain warnings in the health column, like the two in the 6 s SoP
 cell: parent-feeding submissions, not a chain fault.
 The honest mechanism is unchanged by this cell: the lateness rule, not a
 tie race, is what the 6 s path hands the SoP attacker.
+
+#### SM1 at 0.35, and what the SM1 points say about the bridges (10-30, 06:48Z)
+
+`es_stock_a035_f6_s1`: 0.338 (2,005 blocks, attacker orphan rate 0.230).
+Against the Eyal-Sirer SM1 formula:
+
+| alpha, path | measured | formula, gamma 0 | formula, gamma 0.5 |
+|---|---|---|---|
+| 0.30, 6 s | 0.303 | 0.273 | 0.327 |
+| 0.35, 6 s | 0.338 | 0.367 | 0.416 |
+| 0.45, 6 s | 0.649 | 0.652 | 0.681 |
+| 0.45, 3 s | 0.671 | 0.652 | 0.681 |
+
+All four sit within 0.03 of the gamma-0 formula, two above and two below,
+which is one-seed noise. The reading of the 0.30 cell as "effective gamma
+0.28" (above) does not survive this point: the bridges give the stock
+tie-racer no measurable tie advantage, although the topology delivers the
+attacker's tie block to the far miner seconds before the honest one
+(check_paths). Why is not established; the attacker agent's reaction time
+(it polls its bridges once per agent tick) is the first suspect. It does
+not change the comparison with SoP: a stock tie-racer at gamma 0.5 would
+reach 0.68 at 0.45, still below SoP's 0.699 on the 6 s path.
