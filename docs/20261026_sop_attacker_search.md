@@ -1312,3 +1312,25 @@ worse than stock. So "past d, SoP is worse than stock" holds at the top
 of the alpha range only, between 0.40 and 0.45 on this topology. One
 seed; the 0.35 point on the 6 s path and the 0.35 / 0.40 points on the
 3 s path are running (10-30 17:39Z).
+
+#### The slow miner at 3, 6 and 12 s (10-30)
+
+Same method as the 6 s pair (blocks found per miner from the daemons'
+"Found block" lines, kept = in-run blocks on honest-001's final chain;
+the l6 rows reproduce the earlier counts exactly):
+
+| honest path to the slow miner | rule | slow miner lost | fast miners lost | network orphan rate |
+|---|---|---|---|---|
+| 3 s (inside d) | stock | 25 of 570 (4.4 %) | 0.3 % / 0.3 % | 0.014 |
+| 3 s (inside d) | SoP | 15 of 575 (2.6 %) | 0.5 % / 0.7 % | 0.011 |
+| 6 s (past d) | stock | 30 of 597 (5.0 %) | 1.2 % / 1.4 % | 0.024 |
+| 6 s (past d) | SoP | 63 of 591 (10.7 %) | 0.4 % / 0.1 % | 0.030 |
+| 12 s | stock | 79 of 567 (13.9 %) | 1.5 % / 2.4 % | 0.051 |
+| 12 s | SoP | (running, lithium) | | |
+
+The lateness rule is a cliff at d. Inside it, SoP costs the slow miner
+nothing extra (2.6 % against 4.4 % on stock, within one-seed noise or
+slightly better); just past it, SoP doubles the slow miner's loss and
+takes it off the fast miners. On the stock rule the loss grows smoothly
+with the delay (4.4, 5.0, 13.9 %). The 12 s SoP cell says whether the
+penalty past d keeps growing or saturates. One seed per cell.
