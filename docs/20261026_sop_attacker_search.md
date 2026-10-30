@@ -1326,14 +1326,18 @@ the l6 rows reproduce the earlier counts exactly):
 | 6 s (past d) | stock | 30 of 597 (5.0 %) | 1.2 % / 1.4 % | 0.024 |
 | 6 s (past d) | SoP | 63 of 591 (10.7 %) | 0.4 % / 0.1 % | 0.030 |
 | 12 s | stock | 79 of 567 (13.9 %) | 1.5 % / 2.4 % | 0.051 |
-| 12 s | SoP | (running, lithium) | | |
+| 12 s | SoP | 154 of 594 (25.9 %) | 0.0 % / 0.2 % | 0.068 |
 
 The lateness rule is a cliff at d. Inside it, SoP costs the slow miner
 nothing extra (2.6 % against 4.4 % on stock, within one-seed noise or
 slightly better); just past it, SoP doubles the slow miner's loss and
 takes it off the fast miners. On the stock rule the loss grows smoothly
-with the delay (4.4, 5.0, 13.9 %). The 12 s SoP cell says whether the
-penalty past d keeps growing or saturates. One seed per cell.
+with the delay (4.4, 5.0, 13.9 %). The 12 s SoP cell (10-30 23:49Z) answers
+whether the penalty past d saturates: it does not. The slow miner loses
+25.9 % of its blocks against 13.9 % on stock, again about twice the stock
+loss, and the fast miners lose nothing. Past d, SoP doubles whatever a
+slow link already costs and moves all of it onto the slow miner. One
+seed per cell.
 
 #### 75 % adoption, and why the stock side falls away (10-30, 17:46Z)
 
