@@ -1370,3 +1370,42 @@ miners, to run the changed peer scoring, or stock nodes will partition
 themselves from the SoP network during any attack. The flag day is
 required for the relays as much as for the pools. Caveats as before (one
 seed, 14 nodes, alpha 0.45 above each honest group).
+
+### 8. Propagation on the owner's stressnet nodes (10-30)
+
+Owner 10-30: "read the stressnet node logs". The owner runs two testnet
+stressnet monerod nodes (phantom and lithium, same LAN, both
+NTP-synchronized, logging blockchain:INFO and --show-time-stats). Read
+read-only; parsed on each box; joined by block hash. Window 10-19 00:00Z
+to 10-30 19:26Z: 8,432 blocks both nodes added live (heights 3,112,648
+to 3,121,084, 283 h). Phantom added the block first in 80 % of cases.
+
+| measure | median | p90 | p99 | max |
+|---|---|---|---|---|
+| gap between the two nodes adding a block | 25 ms | 39 ms | 946 ms | 542 s |
+| block processing time, phantom | 21 ms | 25 ms | 43 ms | 388 ms |
+| block processing time, lithium | 17 ms | 22 ms | 36 ms | 6.8 s |
+| block weight | 237 B | 328 B | 382 kB | 1.68 MB |
+
+Processing grows with weight but stays small: 1-1.7 MB blocks took 68-113
+ms per node (6 such blocks). Of the 40 gaps over 1 s, 13 of the 14 over
+10 s are one lithium stall (10-21 22:12-22:48Z, 35-542 s behind for 13
+consecutive blocks) and 7 are one burst (10-30 18:05:56Z, phantom added
+blocks 3,121,050-056 at the same millisecond, lithium 2.8 s later). The
+rest are isolated: 5 blocks (0.06 %) more than 5 s apart (6.7, 6.8, 7.8,
+8.7, 22.1 s), all of them nearly empty, so path, not size. Orphans: 6
+alternative blocks on phantom, 2 on lithium, 1 reorganization each in
+8,438 blocks. Transaction load came in bursts (pool additions in 1,550 of
+the window's 16,980 minutes, median 10 per active minute, peak 549).
+
+What this does and does not say for d. Two well-connected nodes on one
+LAN see the same block within tens of milliseconds, verification is not
+the bottleneck even for 1.7 MB blocks on these CPUs, and a gap past 5 s
+between them is a rare event (0.06 % of blocks) that is not tied to
+block size. It is a lower bound on the network's spread, not a
+measurement of it: two neighbours, not the far edge of the network from
+the finder. Missing-transaction round trips are not logged at these log
+levels. The stressnet nodes also run a monitoring sidecar that pushes
+each node's block events, with timestamps, to a collection hub; if the
+hub operator can share them, those are the multi-node arrival times d
+should be set against.
