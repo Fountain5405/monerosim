@@ -4,6 +4,7 @@ run/analyze pipeline (with the sim launch and analyzer mocked), and table
 rendering. No simulation is ever started."""
 from pathlib import Path
 
+import copy
 import pytest
 import yaml
 
@@ -1095,3 +1096,34 @@ def test_tail_reruns_match_their_originals_except_the_emission_mode():
             assert cfg["general"]["emission"] == {"mode": "tail", "from_height": "auto"}, (tail, cell)
             stripped = {**cfg, "general": {k: v for k, v in cfg["general"].items() if k != "emission"}}
             assert stripped == ref, (tail, cell)
+
+
+def test_dsweep_specs_differ_from_their_d5_cells_only_in_the_delay():
+    """The d sweep (owner 2026-10-30): each sop_v4_dsweep_* cell is the d = 5
+    cell of its source spec plus sim-sop-delay-s on exactly the daemons that
+    run SoP (sim-share-or-perish), and nothing else changes."""
+    pairs = {
+        "sop_v4_dsweep_slow_72h.yaml": ("sop_v4_slow_72h.yaml", 4),
+        "sop_v4_dsweep_gamma_72h.yaml": ("sop_v4_gamma_72h.yaml", 2),
+        "sop_v4_dsweep_param_72h.yaml": ("sop_v4_param_72h.yaml", 4),
+    }
+    for sweep, (orig, n) in pairs.items():
+        cells = _cells(_load_spec(sweep))
+        base = _cells(_load_spec(orig))
+        assert len(cells) == n, (sweep, sorted(cells))
+        for name, cfg in cells.items():
+            d = 10 if "_d10_" in name else 20
+            assert f"_d{d}_" in name
+            twin = base[name.replace(f"_d{d}_", "_")]
+            stripped = copy.deepcopy(cfg)
+            sop_hosts = 0
+            for a, ag in stripped["agents"].items():
+                opts = ag.get("daemon_options") or {}
+                if opts.get("sim-share-or-perish"):
+                    sop_hosts += 1
+                    assert opts.pop("sim-sop-delay-s") == d, (name, a)
+                else:
+                    assert "sim-sop-delay-s" not in opts, (name, a)
+            assert sop_hosts >= 4, (name, sop_hosts)
+            assert stripped["agents"] == twin["agents"], name
+            assert stripped["general"] == twin["general"], name

@@ -1,0 +1,78 @@
+# sop_v4_dsweep_slow_72h (2026-10-30): the d sweep on the slow honest miner
+# (owner 10-30: "run the d sweep"). SoP's lateness delay d (--sim-sop-delay-s,
+# default 5) was 5 s in every cell so far. The slow miner lost 2.6 % of its
+# blocks at 3 s (inside d) and 10.7 % at 6 s (just past it) against 4.4 / 5.0 %
+# on the stock rule: a cliff at d. These cells repeat the SoP l6 and l12 cells
+# of sop_v4_slow_72h at d = 10 and 20 s: if the cliff moves with d, l6 at d10
+# and both latencies at d20 should look like l3 at d5. Identical to the
+# original cells except sim-sop-delay-s on every SoP daemon
+# (test_dsweep_specs_differ_from_their_d5_cells_only_in_the_delay pins it).
+name: sop_v4_dsweep_slow_72h
+seed: 27791
+base: test_configs/selfish_micro_sop_slow.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    honest:
+      attacker:
+        attributes: {strategy: honest}
+        daemon_options: {offline: false}
+  countermeasure:
+    sop:
+      attacker:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      honest-002:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+  delay:
+    d10:
+      attacker:
+        daemon_options: {sim-sop-delay-s: 10}
+      honest:
+        daemon_options: {sim-sop-delay-s: 10}
+      honest-002:
+        daemon_options: {sim-sop-delay-s: 10}
+      relays:
+        daemon_options: {sim-sop-delay-s: 10}
+      bridges:
+        daemon_options: {sim-sop-delay-s: 10}
+    d20:
+      attacker:
+        daemon_options: {sim-sop-delay-s: 20}
+      honest:
+        daemon_options: {sim-sop-delay-s: 20}
+      honest-002:
+        daemon_options: {sim-sop-delay-s: 20}
+      relays:
+        daemon_options: {sim-sop-delay-s: 20}
+      bridges:
+        daemon_options: {sim-sop-delay-s: 20}
+  alpha:
+    a047:
+      attacker: {hashrate: 4.7}
+      honest:
+        hashrate: [2.65]
+      honest-002: {hashrate: 2.65}
+  latency:
+    l6:
+      honest-002:
+        topology_node: 1209
+        peers:
+          exclusive: [relay-chain-3]
+    l12:
+      honest-002:
+        topology_node: 1213
+        peers:
+          exclusive: [relay-chain-7]
+  sample:
+    s1:
+      attacker:
+        attributes: {sample: '1'}
