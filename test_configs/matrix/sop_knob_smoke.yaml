@@ -1,0 +1,59 @@
+# sop_knob_smoke (2026-10-30): plumbing check for --sim-sop-seen-at-notify
+# (owner 10-30: "be open to changing the first seen rule to include when the
+# fluffy block shows up, even if it doesn't have all the txs ... go ahead and
+# build it"). The knob stamps a block's first-seen time in the P2P fluffy-block
+# handler, after the header parses and before any missing-tx round trip,
+# instead of in Blockchain::add_new_block once the full block qualifies.
+#
+# Two cells, identical except the knob: the SoP no-attacker control
+# (sop_v4_control_72h's honest / sop arm) for 3 h. Blocks in these sims carry
+# no transactions, so a fluffy block is complete on arrival and both stamps
+# fall on the same virtual instant: with Shadow's determinism the two cells
+# should produce the same canonical chain. Gate: (1) every SoP daemon starts
+# and logs "SIM-SoP: first-seen stamped at P2P notification" in the notify
+# cell; (2) "first seen at notify" lines appear for received blocks; (3) the
+# two canonical chains match block for block; (4) no exceptions. The knob
+# only changes results once cells carry transaction load. Needs the
+# 2026-10-30 monerod-sim (lithium; other boxes do not know the flag yet).
+name: sop_knob_smoke
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 3h
+axes:
+  arm:
+    honest:
+      attacker:
+        attributes: {strategy: honest}
+        daemon_options: {offline: false}
+  countermeasure:
+    sop:
+      attacker:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+  stamp:
+    full: {}
+    notify:
+      attacker:
+        daemon_options: {sim-sop-seen-at-notify: true}
+      honest:
+        daemon_options: {sim-sop-seen-at-notify: true}
+      relays:
+        daemon_options: {sim-sop-seen-at-notify: true}
+      bridges:
+        daemon_options: {sim-sop-seen-at-notify: true}
+  alpha:
+    a047:
+      attacker: {hashrate: 4.7}
+      honest: {hashrate: [2.65, 2.65]}
+  sample:
+    s1:
+      attacker:
+        attributes: {sample: '1'}
