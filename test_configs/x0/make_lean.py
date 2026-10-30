@@ -197,6 +197,8 @@ def scenario_text(a, ban):
         head = re.sub(r"(?m)^(    sim-subnet-dedup:)", rf"    sim-white-peerlist-limit: {a.white_limit}\n\1", head)
     if a.gray_limit is not None:
         head = re.sub(r"(?m)^(    sim-subnet-dedup:)", rf"    sim-gray-peerlist-limit: {a.gray_limit}\n\1", head)
+    if a.host_port_limit:
+        head = re.sub(r"(?m)^(    sim-subnet-dedup:)", rf"    sim-peerlist-ports-per-host: {a.host_port_limit}\n\1", head)
     if a.turnover:
         on, off = a.turnover.split(",")
         head = re.sub(r"(?m)^(  simulation_seed:.*)$",
@@ -340,6 +342,11 @@ def main():
     ap.add_argument("--probe", type=int, default=0,
                     help="relays at the head and at the tail of each start order that dump their peer list "
                          "every 30 s and log net.p2p at DEBUG (a few MB each; 0 = none)")
+    ap.add_argument("--host-port-limit", type=int, default=0,
+                    help="every daemon gets --sim-peerlist-ports-per-host N (needs patches/"
+                         "monero-sim-peerlist-ports-per-host.patch): gray peer list capped at N "
+                         "entries per host and same-host gray erased on white promotion. 0 = stock. "
+                         "Cell names get _hplN.")
     ap.add_argument("--warmup", type=int, default=3600,
                     help="sim-seconds between the last relay start and the first user activity; outbound "
                          "connections made from the early, small peer lists last ~1.5 h, so a /24 cell's "
@@ -359,7 +366,7 @@ def main():
             + (f"_n{a.spy_node0}" if a.spy_node0 != SPY_NODE0 else "")
             + (f"_c{round(100 * a.ban_coverage)}" if a.list == "half" and a.ban_coverage != 1.0 else "")
             + ("_fx" if a.fixed_rx_seed else "") + ("_up" if a.uniform_pick else "") + ("_rc" if a.rand_cands else "")
-            + (f"_wl{a.white_limit}" if a.white_limit is not None else "") + (f"_gl{a.gray_limit}" if a.gray_limit is not None else "")
+            + (f"_wl{a.white_limit}" if a.white_limit is not None else "") + (f"_gl{a.gray_limit}" if a.gray_limit is not None else "") + (f"_hpl{a.host_port_limit}" if a.host_port_limit else "")
             + (f"_sr{a.spy_refresh}" if a.spy_refresh else "") + (f"_ro{a.spy_rotate}" if a.spy_rotate else "") + ("_ud" if a.user_dumps else "")
             + ("_x3" if a.stemmable else "") + ("_sph" if a.spy_hidden else "") + (f"_sd{a.spy_dial}" if a.spy_dial else "") + ("_sc" if a.stemmable_cidrs else "") + (f"_mw{a.window}h" if a.window != 4 else "") + (f"_ui{a.user_interval}" if a.user_interval != 300 else "")
             + (f"_rs{a.reachable_senders}" if a.reachable_senders else "") + (f"_bs{a.busy_senders}" if a.busy_senders else "")
