@@ -1,0 +1,252 @@
+diff --git a/src/p2p/net_node.cpp b/src/p2p/net_node.cpp
+index 15f3855d7..f85fa8336 100644
+--- a/src/p2p/net_node.cpp
++++ b/src/p2p/net_node.cpp
+@@ -163,6 +163,7 @@ namespace nodetool
+     const command_line::arg_descriptor<std::string> arg_sim_log_txrelay = {"sim-log-txrelay", "Simulation only (measurement): append a JSONL line for every Dandelion++ relay event (tx received, stem send, fluff, epoch, stem change, pool re-relay) to this file. Off by default; read-only w.r.t. relay.", ""};
+     const command_line::arg_descriptor<bool> arg_sim_stemmable_inbound = {"sim-stemmable-inbound", "Simulation only: tevador's MRL #160 variant — stemmable inbound connections. Stem edge 1 is drawn from real outgoing connections only (local transactions always use it); edge 2 from the /16-deduplicated union of real outgoing connections and 'virtual outgoing' connections built from stemmable inbounds (one random /24 per /16, one random connection per /24, capped at 12). Off = stock Dandelion++.", false};
+     const command_line::arg_descriptor<std::string> arg_sim_stemmable_cidrs = {"sim-stemmable-cidrs", "Simulation only: with --sim-stemmable-inbound, a file of a.b.c.d/len lines (one per line, # comments) whose inbound connections count as stemmable — the modeled PoW-paid set; empty = every inbound connection is stemmable. A relative path resolves against the data dir.", ""};
++    const command_line::arg_descriptor<size_t> arg_sim_peerlist_ports_per_host = {"sim-peerlist-ports-per-host", "Simulation only: cap the gray peer list at this many entries per host (newest kept, oldest by last_seen dropped) and erase a host's other gray entries when one of its addresses is promoted to white. Stock monerod already keeps white one-per-host; 0 = stock.", 0};
+     const command_line::arg_descriptor<std::string> arg_sim_subnet_dedup = {"sim-subnet-dedup", "Simulation only: outbound peer grouping. 24 (stock): one candidate per /24, skipping /24s already connected. 16: the same at /16. none: no subnet grouping (ports still collapsed). legacy: v0.18.4.2's selection, before #9939 (skip /16s already connected).", "24"};
+     const command_line::arg_descriptor<size_t> arg_sim_whitelist_candidates = {"sim-whitelist-candidates", "Simulation only: how many of the newest (by last_seen) subnet-deduplicated white-list peers are candidates for an outbound pick. Stock monero uses 20; 0 = every unconnected subnet is a candidate.", 20};
+     const command_line::arg_descriptor<bool> arg_sim_random_whitelist_candidates = {"sim-random-whitelist-candidates", "Simulation only: the white-list candidates for an outbound pick (--sim-whitelist-candidates of them, stock 20) are a uniform random sample of the subnet-deduplicated white list instead of its newest entries by last_seen; the draw among them (stock cubic by recency, or --sim-uniform-whitelist-pick) is unchanged. Off = stock behaviour.", false};
+diff --git a/src/p2p/net_node.h b/src/p2p/net_node.h
+index 11d5a99fb..446c2a069 100644
+--- a/src/p2p/net_node.h
++++ b/src/p2p/net_node.h
+@@ -459,6 +459,7 @@ namespace nodetool
+     size_t m_sim_gray_peerlist_limit = 0;  // --sim-gray-peerlist-limit (0 = stock 5000)
+     bool m_sim_uniform_whitelist_pick = false;  // --sim-uniform-whitelist-pick: uniform white-list pick (open question 10 probe)
+     bool m_sim_legacy_selection = false;              // --sim-subnet-dedup=legacy
++    size_t m_sim_peerlist_ports_per_host = 0;         // --sim-peerlist-ports-per-host (0 = stock)
+     std::atomic<bool> is_closing;
+     std::atomic<bool> m_stop_signal_sent_once{false};
+     std::unique_ptr<boost::thread> mPeersLoggerThread;
+@@ -559,6 +560,7 @@ namespace nodetool
+     extern const command_line::arg_descriptor<bool> arg_sim_stemmable_inbound;
+     extern const command_line::arg_descriptor<std::string> arg_sim_stemmable_cidrs;
+     extern const command_line::arg_descriptor<std::string> arg_sim_subnet_dedup;
++    extern const command_line::arg_descriptor<size_t> arg_sim_peerlist_ports_per_host;
+     extern const command_line::arg_descriptor<size_t> arg_sim_whitelist_candidates;
+     extern const command_line::arg_descriptor<bool> arg_sim_random_whitelist_candidates;
+     extern const command_line::arg_descriptor<size_t> arg_sim_white_peerlist_limit;
+diff --git a/src/p2p/net_node.inl b/src/p2p/net_node.inl
+index 3649ae27c..b0b99892f 100644
+--- a/src/p2p/net_node.inl
++++ b/src/p2p/net_node.inl
+@@ -128,6 +128,7 @@ namespace nodetool
+     command_line::add_arg(desc, arg_sim_stemmable_inbound);
+     command_line::add_arg(desc, arg_sim_stemmable_cidrs);
+     command_line::add_arg(desc, arg_sim_subnet_dedup);
++    command_line::add_arg(desc, arg_sim_peerlist_ports_per_host);
+     command_line::add_arg(desc, arg_sim_whitelist_candidates);
+     command_line::add_arg(desc, arg_sim_random_whitelist_candidates);
+     command_line::add_arg(desc, arg_sim_white_peerlist_limit);
+@@ -464,6 +465,13 @@ namespace nodetool
+     m_use_ipv6 = command_line::get_arg(vm, arg_p2p_use_ipv6);
+     m_require_ipv4 = !command_line::get_arg(vm, arg_p2p_ignore_ipv4);
+     {
++      m_sim_peerlist_ports_per_host = command_line::get_arg(vm, arg_sim_peerlist_ports_per_host);
++      if (m_sim_peerlist_ports_per_host)
++      {
++        MGINFO("*** SIMULATION: --sim-peerlist-ports-per-host " << m_sim_peerlist_ports_per_host << ": gray peer list capped per host, same-host gray erased on white promotion (stock = off). ***");
++        for (auto &z : m_network_zones)
++          z.second.m_peerlist.set_ports_per_host_limit(m_sim_peerlist_ports_per_host);
++      }
+       m_sim_whitelist_candidates = command_line::get_arg(vm, arg_sim_whitelist_candidates);
+       if (m_sim_whitelist_candidates != 20)
+         MGINFO("--sim-whitelist-candidates " << m_sim_whitelist_candidates << ": white-list candidates per pick (stock 20, 0 = every unconnected subnet)");
+diff --git a/src/p2p/net_peerlist.h b/src/p2p/net_peerlist.h
+index 65977ce22..0193fa8f4 100644
+--- a/src/p2p/net_peerlist.h
++++ b/src/p2p/net_peerlist.h
+@@ -120,6 +120,7 @@ namespace nodetool
+     bool get_gray_peer_by_index(peerlist_entry& p, size_t i);
+     template<typename F> bool foreach(bool white, const F &f);
+     void evict_host_from_peerlist(bool white, const peerlist_entry& pr);
++    void set_ports_per_host_limit(size_t n){ CRITICAL_REGION_LOCAL(m_peerlist_lock); m_ports_per_host_limit = n; } // --sim-peerlist-ports-per-host (0 = stock)
+     bool append_with_peer_white(const peerlist_entry& pr, bool trust_last_seen = false);
+     bool append_with_peer_gray(const peerlist_entry& pr);
+     bool append_with_peer_anchor(const anchor_peerlist_entry& ple);
+@@ -205,6 +206,23 @@ namespace nodetool
+     peers_indexed m_peers_gray;
+     peers_indexed m_peers_white;
+     anchor_peers_indexed m_peers_anchor;
++    size_t m_ports_per_host_limit = 0;  // --sim-peerlist-ports-per-host; 0 = stock behavior
++
++    // host key: ipv4 and v4-mapped ipv6 collapse to the ipv4 host string, others use host_str
++    static std::string host_key(const epee::net_utils::network_address &adr)
++    {
++      if (adr.get_type_id() == epee::net_utils::ipv6_network_address::get_type_id())
++      {
++        const boost::asio::ip::address_v6 &a6 = adr.as<const epee::net_utils::ipv6_network_address>().ip();
++        if (a6.is_v4_mapped())
++        {
++          const boost::asio::ip::address_v4 v4 = boost::asio::ip::make_address_v4(boost::asio::ip::v4_mapped, a6);
++          return epee::net_utils::ipv4_network_address(v4.to_ulong(), 0).host_str();
++        }
++      }
++      return adr.host_str();
++    }
++    void trim_gray_per_host(const epee::net_utils::network_address& just_adr); // caller holds m_peerlist_lock
+     size_t m_white_limit = P2P_LOCAL_WHITE_PEERLIST_LIMIT;  // set_limits(); stock unless a --sim-*-peerlist-limit flag is given
+     size_t m_gray_limit = P2P_LOCAL_GRAY_PEERLIST_LIMIT;
+   };
+@@ -218,6 +236,27 @@ namespace nodetool
+     }
+   }
+   //--------------------------------------------------------------------------------------------------
++  inline void peerlist_manager::trim_gray_per_host(const epee::net_utils::network_address& just_adr)
++  {
++    // --sim-peerlist-ports-per-host: keep at most N gray entries per host, newest wins. Caller holds m_peerlist_lock.
++    std::vector<std::pair<uint64_t, epee::net_utils::network_address>> same;
++    for (const peerlist_entry& pe : m_peers_gray.get<by_addr>())
++      if (host_key(pe.adr) == host_key(just_adr) && !(pe.adr == just_adr))
++        same.emplace_back(pe.last_seen, pe.adr);
++    std::sort(same.begin(), same.end(),
++      [](const std::pair<uint64_t, epee::net_utils::network_address>& a, const std::pair<uint64_t, epee::net_utils::network_address>& b){ return a.first < b.first; });
++    const size_t keep = m_ports_per_host_limit ? m_ports_per_host_limit - 1 : 0;
++    while (same.size() > keep)
++    {
++      auto& addr_index = m_peers_gray.get<by_addr>();
++      auto it = addr_index.find(same.front().second);
++      if (it == addr_index.end())
++        break;
++      addr_index.erase(it);
++      same.erase(same.begin());
++    }
++  }
++  //--------------------------------------------------------------------------------------------------
+   inline void peerlist_manager::trim_white_peerlist()
+   {
+     while(m_peers_white.size() > m_white_limit)
+@@ -369,6 +408,8 @@ namespace nodetool
+     {
+       //put new record into white list
+       evict_host_from_peerlist(true, ple);
++      if (m_ports_per_host_limit) // a promoted host's other ports cannot wait in gray to rotate back in
++        filter(false, [&ple](const peerlist_entry& pe){ return host_key(pe.adr) == host_key(ple.adr); });
+       m_peers_white.insert(ple);
+       trim_white_peerlist();
+     }else
+@@ -412,6 +453,8 @@ namespace nodetool
+     {
+       //put new record into white list
+       m_peers_gray.insert(ple);
++      if (m_ports_per_host_limit)
++        trim_gray_per_host(ple.adr);
+       trim_gray_peerlist();    
+     }else
+     {
+diff --git a/tests/unit_tests/test_peerlist.cpp b/tests/unit_tests/test_peerlist.cpp
+index 98caabafd..95b008d42 100644
+--- a/tests/unit_tests/test_peerlist.cpp
++++ b/tests/unit_tests/test_peerlist.cpp
+@@ -99,6 +99,107 @@ namespace
+   }
+ }
+ 
++
++TEST(peer_list, per_host_stock_white_one_per_host)
++{
++  nodetool::peerlist_manager plm;
++  plm.init(nodetool::peerlist_types{}, false);
++  nodetool::peerlist_entry ple{};
++  ple.adr = epee::net_utils::ipv4_network_address{MAKE_IP(123,43,12,1), 8080}; ple.id = 1; ple.last_seen = 1000;
++  plm.append_with_peer_white(ple);
++  ple.adr = epee::net_utils::ipv4_network_address{MAKE_IP(123,43,12,1), 8081}; ple.id = 2; ple.last_seen = 2000;
++  plm.append_with_peer_white(ple);
++  ASSERT_EQ(plm.get_white_peers_count(), 1u); // stock: white is one-per-host, newest port wins
++  std::vector<nodetool::peerlist_entry> g, w;
++  plm.get_peerlist(g, w);
++  ASSERT_EQ(w.size(), 1u);
++  ASSERT_EQ(w[0].adr.as<const epee::net_utils::ipv4_network_address>().port(), 8081);
++}
++
++TEST(peer_list, per_host_gray_cap_keeps_newest)
++{
++  nodetool::peerlist_manager plm;
++  plm.init(nodetool::peerlist_types{}, false);
++  plm.set_ports_per_host_limit(1);
++  for (uint16_t port = 1; port <= 3; ++port)
++  {
++    nodetool::peerlist_entry ple{};
++    ple.adr = epee::net_utils::ipv4_network_address{MAKE_IP(1,2,3,4), uint16_t(1000+port)};
++    ple.id = port; ple.last_seen = 1000+port;
++    plm.append_with_peer_gray(ple);
++  }
++  nodetool::peerlist_entry other{};
++  other.adr = epee::net_utils::ipv4_network_address{MAKE_IP(5,6,7,8), 8080}; other.id = 9; other.last_seen = 1;
++  plm.append_with_peer_gray(other);
++  ASSERT_EQ(plm.get_gray_peers_count(), 2u); // host's newest + the other host
++  std::vector<nodetool::peerlist_entry> g, w;
++  plm.get_peerlist(g, w);
++  for (const auto& pe : g)
++    if (pe.adr.as<const epee::net_utils::ipv4_network_address>().ip() == MAKE_IP(1,2,3,4))
++      ASSERT_EQ(pe.adr.as<const epee::net_utils::ipv4_network_address>().port(), 1003);
++}
++
++TEST(peer_list, per_host_promote_erases_gray_siblings)
++{
++  nodetool::peerlist_manager plm;
++  plm.init(nodetool::peerlist_types{}, false);
++  plm.set_ports_per_host_limit(1);
++  nodetool::peerlist_entry ple{};
++  ple.adr = epee::net_utils::ipv4_network_address{MAKE_IP(1,2,3,4), 1001}; ple.id = 1; ple.last_seen = 1000;
++  plm.append_with_peer_gray(ple);
++  ple.adr = epee::net_utils::ipv4_network_address{MAKE_IP(1,2,3,4), 1002}; ple.id = 2; ple.last_seen = 1001;
++  plm.append_with_peer_gray(ple);
++  ple.adr = epee::net_utils::ipv4_network_address{MAKE_IP(5,6,7,8), 8080}; ple.id = 9; ple.last_seen = 1;
++  plm.append_with_peer_gray(ple);
++  ASSERT_EQ(plm.get_gray_peers_count(), 2u); // the cap already evicted H:1001 when H:1002 arrived
++  nodetool::peerlist_entry promote{};
++  promote.adr = epee::net_utils::ipv4_network_address{MAKE_IP(1,2,3,4), 1002}; promote.id = 2; promote.last_seen = 2000;
++  plm.append_with_peer_white(promote);
++  ASSERT_EQ(plm.get_white_peers_count(), 1u);
++  ASSERT_EQ(plm.get_gray_peers_count(), 1u); // only the other host remains: both same-host gray rows erased
++  std::vector<nodetool::peerlist_entry> g, w;
++  plm.get_peerlist(g, w);
++  ASSERT_EQ(g[0].adr.as<const epee::net_utils::ipv4_network_address>().ip(), MAKE_IP(5,6,7,8));
++}
++
++TEST(peer_list, per_host_stock_noop_zero_limit)
++{
++  nodetool::peerlist_manager plm;
++  plm.init(nodetool::peerlist_types{}, false); // limit 0 = stock
++  nodetool::peerlist_entry ple{};
++  ple.adr = epee::net_utils::ipv4_network_address{MAKE_IP(1,2,3,4), 1001}; ple.id = 1; ple.last_seen = 1000;
++  plm.append_with_peer_gray(ple);
++  ple.adr = epee::net_utils::ipv4_network_address{MAKE_IP(1,2,3,4), 1002}; ple.id = 2; ple.last_seen = 1001;
++  plm.append_with_peer_gray(ple);
++  ASSERT_EQ(plm.get_gray_peers_count(), 2u); // stock: no per-host gray cap
++  nodetool::peerlist_entry promote{};
++  promote.adr = epee::net_utils::ipv4_network_address{MAKE_IP(1,2,3,4), 1002}; promote.id = 2; promote.last_seen = 2000;
++  plm.append_with_peer_white(promote);
++  ASSERT_EQ(plm.get_gray_peers_count(), 1u); // stock: only the same-ADDRESS gray row is erased; H:1001 stays (the pump's reservoir)
++  ASSERT_EQ(plm.get_white_peers_count(), 1u);
++  promote.adr = epee::net_utils::ipv4_network_address{MAKE_IP(1,2,3,4), 1001}; promote.id = 1; promote.last_seen = 3000;
++  plm.append_with_peer_white(promote);
++  ASSERT_EQ(plm.get_white_peers_count(), 1u); // stock: same-host white eviction, now H:1001
++  ASSERT_EQ(plm.get_gray_peers_count(), 0u);
++}
++
++TEST(peer_list, per_host_v4_mapped_ipv6_same_host)
++{
++  nodetool::peerlist_manager plm;
++  plm.init(nodetool::peerlist_types{}, false);
++  plm.set_ports_per_host_limit(1);
++  nodetool::peerlist_entry ple{};
++  ple.adr = epee::net_utils::ipv4_network_address{MAKE_IP(1,2,3,4), 1001}; ple.id = 1; ple.last_seen = 5;
++  plm.append_with_peer_gray(ple);
++  ple.adr = epee::net_utils::ipv6_network_address{boost::asio::ip::make_address_v6(boost::asio::ip::v4_mapped, boost::asio::ip::address_v4{MAKE_IP(1,2,3,4)}), 1002}; ple.id = 2; ple.last_seen = 6;
++  plm.append_with_peer_gray(ple);
++  ASSERT_EQ(plm.get_gray_peers_count(), 1u); // v4-mapped ipv6 collapses onto the ipv4 host key
++  std::vector<nodetool::peerlist_entry> g, w;
++  plm.get_peerlist(g, w);
++  ASSERT_EQ(g.size(), 1u);
++  ASSERT_EQ(g[0].adr.get_type_id(), epee::net_utils::ipv6_network_address::get_type_id());
++}
++
+ TEST(peerlist_storage, store)
+ {
+ 
