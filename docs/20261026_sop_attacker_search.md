@@ -1445,3 +1445,26 @@ better. The SoP attacker's gain does not depend on tie speed: it answered
 so the honest block at that height trails its block by more than d at the
 far miner. The receipt proxy (first log mention) and the 10 s tie window
 are judgement calls.
+
+#### The alpha ladder on both paths (10-30, 22:50Z)
+
+SoP param attacker vs the stock rule's tie-racer (SM1) on the same
+topology, bridges beside both honest miners, one seed per cell:
+
+| alpha | SoP, 3 s path (inside d) | SoP, 6 s path (past d) | stock SM1 measured, 3 s / 6 s | SM1 formula, gamma 0 / 0.5 |
+|---|---|---|---|---|
+| 0.30 | (not run) | (not run) | - / 0.303 | 0.273 / 0.327 |
+| 0.35 | 0.175 | 0.209 | 0.363 / 0.338 | 0.367 / 0.416 |
+| 0.40 | 0.246 | 0.385 | (not run) | 0.484 / 0.526 |
+| 0.45 | 0.486 | 0.699 | 0.671 / 0.649 | 0.652 / 0.681 |
+
+Inside d SoP holds the attacker far below honest up to 0.40 and near
+honest at 0.45, against a stock attacker that profits from 0.35 on. Past
+d the slow honest path costs SoP 0.03 of attacker share at 0.35, 0.14 at
+0.40 and 0.21 at 0.45, and only at 0.45 does SoP fall to the stock
+rule's level (0.699 against 0.65-0.68). Read with the reaction-time
+finding (the stock tie-racer answers too slowly, so the gamma-0.5
+formula column is the better stock reference): past d, SoP still beats
+the stock rule by 0.15-0.2 at 0.35-0.40 and ties it at 0.45. The 6 s
+honest path is a large, not a fatal, loss for SoP below 0.45. The d sweep
+(running) tests whether a larger d removes it.
