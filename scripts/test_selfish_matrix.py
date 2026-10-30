@@ -1155,3 +1155,26 @@ def test_seed2_and_lowalpha_specs_differ_from_their_twins_only_where_intended():
         for m in miners:
             twin["agents"][m]["hashrate"] = 1.75
         assert cfg["agents"] == twin["agents"], name
+
+
+def test_adopt_nodrop_differs_from_k2_only_in_the_scoring():
+    """sop_v4_adopt_nodrop_72h (2026-10-30): the 50 % adoption cell at 0.45 with
+    --sim-no-drop-score on exactly the stock-rule daemons (honest-003 / 004,
+    relay-002, seeds 4-6), relay-002 moved to monerod-sim to accept it, and
+    nothing else changed."""
+    cells = _cells(_load_spec("sop_v4_adopt_nodrop_72h.yaml"))
+    assert sorted(cells) == ["share_k2_nodrop_a045_s1"]
+    cfg = copy.deepcopy(cells["share_k2_nodrop_a045_s1"])
+    twin = _cells(_load_spec("sop_v4_adopt_72h.yaml"))["share_k2_a045_s1"]
+    flagged = {a for a, ag in cfg["agents"].items()
+               if (ag.get("daemon_options") or {}).pop("sim-no-drop-score", False)}
+    assert flagged == {"honest-003", "honest-004", "relay-002",
+                       "monero-seed-004", "monero-seed-005", "monero-seed-006"}
+    assert not any(_sop(cfg, a) for a in flagged)
+    assert cfg["agents"]["relay-002"]["daemon"] == "monerod-sim"
+    assert twin["agents"]["relay-002"]["daemon"] == "monerod"
+    cfg["agents"]["relay-002"]["daemon"] = "monerod"
+    for a in flagged:   # an emptied daemon_options mapping equals an absent one
+        if cfg["agents"][a].get("daemon_options") == {} and "daemon_options" not in twin["agents"][a]:
+            del cfg["agents"][a]["daemon_options"]
+    assert cfg["agents"] == twin["agents"] and cfg["general"] == twin["general"]
