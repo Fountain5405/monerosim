@@ -115,3 +115,23 @@ only (standing no-GitHub rule; internal docs until then).
 - Gray-list starvation of honest entries behind a churning same-host set: bounded because the
   gray cap N applies per host; watch in cells.
 - IPv6 native (not v4-mapped) hosts: host_str already handles them; no extra rule.
+
+## Appendix A — correction, 2026-10-30 (post code-read, pre build)
+
+The dive's first pass missed that stock already enforces the white-list half: every new white
+insert calls `evict_host_from_peerlist(true, ple)` (`net_peerlist.cpp:294` -> `filter`, erasing
+ALL same-host entries), and `is_same_host` is IP-only (`net_utils_base.h:83`). **The white list
+has been one-entry-per-host since >= 2021-07-27.** So R1-white was already stock and R2
+(gossip one-per-host) is vacuous (gossip samples a one-per-host white list) - both dropped.
+
+What the port front actually buys is the **gray-side freshness pump**: gray has no host dedup;
+fleet endpoints keep siblings parked in victims' gray lists; gray housekeeping probes a uniform
+random gray peer; each successful probe promotes that port to white (evicting the prior
+same-host entry) with a fresh last_seen - the host's single white slot never goes stale. This
+is E21/E35's "refreshed only when a node dials them," industrialized across ports.
+
+**Revised defense (approved 2026-10-30):** `--sim-peerlist-ports-per-host N` (0 = stock)
+enforces (a) gray capped at N entries per host, newest kept, oldest-by-last_seen dropped on
+insert, and (b) on white insert of a new address, all same-host gray entries are erased, so
+the rotation reservoir cannot refill while the host holds a white slot. Tests re-targeted to
+gray; a baseline test pins stock's one-per-host white behavior. Cells unchanged.
