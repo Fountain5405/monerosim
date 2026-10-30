@@ -1334,3 +1334,39 @@ slightly better); just past it, SoP doubles the slow miner's loss and
 takes it off the fast miners. On the stock rule the loss grows smoothly
 with the delay (4.4, 5.0, 13.9 %). The 12 s SoP cell says whether the
 penalty past d keeps growing or saturates. One seed per cell.
+
+#### 75 % adoption, and why the stock side falls away (10-30, 17:46Z)
+
+`share_k3_a045_s1` (honest-001..003 on SoP, honest-004 alone on the stock
+rule; attacker 4.5 of 10):
+
+| side | final height | attacker share | honest blocks kept | fork from the SoP side |
+|---|---|---|---|---|
+| SoP (honest-001..003) | 2,767 | 0.883 | 207 of 1,773 (64 / 71 / 72) | - |
+| stock (honest-004) | 2,383 | 0.755 | 340 of 1,389 (172 its own) | at 2,209 |
+
+The attacker again holds about 0.88 of the majority chain. With full
+adoption (four SoP miners) the same attacker scored 0.449; removing one
+pool of 1.375 from the SoP side leaves 4.125 of honest SoP hashrate
+against the attacker's 4.5. All three partial-adoption cells share that
+shape: the attacker outweighs whichever honest group it fights.
+
+The stock side does not merely lose races, it drops off the network. The
+lone stock node logged "Host relay-001 blocked" at 01:25 and "Host
+honest-003 blocked" at 01:48 on day 1, then resynced from 4.8 hours
+behind at 01:25 on day 2 and from 6.4 hours behind on day 3: monerod's
+24 h peer block. A stock node scores a peer whose chain height drops,
+and under SoP a node legitimately reorganizes to a branch with fewer
+blocks and more share weight. The SoP patch already stops SoP nodes from
+scoring this (stubborn_h10_banlog, 10-07: it banned honest peers for
+24 h); stock nodes still do, so in a mixed network they block their SoP
+peers, sit isolated for a day, resync, and block again. That is the
+"daily resync bursts" left unexplained in the first 50 % cell. Without
+an attacker the SoP nodes rarely reorganize to fewer blocks, so the
+no-attacker mixed cell never split.
+
+Consequence for deployment: a SoP switch needs every node, not only the
+miners, to run the changed peer scoring, or stock nodes will partition
+themselves from the SoP network during any attack. The flag day is
+required for the relays as much as for the pools. Caveats as before (one
+seed, 14 nodes, alpha 0.45 above each honest group).
