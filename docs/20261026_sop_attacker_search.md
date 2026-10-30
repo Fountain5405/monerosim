@@ -1292,3 +1292,23 @@ attacker's tie block to the far miner seconds before the honest one
 (it polls its bridges once per agent tick) is the first suspect. It does
 not change the comparison with SoP: a stock tie-racer at gamma 0.5 would
 reach 0.68 at 0.45, still below SoP's 0.699 on the 6 s path.
+
+#### SoP on the 6 s path at 0.40: the advantage has a threshold (10-30, 16:39Z)
+
+`share_sop_a040_f6_s1`: the same param attacker, bridges and 6 s honest
+path at alpha 0.40: share 0.385 (1,921 blocks), attacker orphan rate
+0.415, network 0.382. Below honest. The SM1 formula on the stock rule
+gives 0.484 at 0.40 with gamma 0.
+
+| alpha | SoP, 6 s path | SoP, base topology | stock SM1 (formula, gamma 0) |
+|---|---|---|---|
+| 0.40 | 0.385 | (below the 0.4635 crossing) | 0.484 |
+| 0.45 | 0.699 | 0.44 | 0.652 (0.649 measured) |
+
+The lateness gift needs enough hashrate to exploit: at 0.40 the attacker
+still loses most races it opens (orphan rate 0.415) and SoP beats the
+stock rule's tie-racer by 0.10; at 0.45 it wins them and SoP is 0.05
+worse than stock. So "past d, SoP is worse than stock" holds at the top
+of the alpha range only, between 0.40 and 0.45 on this topology. One
+seed; the 0.35 point on the 6 s path and the 0.35 / 0.40 points on the
+3 s path are running (10-30 17:39Z).
