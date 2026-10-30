@@ -1061,15 +1061,19 @@ blocks) and only the preload paying 35.1.
 | a047 s1 tail (10-29) | tail, 0.6 XMR | 0.508 | 0.301 | 0.353 | 1,948 |
 | a046 s1 / s2 (10-26) | stock | 0.450 / 0.445 | 0.348 / 0.383 | 0.339 / 0.347 | |
 | a046 s1 tail (10-29) | tail, 0.6 XMR | 0.449 | 0.351 | 0.341 | 1,992 |
+| stock d2 a038 s1 / s2 (10-27) | stock | 0.402 / 0.382 | 0.189 / 0.224 | 0.223 / 0.222 | |
+| stock d2 a038 s1 tail (10-30) | tail, 0.6 XMR | 0.404 | 0.202 | 0.232 | 2,028 |
 
 The a047 tail rerun sits inside the stock cells' seed spread (0.451 to
 0.514, mean 0.481) on every column, and the a046 tail rerun (19:43Z)
-matches its stock cells to 0.005 on share and orphan rates. Same seed as the stock s1 cell, but the
+matches its stock cells to 0.005 on share and orphan rates; the stock
+rule's depth-2 attacker at 0.38 (00:17Z 10-30) reruns at 0.404 against
+0.402 / 0.382. Same seed as the stock s1 cell, but the
 emission change alters every block hash, so this is a fourth sample, not
 a paired comparison. No sign that the emission schedule touches the
-result, as expected for a block-counted share. Six tail cells remain
-queued (stock d2 a038 / a036 running, 1h a047, control sop / stock,
-four-miner a047); the conclusion stands unless one of them moves by more
+result, as expected for a block-counted share. Five tail cells remain
+(stock d2 a036, 1h a047, control stock, four-miner a047 running; control
+sop queued); the conclusion stands unless one of them moves by more
 than the seed spread.
 
 #### The stock comparison at 0.45 (10-29, 13:12Z)
