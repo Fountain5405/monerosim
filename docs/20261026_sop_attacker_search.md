@@ -979,6 +979,44 @@ how Monero ships hard forks anyway). The 25 % and 75 % cells with the
 attacker (k1 running on phantom from 03:10Z, k3 queued) say whether a
 SoP minority or majority is enough for the attacker to split.
 
+#### Partial adoption with the attacker: worse than either rule alone (10-30)
+
+Per-side shares, from each honest node's own final main chain (daemon
+log; in-run blocks above the 994 preload; nodes on one side agree block
+for block):
+
+| adoption (SoP honest hashrate) | side | final height | attacker share | honest blocks kept | fork from the SoP side |
+|---|---|---|---|---|---|
+| 25 % (k1: honest-001 SoP, 1.375 of 10) | SoP | 2,746 | 0.906 | 165 of 1,752 | - |
+| 25 % | stock (honest-002..004) | 2,750 | 0.858 | 250 of 1,756 | at 2,663 |
+| 50 % (k2: honest-001 / 002 SoP, 2.75) | SoP | 2,770 | 0.998 | 4 of 1,776 | - |
+| 50 % | stock (honest-003 / 004) | 2,615 | 0.836 | 266 of 1,621 | at 2,352 |
+
+At 25 % adoption the network stayed on one chain until the last 87
+blocks, and on it the attacker held about 0.88 of all blocks. With
+alpha 0.45 the reference points are 0.449 with full SoP (four miners,
+honest) and about 0.65 with the full stock rule (SM1): partial adoption
+gave the attacker far more than either rule alone.
+
+The mechanism is the split of the honest hashrate by rule. The SoP honest
+miners weigh the attacker's share-carrying branches over the stock
+miners' blocks, so they mine on the attacker's chain (and see their own
+blocks reorganized away by its releases: honest-001 kept 7 blocks of the
+~240 it found at 25 %); the attacker's chain then carries the attacker
+plus the SoP miners, 5.9 of 10 at 25 % adoption, against 4.1 for the
+stock miners, and wins on the stock rule too. At 50 % the attacker
+(4.5) outweighs each honest half (2.75) on its own. The no-attacker
+mixed cell stayed on one chain, so the split itself is attacker-induced.
+
+Caveats: one seed per cell, 14 nodes, four honest miners, and alpha 0.45
+above the larger honest group in both cells. At a lower alpha (0.30 to
+0.35, below the stock group's hashrate) the attacker could not out-mine
+the stock side, and whether the SoP minority still hands it a gain there
+is untested; that and larger networks (owner 10-30) belong on the 256 GB
+box. The 75 % cell (k3) is running on phantom. Reading for the proposal:
+SoP must switch on network-wide at one height; a transition period with
+mixed rules is worse than not deploying it.
+
 ### 4. The network-advantage attacker, first cell (10-29)
 
 `sop_v4_gamma_72h share_sop_a045_f6_s1`: the validated param attacker at
