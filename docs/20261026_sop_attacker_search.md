@@ -956,6 +956,29 @@ deployment reading is provisional: a fork-choice change that half the
 network runs is a split waiting for a race, and SoP would need a flag-day
 rollout.
 
+#### The no-attacker mixed network (10-30, 03:08Z)
+
+`honest_k2_a045_s1`: the same 50 % split (honest-001 / 002, relay-001 and
+seeds 1-3 on SoP; honest-003 / 004, relay-002 on vanilla monerod and
+seeds 4-6 on the stock rule) with the attacker's node mining honestly at
+4.5 of 10: one chain throughout. All 14 nodes end at height 3,138 on the
+same block; 2,144 in-run blocks, network orphan rate 0.6 %, the honest
+attacker node at 0.444 of blocks for 0.45 of hashrate. The health
+check's split detector (tolerance 3 blocks) stays quiet, against 418
+blocks of divergence in the attacker cell.
+
+A mixed network does not drift apart on its own: with no withheld blocks
+and no bridges there are no competing branches for the two rules to
+disagree on (the 0.6 % of orphans are settled by the next block on both
+rules). The split in the 50 % attacker cell is attacker-induced: an
+attacker at 0.45 can hold the SoP half and the stock half on different
+branches and owns the SoP half's chain (0.998). Reading: partial
+adoption is safe without an attacker and an attack vector with one, so
+SoP has to be deployed as a consensus-wide switch (a flag day, which is
+how Monero ships hard forks anyway). The 25 % and 75 % cells with the
+attacker (k1 running on phantom from 03:10Z, k3 queued) say whether a
+SoP minority or majority is enough for the attacker to split.
+
 ### 4. The network-advantage attacker, first cell (10-29)
 
 `sop_v4_gamma_72h share_sop_a045_f6_s1`: the validated param attacker at
