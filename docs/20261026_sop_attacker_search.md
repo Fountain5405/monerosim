@@ -1582,3 +1582,19 @@ fluffy block itself only arrives when the upstream hop relays it. A fix
 would have to forward competing blocks at the tip height whatever the
 local fork choice, or judge lateness by something other than local first
 sight.
+
+#### The slow miner at d = 20 on the 12 s path (11:50Z)
+
+| rule (12 s path) | slow miner's blocks lost | lost, gap > 20 s | late alt blocks (> d): relay-chain-4 / relay-chain-7 / slow miner | p90 lag at relay-chain-7 |
+|---|---|---|---|---|
+| stock | 79 / 567 (13.9 %) | 19 | - | - |
+| SoP d = 5 | 154 / 594 (25.9 %) | 67 | 53 / 118 / 131 | 510 s |
+| SoP d = 20 | 107 / 569 (18.8 %) | 41 | 19 / 70 / 79 | 429 s |
+
+On the 12 s path a 20 s delay takes back about two fifths of SoP's excess
+loss over stock (12.0 points down to 4.9), all of it from fewer cascades:
+fewer hops judge the competitor late, but the far end still sees 70-79
+competing blocks late by minutes. One seed per cell (all 19 daemons
+logging `delay_ms=20000`); with the 6 s path at d = 10 showing no relief,
+d buys some protection back only where it exceeds the path latency by a
+wide margin, and never removes the cascade.
