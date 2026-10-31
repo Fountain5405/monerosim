@@ -130,6 +130,24 @@ fleet, in every cell so far, holds only relay-dialed connections (100 % of spy s
 one kind a PoW-gated virtual slot never carries; the X3b cells (P55-P59, a fleet that dials, hidden
 or paying) measure what the guarantee is worth against the adversary that would actually pay.
 
+## Finding 8 — X3 (stemmable inbound) closed end to end: nothing buys the first hop, everything else is prefix-capped (E64-E71)
+
+The best available MRL proposal was built (R7) and measured on both sides of the relay. **User side:** at mainnet
+sender rates the relayed-stem cover is too thin to matter — spy precision on senders 1.000 (E64, X1a's exact
+figure); the cover exists only when honest connections are stemmable, and then at 67-68 relayed stems per day
+against ~1,030 own sends (X3a/E66). **Adversary side:** stock Dandelion++ starves a hidden (never-dialed) fleet
+to literally zero stems (E65). X3 opens that fleet a channel — 7 % of stem transactions under universal
+adoption (E66), 19 % when the fleet alone qualifies (E68), 20 % at a 5.3x dial budget (E70) — every receipt at
+hop 2 or later, zero attribution on every estimator, and bounded by a single rule the series established on
+every axis: **one slot per prefix**. Spies per /24 (E67: 23.4 receipts per /24 at 5-per-/24 against 21.1 at
+1-per), connections per spy (E70: 3.5x receipts for 5.3x budget), /16s fielded (E71: 0.78x receipts for 5.25x
+the /16s, inside the pre-registered equivalence window). A visible fleet that dials to qualify **loses** net
+position (E69: 763 receipts paying against 885 sitting still) — the passive white-list channel and the virtual
+channel are direction-bound. **The one structural guarantee held everywhere:** edge 1 is never virtual; an
+inbound-only adversary never sits on the sender's first hop. What survives of the proposal is that guarantee
+and the /16 inbound dedup — and the defense program moved to the peer-list layer (Finding 3's fleet, the
+per-host series P62-P67). [Journal: E64-E71, runs 104-111.]
+
 ## The bottom line
 
 Nothing in the candidate rule set survives the active adversary untrimmed; the
