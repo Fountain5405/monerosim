@@ -1540,6 +1540,7 @@ path (16 daemons logging `delay_ms=10000` and `20000`):
 | 10 s | 0.763 | 0.885 | 0.134 | 0.470 |
 | 20 s | 0.746 | 0.881 | 0.136 | 0.488 |
 | 5 s, 3 s path (reference) | 0.486 | 0.743 | 0.327 | 0.397 |
+| 5 s, 3 s path, seed 2 (20:00Z) | 0.486 | 0.746 | 0.320 | 0.381 |
 
 A delay that covers the 6 s path does not bring the attacker down toward
 the 3 s path's 0.486; both longer delays sit 0.05-0.06 above d = 5 and
