@@ -1658,3 +1658,78 @@ stock honest nodes logged 6 "Host ... blocked" each. At 0.30 the minority
 SoP node, not the attacker, pays for partial adoption; at 0.45 the same
 cell gave the attacker about 0.88 (split). Either way partial adoption is
 worse than none for someone.
+
+### 11. Solver cross-check against libraries and a published table (10-31)
+
+The MRL reviewer asked why the MDP solver (scripts/sop_mdp.py,
+hand-written relative value iteration inside a bisection on the share)
+uses no MDP library. scripts/sop_mdp_crosscheck.py solves the same model
+three ways: the hand-written solver; pymdptoolbox 4.0b3
+RelativeValueIteration inside the same bisection; and scipy 1.18 HiGHS on
+the occupation-measure LP of the ratio objective (Charnes-Cooper: no
+bisection, no value iteration). Tests: scripts/test_sop_mdp_crosscheck.py
+(5 pass, in a separate venv on lithium).
+
+SoP model (Compact's own tables). At the production w 16 / K 48 no
+library-sized instance has a state past the window (caps 3/3-5/5 give
+1.4-2.8 M states, all inside it), so the window is rescaled to w 4 / K 12
+(same code; 4/4 caps, 34,100 states, 1,580 past the window):
+
+| alpha | bound / policy | hand-written | pymdptoolbox | HiGHS LP |
+|---|---|---|---|---|
+| 0.45 | lower, own ignore | 0.450000 | 0.450000 | 0.450000 |
+| 0.45 | lower, own count | 0.450000 | 0.450000 | 0.450000 |
+| 0.45 | upper | 0.962240 | 0.962239 | 0.962239 |
+| 0.40 | lower, own ignore / count | 0.400000 | 0.400000 | 0.400000 |
+| 0.40 | upper | 0.760171 | 0.760171 | 0.760172 |
+| 0.48 | lower, own count | 0.480112 | 0.480112 | 0.480112 |
+| 0.45 | fixed window_stubborn (G 5) | 0.219619 | 0.219619 | 0.219620 |
+
+Largest disagreement 9.5e-7. The hand-written solver needed at most 118
+sweeps per bisection step (its cap is 5,000). A 695,014-state instance
+(w 8 / K 24) ran out of memory in the library path under an 8 GB cap.
+
+Bitcoin model (Sapirshtein, Sompolinsky, Zohar, FC 2016, Table 1, written
+in sop_mdp's table form and solved by sop_mdp.relative_vi), against their
+Table 2 (gamma 0, T 95):
+
+| alpha | ours (all three solvers) | SSZ epsilon-OPT | SM1 ours (T 400) | Eyal-Sirer SM1 |
+|---|---|---|---|---|
+| 1/3 | 0.337051 | 0.33705 | 0.333333 | 0.333333 |
+| 0.35 | 0.370774 | 0.37077 | 0.366509 | 0.366509 |
+| 0.375 | 0.426003 | 0.42600 | 0.421182 | 0.421182 |
+| 0.4 | 0.488663 | 0.48866 | 0.483721 | 0.483721 |
+| 0.425 | 0.568088 | 0.56808 | 0.558004 | 0.558011 |
+| 0.45 | 0.668913 | 0.66891 | 0.649845 | 0.651773 |
+| 0.475 | 0.801726 | 0.80172 | 0.708148 | 0.782546 |
+
+Every optimum matches the published value to its five decimals. SM1 at
+gamma 0.5 matches the closed form to 1e-6 at all four alphas tried (1/3 to
+0.4). At gamma 0 it falls short at 0.45-0.475 because SM1's lead does a
+near-balanced walk there and even T 400 truncates it. At T 30 the same
+effect cost 0.0035 at alpha 0.35, and the exact stationary solve and a
+Monte Carlo of the tables both agree with the solver.
+
+Not reproduced: SSZ's upper-bound column. My reading of their over-paying
+award, from garbled PDF text, gives tighter values at alpha >= 0.4 (0.6758
+against 0.70109 at 0.45, 0.8378 against 0.90476 at 0.475). Lower bounds at
+larger T stay under ours (0.669917 at T 200, alpha 0.45; 0.80746 at T 300,
+alpha 0.475), so nothing contradicts it as a bound, but it may not be
+their construction. This concerns the Bitcoin comparison only. The SoP
+upper bound (0.7265 at 4/4) is a separate derivation, and only its solver
+is cross-checked here.
+
+Found on the way:
+- pymdptoolbox 4.0b3's input check allocates dense n x n arrays from
+  sparse input (9.4 GiB at 35,588 nodes). The script does those checks
+  sparsely instead.
+- HiGHS calls a fixed-policy chain infeasible while every flow row is
+  present (they always sum to zero), and returned status 15 on the slow
+  Bitcoin chains at tight tolerances. One row is dropped and looser
+  tolerances are retried.
+
+Conclusion: the hand-written solver gives the same optima as two
+off-the-shelf solvers on the SoP model's own tables, and reproduces the
+published Bitcoin optima. What remains unchecked is only what scale
+changes: the production instances are 8-85 M states, and the library path
+stops near 0.7 M on lithium.
