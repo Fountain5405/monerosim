@@ -1,0 +1,132 @@
+diff --git a/src/p2p/net_node.cpp b/src/p2p/net_node.cpp
+index f85fa8336..c35c66ec9 100644
+--- a/src/p2p/net_node.cpp
++++ b/src/p2p/net_node.cpp
+@@ -163,6 +163,8 @@ namespace nodetool
+     const command_line::arg_descriptor<std::string> arg_sim_log_txrelay = {"sim-log-txrelay", "Simulation only (measurement): append a JSONL line for every Dandelion++ relay event (tx received, stem send, fluff, epoch, stem change, pool re-relay) to this file. Off by default; read-only w.r.t. relay.", ""};
+     const command_line::arg_descriptor<bool> arg_sim_stemmable_inbound = {"sim-stemmable-inbound", "Simulation only: tevador's MRL #160 variant — stemmable inbound connections. Stem edge 1 is drawn from real outgoing connections only (local transactions always use it); edge 2 from the /16-deduplicated union of real outgoing connections and 'virtual outgoing' connections built from stemmable inbounds (one random /24 per /16, one random connection per /24, capped at 12). Off = stock Dandelion++.", false};
+     const command_line::arg_descriptor<std::string> arg_sim_stemmable_cidrs = {"sim-stemmable-cidrs", "Simulation only: with --sim-stemmable-inbound, a file of a.b.c.d/len lines (one per line, # comments) whose inbound connections count as stemmable — the modeled PoW-paid set; empty = every inbound connection is stemmable. A relative path resolves against the data dir.", ""};
++    const command_line::arg_descriptor<uint64_t> arg_sim_enforce_id_consistency = {"sim-enforce-id-consistency", "Simulation only: enforce observational id consistency — a peer id directly observed at >=2 addresses within this many hours (grace, honest dynamic-IP moves) loses white-list standing at all but the freshest address, and an address whose self-advertised id contradicts its handshake id is demoted. Direct observations only; public zone only; 0 = stock.", 0};
++    const command_line::arg_descriptor<bool> arg_sim_shared_spy_id = {"sim-shared-spy-id", "Simulation only: this daemon presents one fixed peer id (models a proxy front sharing a backing node's id). Off = stock random id.", false};
+     const command_line::arg_descriptor<size_t> arg_sim_peerlist_ports_per_host = {"sim-peerlist-ports-per-host", "Simulation only: cap the gray peer list at this many entries per host (newest kept, oldest by last_seen dropped) and erase a host's other gray entries when one of its addresses is promoted to white. Stock monerod already keeps white one-per-host; 0 = stock.", 0};
+     const command_line::arg_descriptor<std::string> arg_sim_subnet_dedup = {"sim-subnet-dedup", "Simulation only: outbound peer grouping. 24 (stock): one candidate per /24, skipping /24s already connected. 16: the same at /16. none: no subnet grouping (ports still collapsed). legacy: v0.18.4.2's selection, before #9939 (skip /16s already connected).", "24"};
+     const command_line::arg_descriptor<size_t> arg_sim_whitelist_candidates = {"sim-whitelist-candidates", "Simulation only: how many of the newest (by last_seen) subnet-deduplicated white-list peers are candidates for an outbound pick. Stock monero uses 20; 0 = every unconnected subnet is a candidate.", 20};
+diff --git a/src/p2p/net_node.h b/src/p2p/net_node.h
+index 446c2a069..92deb94c7 100644
+--- a/src/p2p/net_node.h
++++ b/src/p2p/net_node.h
+@@ -31,6 +31,7 @@
+ #pragma once
+ #include <array>
+ #include <atomic>
++#include "p2p/id_evidence_map.h"
+ #include <boost/asio/io_context.hpp>
+ #include <boost/asio/ip/tcp.hpp>
+ #include <boost/thread.hpp>
+@@ -460,6 +461,9 @@ namespace nodetool
+     bool m_sim_uniform_whitelist_pick = false;  // --sim-uniform-whitelist-pick: uniform white-list pick (open question 10 probe)
+     bool m_sim_legacy_selection = false;              // --sim-subnet-dedup=legacy
+     size_t m_sim_peerlist_ports_per_host = 0;         // --sim-peerlist-ports-per-host (0 = stock)
++    uint64_t m_sim_enforce_id_consistency = 0;        // --sim-enforce-id-consistency hours (0 = stock)
++    bool m_sim_shared_spy_id = false;                 // --sim-shared-spy-id
++    nodetool::id_evidence_map m_sim_id_evidence{0};   // enforcement evidence (direct observations only)
+     std::atomic<bool> is_closing;
+     std::atomic<bool> m_stop_signal_sent_once{false};
+     std::unique_ptr<boost::thread> mPeersLoggerThread;
+@@ -561,6 +565,8 @@ namespace nodetool
+     extern const command_line::arg_descriptor<std::string> arg_sim_stemmable_cidrs;
+     extern const command_line::arg_descriptor<std::string> arg_sim_subnet_dedup;
+     extern const command_line::arg_descriptor<size_t> arg_sim_peerlist_ports_per_host;
++    extern const command_line::arg_descriptor<uint64_t> arg_sim_enforce_id_consistency;
++    extern const command_line::arg_descriptor<bool> arg_sim_shared_spy_id;
+     extern const command_line::arg_descriptor<size_t> arg_sim_whitelist_candidates;
+     extern const command_line::arg_descriptor<bool> arg_sim_random_whitelist_candidates;
+     extern const command_line::arg_descriptor<size_t> arg_sim_white_peerlist_limit;
+diff --git a/src/p2p/net_node.inl b/src/p2p/net_node.inl
+index b0b99892f..c1c62dd51 100644
+--- a/src/p2p/net_node.inl
++++ b/src/p2p/net_node.inl
+@@ -129,6 +129,8 @@ namespace nodetool
+     command_line::add_arg(desc, arg_sim_stemmable_cidrs);
+     command_line::add_arg(desc, arg_sim_subnet_dedup);
+     command_line::add_arg(desc, arg_sim_peerlist_ports_per_host);
++    command_line::add_arg(desc, arg_sim_enforce_id_consistency);
++    command_line::add_arg(desc, arg_sim_shared_spy_id);
+     command_line::add_arg(desc, arg_sim_whitelist_candidates);
+     command_line::add_arg(desc, arg_sim_random_whitelist_candidates);
+     command_line::add_arg(desc, arg_sim_white_peerlist_limit);
+@@ -156,7 +158,7 @@ namespace nodetool
+ 
+     network_zone& public_zone = m_network_zones[epee::net_utils::zone::public_];
+     public_zone.m_config.m_support_flags = P2P_SUPPORT_FLAGS;
+-    public_zone.m_config.m_peer_id = crypto::rand<uint64_t>();
++    public_zone.m_config.m_peer_id = m_sim_shared_spy_id ? 0x5350593031303031ull : crypto::rand<uint64_t>(); // --sim-shared-spy-id: fixed id (proxy-front model)
+     m_first_connection_maker_call = true;
+ 
+     CATCH_ENTRY_L0("node_server::init_config", false);
+@@ -466,6 +468,13 @@ namespace nodetool
+     m_require_ipv4 = !command_line::get_arg(vm, arg_p2p_ignore_ipv4);
+     {
+       m_sim_peerlist_ports_per_host = command_line::get_arg(vm, arg_sim_peerlist_ports_per_host);
++      m_sim_enforce_id_consistency = command_line::get_arg(vm, arg_sim_enforce_id_consistency);
++      m_sim_shared_spy_id = command_line::get_arg(vm, arg_sim_shared_spy_id);
++      m_sim_id_evidence.set_grace(m_sim_enforce_id_consistency * 3600);
++      if (m_sim_enforce_id_consistency)
++        MGINFO("*** SIMULATION: --sim-enforce-id-consistency " << m_sim_enforce_id_consistency << "h: observational id consistency enforced (public zone, direct evidence only). ***");
++      if (m_sim_shared_spy_id)
++        MGINFO("*** SIMULATION: --sim-shared-spy-id: this daemon presents one fixed peer id (proxy-front model). ***");
+       if (m_sim_peerlist_ports_per_host)
+       {
+         MGINFO("*** SIMULATION: --sim-peerlist-ports-per-host " << m_sim_peerlist_ports_per_host << ": gray peer list capped per host, same-host gray erased on white promotion (stock = off). ***");
+@@ -2607,6 +2616,23 @@ namespace nodetool
+   template<class t_payload_net_handler>
+   bool node_server<t_payload_net_handler>::handle_remote_peerlist(const std::vector<peerlist_entry>& peerlist, const epee::net_utils::connection_context_base& context)
+   {
++  { // --sim-enforce-id-consistency: R2 — the peer's self-advertised entry on this connection must
++    // carry the id it presented at handshake (which our own evidence map recorded directly).
++    const epee::net_utils::network_address& radr = context.m_remote_address;
++    if (m_sim_id_evidence.enabled() && radr.get_zone() == epee::net_utils::zone::public_)
++    {
++      uint64_t handshake_id = 0;
++      if (m_sim_id_evidence.last_observed_id(radr, handshake_id))
++        for (const peerlist_entry& pe : peerlist)
++          if (pe.adr == radr && pe.id != handshake_id)
++          {
++            m_sim_id_evidence.mark_contradiction(radr, (uint64_t)time(NULL));
++            m_network_zones.at(epee::net_utils::zone::public_).m_peerlist.filter(
++                true, [&pe](const peerlist_entry& x){ return x.adr == pe.adr; });
++            break;
++          }
++    }
++  }
+     if (peerlist.size() > P2P_MAX_PEERS_IN_HANDSHAKE)
+     {
+       MWARNING(context << "peer sent " << peerlist.size() << " peers, considered spamming");
+@@ -2950,6 +2976,15 @@ namespace nodetool
+   template<class t_payload_net_handler>
+   int node_server<t_payload_net_handler>::handle_handshake(int command, typename COMMAND_HANDSHAKE::request& arg, typename COMMAND_HANDSHAKE::response& rsp, p2p_connection_context& context)
+   {
++    { // --sim-enforce-id-consistency: direct observation of (peer_id, remote address) — R1
++      if (m_sim_id_evidence.enabled() && context.m_remote_address.get_zone() == epee::net_utils::zone::public_)
++      {
++        auto& ev_zone = m_network_zones.at(epee::net_utils::zone::public_);
++        const auto violators = m_sim_id_evidence.observe(arg.node_data.peer_id, context.m_remote_address, (uint64_t)time(NULL));
++        for (const auto& v : violators)
++          ev_zone.m_peerlist.filter(true, [&v](const peerlist_entry& pe){ return pe.adr == v; });
++      }
++    }
+     if(arg.node_data.network_id != m_network_id)
+     {
+ 
+diff --git a/tests/unit_tests/CMakeLists.txt b/tests/unit_tests/CMakeLists.txt
+index 2415dfea8..4e44b4494 100644
+--- a/tests/unit_tests/CMakeLists.txt
++++ b/tests/unit_tests/CMakeLists.txt
+@@ -85,6 +85,7 @@ set(unit_tests_sources
+   subaddress.cpp
+   test_tx_utils.cpp
+   test_peerlist.cpp
++  test_id_consistency.cpp
+   test_protocol_pack.cpp
+   threadpool.cpp
+   tx_proof.cpp

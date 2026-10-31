@@ -1261,6 +1261,7 @@ install_sim_monerod() {
         "$SCRIPT_DIR/patches/monero-sim-peerlist-limits.patch"
         "$SCRIPT_DIR/patches/monero-sim-stemmable-inbound.patch"
         "$SCRIPT_DIR/patches/monero-sim-peerlist-ports-per-host.patch"
+        "$SCRIPT_DIR/patches/monero-sim-id-consistency.patch"
     )
     local p
     for p in "${patches[@]}"; do
