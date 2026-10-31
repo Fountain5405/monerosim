@@ -1472,3 +1472,26 @@ formula column is the better stock reference): past d, SoP still beats
 the stock rule by 0.15-0.2 at 0.35-0.40 and ties it at 0.45. The 6 s
 honest path is a large, not a fatal, loss for SoP below 0.45. The d sweep
 (running) tests whether a larger d removes it.
+
+### 9. The lateness delay d (10-31)
+
+Owner 10-30: does a larger d take away SoP's cost on slow and badly
+connected honest miners, and what does it give the attacker? Ten cells,
+each its source spec's d = 5 cell plus `--sim-sop-delay-s` 10 or 20 on
+every SoP daemon and nothing else (pinned by
+test_dsweep_specs_differ_from_their_d5_cells_only_in_the_delay): the slow
+miner at 6 s and 12 s, the 6 s honest path at alpha 0.45, and the param
+attacker at 0.45 and 0.47 on the headline topology. One seed per cell.
+
+#### The param attacker at d = 20 (03:09Z)
+
+| alpha | d | share | d = 5, same cell, seeds 1 / 2 / 3 |
+|---|---|---|---|
+| 0.47 | 20 s | 0.506 | 0.451 / 0.514 / 0.478 (mean 0.481) |
+
+Inside the d = 5 seed spread (0.063 wide at 0.47, 0.053 at 0.45), so one
+seed cannot tell d = 20 from d = 5 on the attacker's side. Shadow runs are
+not reproducible, so "seed 1" at d = 20 is not a paired draw of d = 5's
+seed 1. Gamma 0.158, attacker orphans 0.306, network orphans 0.352 (d = 5
+seeds: 0.12-0.15, 0.31-0.36, 0.35-0.37); health ok, no stuck time. A
+0.03 effect of d on the attacker would need about four seeds per d.
