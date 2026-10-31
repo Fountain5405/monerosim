@@ -1642,3 +1642,18 @@ above); no SoP-side node did. Health flag SPLIT 78. The stock-only
 reference at 0.30 (d2_k0_a030_s1) and 25 % adoption (k1) are queued and
 the --sim-no-drop-score mechanism cell runs tonight. Script:
 .claude/campaign9/analysis/split_shares_arg.py <run dir>.
+
+The 25 % adoption cell (k1: only honest-001 on SoP; every honest miner at
+hashrate 1.75, attacker 3.0, so alpha 0.30) went the other way:
+
+| chain (all four honest nodes agree, tip 2942) | attacker | h001 (SoP) | h002 / h003 / h004 (stock) |
+|---|---|---|---|
+| blocks | 0 of 1,948 | 284 | 548 / 542 / 574 |
+
+No split: the stock majority's chain wins everywhere, every attacker block
+is orphaned (attacker orphan rate 1.000), and the lone SoP honest miner
+keeps about half the blocks its equal-hashrate stock peers keep. The three
+stock honest nodes logged 6 "Host ... blocked" each. At 0.30 the minority
+SoP node, not the attacker, pays for partial adoption; at 0.45 the same
+cell gave the attacker about 0.88 (split). Either way partial adoption is
+worse than none for someone.
