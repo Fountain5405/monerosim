@@ -1735,3 +1735,10 @@ off-the-shelf solvers on the SoP model's own tables, and reproduces the
 published Bitcoin optima. What remains unchecked is only what scale
 changes: the production instances are 8-85 M states, and the library path
 stops near 0.7 M on lithium.
+
+Second seed of the 50 % adoption cell at alpha 0.45 (k2_a045_s2, 22:50Z):
+the attacker takes 0.997 of the SoP side's chain (1,734 of 1,739; honest
+miners 0 / 2 / 0 / 3 blocks) and 0.809 of the stock side's (1,293 of
+1,598), against 0.998 / 0.836 for seed 1. The sides' tips part 442 blocks
+back (heights 2733 and 2592, fork at 2291); each stock-side honest node
+logged 21 peer bans, no SoP-side node any. The split replicates.
