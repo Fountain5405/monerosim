@@ -1483,12 +1483,13 @@ test_dsweep_specs_differ_from_their_d5_cells_only_in_the_delay): the slow
 miner at 6 s and 12 s, the 6 s honest path at alpha 0.45, and the param
 attacker at 0.45 and 0.47 on the headline topology. One seed per cell.
 
-#### The param attacker at d = 10 and 20 (03:09Z, 05:09Z)
+#### The param attacker at d = 10 and 20 (03:09Z, 05:09Z, 08:40Z)
 
 | alpha | d | share | d = 5, same cell, seeds 1 / 2 / 3 |
 |---|---|---|---|
 | 0.47 | 10 s | 0.483 | 0.451 / 0.514 / 0.478 (mean 0.481) |
 | 0.47 | 20 s | 0.506 | (same) |
+| 0.45 | 20 s | 0.398 | 0.431 / 0.378 (s1 / s2, mean 0.405) |
 
 Both inside the d = 5 seed spread (0.063 wide at 0.47, 0.053 at 0.45), so
 one seed per d cannot separate d = 10 or 20 from d = 5 on the attacker's
