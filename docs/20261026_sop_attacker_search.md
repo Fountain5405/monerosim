@@ -1546,3 +1546,37 @@ also widens the attacker's own grace: its block is late only when first
 seen more than d after the honest block at its height (not checked in
 these logs). Health INVALID-CHAIN 1 in both, as in the d = 5 cells (see
 (a) above).
+
+#### Why d does not help the slow miner: lateness compounds along the relay chain
+
+Every node judges lateness by its OWN first sight of a block, and monerod
+forwards a received block only when it lands on the forwarding node's main
+chain (`cryptonote_protocol_handler.inl:735-739` at the pinned ref:
+`else if (bvc.m_added_to_main_chain) ... relay_block`). On the slow
+miner's path, seven relays in a line, a competing block therefore moves
+one hop only after that hop has switched to it. Under SoP a hop that saw
+the competitor late scores it 0 and keeps its own block, so the
+competitor reaches the far end minutes after the block it competes with,
+not 6 s after. SIM-SoP-DEC records, competing (alt) blocks per node,
+lag = first seen minus the main block's first sight at that height
+(script .claude/campaign9/analysis/sop_dec_lag.py):
+
+| node | d = 5, 6 s path: late (> d) / p90 lag / KEEP over a longer alt | d = 10, 6 s path | d = 5, 3 s path |
+|---|---|---|---|
+| honest-001 (fast) | 6 / 6.6 s / 2 | 3 / 9.8 s / 3 | 3 / 4.1 s / 4 |
+| relay-chain-1 (near) | 7 / 7.5 s / 5 | 5 / 8.6 s / 12 | 2 / 2.9 s / 1 |
+| relay-chain-4 (middle) | 35 / 399 s / 39 | 42 / 471 s / 42 | 7 / 442 s / 13 |
+| relay-chain-7 (far) | 37 / 591 s / 42 | 43 / 670 s / 52 | 7 / 650 s / 13 |
+| honest-002 (slow miner) | 41 / 355 s / 44 | 45 / 445 s / 49 | 9 / 134 s / 10 |
+
+From the middle of the chain on, the competing blocks that matter arrive
+hundreds of seconds late, so no d that keeps SoP's protection covers them;
+d = 10 changes nothing. The cascade needs a run of hops that all kept the
+other block, which a line of relays guarantees and a well-meshed network
+mostly avoids; how often real Monero nodes sit behind such a run is not
+measured here (the stressnet propagation data, item 8, is about blocks
+nobody contests). The `--sim-sop-seen-at-notify` knob would not help: the
+fluffy block itself only arrives when the upstream hop relays it. A fix
+would have to forward competing blocks at the tip height whatever the
+local fork choice, or judge lateness by something other than local first
+sight.
