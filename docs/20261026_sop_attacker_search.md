@@ -1495,3 +1495,28 @@ not reproducible, so "seed 1" at d = 20 is not a paired draw of d = 5's
 seed 1. Gamma 0.158, attacker orphans 0.306, network orphans 0.352 (d = 5
 seeds: 0.12-0.15, 0.31-0.36, 0.35-0.37); health ok, no stuck time. A
 0.03 effect of d on the attacker would need about four seeds per d.
+
+#### The slow miner at d = 10 (05:19Z)
+
+The slow honest miner on the 6 s path (alpha 0.47 attacker mining
+honestly, all 19 daemons logging `delay_ms=10000`, against 5000 in the
+d = 5 cell):
+
+| rule | slow miner's blocks lost | lost with the winner found first | lost although found first | of those, gap > 20 s |
+|---|---|---|---|---|
+| stock | 30 / 597 (5.0 %) | 18 | 12 | 1 |
+| SoP d = 5 | 63 / 591 (10.7 %) | 35 | 28 | 24 |
+| SoP d = 10 | 67 / 600 (11.2 %) | 34 | 33 | 27 |
+
+A 10 s delay covers the 6 s path, yet the loss does not move, so the
+lateness rule is not what costs the slow miner. The excess over stock
+(33 and 37 blocks) sits almost entirely in losses more than 20 s from the
+winning block: the slow node stays on a branch the rest of the network
+has left, for longer than d plus the path latency. On the 3 s path SoP
+loses fewer blocks than stock (15 against 25, none of them long), and on
+the 12 s path 67 of SoP's 154 losses are long against 19 of stock's 79.
+No node blocked a peer. Not yet checked: why the slow node diverges; a
+guess is that it scores the competing branches' embedded shares by its
+own late receipt times and so disagrees with the network about which is
+heavier. Script: .claude/campaign9/analysis/slow_forks.py (lost blocks
+against the main-chain block at the same height, by found time).
