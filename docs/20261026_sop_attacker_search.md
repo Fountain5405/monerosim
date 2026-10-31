@@ -1502,17 +1502,18 @@ seed 1. d = 20: gamma 0.158, attacker orphans 0.306, network orphans 0.352
 (d = 5 seeds: 0.12-0.15, 0.31-0.36, 0.35-0.37); health ok, no stuck time. A
 0.03 effect of d on the attacker would need about four seeds per d.
 
-#### The slow miner at d = 10 (05:19Z)
+#### The slow miner at d = 10 and 20 on the 6 s path (05:19Z, 13:50Z)
 
 The slow honest miner on the 6 s path (alpha 0.47 attacker mining
-honestly, all 19 daemons logging `delay_ms=10000`, against 5000 in the
-d = 5 cell):
+honestly, all 19 daemons logging `delay_ms=10000` / `20000`, against 5000
+in the d = 5 cell):
 
 | rule | slow miner's blocks lost | lost with the winner found first | lost although found first | of those, gap > 20 s |
 |---|---|---|---|---|
 | stock | 30 / 597 (5.0 %) | 18 | 12 | 1 |
 | SoP d = 5 | 63 / 591 (10.7 %) | 35 | 28 | 24 |
 | SoP d = 10 | 67 / 600 (11.2 %) | 34 | 33 | 27 |
+| SoP d = 20 | 62 / 576 (10.8 %) | 33 | 29 | 24 |
 
 A 10 s delay covers the 6 s path, yet the loss does not move, so the
 lateness rule is not what costs the slow miner. The excess over stock
@@ -1600,3 +1601,23 @@ competing blocks late by minutes. d = 10, below the path latency, changes nothin
 `20000`); with the 6 s path at d = 10 also showing no relief, a longer d
 buys some protection back at best partly and only in some cells, and
 never removes the cascade.
+
+#### The d sweep in one table
+
+| cost of SoP | d = 5 | d = 10 | d = 20 | stock rule |
+|---|---|---|---|---|
+| slow miner's blocks lost, 6 s path | 10.7 % | 11.2 % | 10.8 % | 5.0 % |
+| slow miner's blocks lost, 12 s path | 25.9 % | 25.8 % | 18.8 % | 13.9 % |
+| network-advantage attacker share, 6 s path, alpha 0.45 | 0.699 | 0.763 | 0.746 | 0.649 measured, 0.681 formula |
+| param attacker share, alpha 0.45 | 0.405 (2 seeds) | 0.393 | 0.398 | (above 0.45) |
+| param attacker share, alpha 0.47 | 0.481 (3 seeds) | 0.483 | 0.506 | (above 0.47) |
+
+A longer d does not undo SoP's costs on badly connected honest miners: the
+6 s path's loss stays at about twice stock's at every d, and only the
+12 s path at d = 20 recovers part of it (a single seed). The reason is
+the lateness cascade (above): the competing blocks that cost the slow
+miner arrive minutes late, not d late. On the headline topology d moves
+the param attacker by less than the seed spread; with a network advantage
+a longer d gives the attacker as much or more. One seed per d cell
+throughout; the second seeds of the d = 5 slow and gamma cells are queued
+(10-31) and will show the d = 5 spread those columns lack.
