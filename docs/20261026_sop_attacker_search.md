@@ -1621,3 +1621,24 @@ the param attacker by less than the seed spread; with a network advantage
 a longer d gives the attacker as much or more. One seed per d cell
 throughout; the second seeds of the d = 5 slow and gamma cells are queued
 (10-31) and will show the d = 5 spread those columns lack.
+
+### 10. Partial adoption at alpha 0.30 (10-31)
+
+The 50 % adoption cell (k2: honest-001/002 and their side on SoP,
+honest-003/004 on the stock rule) with the attacker at alpha 0.30
+instead of 0.45, 14 nodes, one seed:
+
+| chain as seen by | attacker share | blocks by h001 / h002 / h003 / h004 | tip |
+|---|---|---|---|
+| honest-001 / 002 (SoP side) | 0.461 (787 of 1,706) | 456 / 448 / 7 / 8 | 2700 |
+| honest-003 / 004 (stock side) | 0.437 (744 of 1,702) | 439 / 436 / 45 / 38 | 2696, forked at 2622 |
+
+The split does not need a strong attacker: at 0.30 it still lifts the
+attacker to 0.44-0.46 of either side's chain, and the stock-rule honest
+miners lose nearly all their blocks (15 of their blocks on the SoP side's
+chain, 83 on their own side's). Each stock-side honest node logged 21
+"Host ... blocked" (the 24 h height-drop ban, see the adoption mechanism
+above); no SoP-side node did. Health flag SPLIT 78. The stock-only
+reference at 0.30 (d2_k0_a030_s1) and 25 % adoption (k1) are queued and
+the --sim-no-drop-score mechanism cell runs tonight. Script:
+.claude/campaign9/analysis/split_shares_arg.py <run dir>.
