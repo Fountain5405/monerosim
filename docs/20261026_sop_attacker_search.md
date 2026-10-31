@@ -1483,17 +1483,19 @@ test_dsweep_specs_differ_from_their_d5_cells_only_in_the_delay): the slow
 miner at 6 s and 12 s, the 6 s honest path at alpha 0.45, and the param
 attacker at 0.45 and 0.47 on the headline topology. One seed per cell.
 
-#### The param attacker at d = 10 and 20 (03:09Z, 05:09Z, 08:40Z)
+#### The param attacker at d = 10 and 20 (10-31, all four cells)
 
 | alpha | d | share | d = 5, same cell, seeds 1 / 2 / 3 |
 |---|---|---|---|
 | 0.47 | 10 s | 0.483 | 0.451 / 0.514 / 0.478 (mean 0.481) |
 | 0.47 | 20 s | 0.506 | (same) |
-| 0.45 | 20 s | 0.398 | 0.431 / 0.378 (s1 / s2, mean 0.405) |
+| 0.45 | 10 s | 0.393 | 0.431 / 0.378 (s1 / s2, mean 0.405) |
+| 0.45 | 20 s | 0.398 | (same) |
 
-Both inside the d = 5 seed spread (0.063 wide at 0.47, 0.053 at 0.45), so
-one seed per d cannot separate d = 10 or 20 from d = 5 on the attacker's
-side; d = 10's gamma 0.116 and orphan rates 0.330 / 0.333 sit inside the
+All four inside the d = 5 seed spread (0.063 wide at 0.47, 0.053 at 0.45),
+so one seed per d cannot separate d = 10 or 20 from d = 5 on the
+attacker's side: on the headline topology a longer d neither helps nor
+visibly hurts against this attacker; d = 10's gamma 0.116 and orphan rates 0.330 / 0.333 sit inside the
 d = 5 seeds too. Shadow runs are
 not reproducible, so "seed 1" at d = 20 is not a paired draw of d = 5's
 seed 1. d = 20: gamma 0.158, attacker orphans 0.306, network orphans 0.352
