@@ -1537,6 +1537,7 @@ path (16 daemons logging `delay_ms=10000` and `20000`):
 | d | attacker share | gamma | attacker orphans | network orphans |
 |---|---|---|---|---|
 | 5 s (6 s path) | 0.699 | 0.852 | 0.176 | 0.487 |
+| 5 s (6 s path), seed 2 (21:20Z) | 0.721 | 0.867 | 0.156 | 0.467 |
 | 10 s | 0.763 | 0.885 | 0.134 | 0.470 |
 | 20 s | 0.746 | 0.881 | 0.136 | 0.488 |
 | 5 s, 3 s path (reference) | 0.486 | 0.743 | 0.327 | 0.397 |
@@ -1610,7 +1611,7 @@ never removes the cascade.
 |---|---|---|---|---|
 | slow miner's blocks lost, 6 s path | 10.7 / 14.7 % (2 seeds) | 11.2 % | 10.8 % | 5.0 % |
 | slow miner's blocks lost, 12 s path | 25.9 % | 25.8 % | 18.8 % | 13.9 % |
-| network-advantage attacker share, 6 s path, alpha 0.45 | 0.699 | 0.763 | 0.746 | 0.649 measured, 0.681 formula |
+| network-advantage attacker share, 6 s path, alpha 0.45 | 0.699 / 0.721 (2 seeds) | 0.763 | 0.746 | 0.649 measured, 0.681 formula |
 | param attacker share, alpha 0.45 | 0.405 (2 seeds) | 0.393 | 0.398 | (above 0.45) |
 | param attacker share, alpha 0.47 | 0.481 (3 seeds) | 0.483 | 0.506 | (above 0.47) |
 
