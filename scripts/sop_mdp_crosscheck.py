@@ -130,11 +130,16 @@ def lp_share(s, ra, rh, legal, probs):
     b = np.zeros(n + 1)
     b[-1] = 1.0
     A_eq = vstack([flow[1:], tot]).tocsr()
-    res = linprog(-ra[ni, ai], A_eq=A_eq, b_eq=b[1:], bounds=(0, None), method="highs",
-                  options={"primal_feasibility_tolerance": 1e-9, "dual_feasibility_tolerance": 1e-9})
-    if res.status != 0:
-        raise RuntimeError(f"LP failed: {res.message}")
-    return float(-res.fun), K
+    # HiGHS returned status 15 (unknown, primal infeasible) at tight tolerances on
+    # the slow-mixing Bitcoin chains at alpha >= 0.4, T 95 (2026-10-31): retry looser
+    tried = []
+    for opts in ({"primal_feasibility_tolerance": 1e-9, "dual_feasibility_tolerance": 1e-9}, {},
+                 {"presolve": False}):
+        res = linprog(-ra[ni, ai], A_eq=A_eq, b_eq=b[1:], bounds=(0, None), method="highs", options=opts)
+        if res.status == 0:
+            return float(-res.fun), K
+        tried.append(f"{opts or 'defaults'}: {res.message[:60]}")
+    raise RuntimeError("LP failed: " + " | ".join(tried))
 
 
 def library_checks(succ, att, hon, probs, tol, tau):
@@ -144,8 +149,11 @@ def library_checks(succ, att, hon, probs, tol, tau):
     rho, steps = toolbox_share(toolbox_P(s, probs, tau), ra, rh, tol=tol)
     out.update(toolbox_rvi=rho, toolbox_max_iter=max(it for _, _, it in steps), toolbox_s=round(time.time() - t, 1))
     t = time.time()
-    rho, K = lp_share(s, ra, rh, legal, probs)
-    out.update(highs_lp=rho, lp_vars=K, lp_s=round(time.time() - t, 1))
+    try:
+        rho, K = lp_share(s, ra, rh, legal, probs)
+        out.update(highs_lp=rho, lp_vars=K, lp_s=round(time.time() - t, 1))
+    except (RuntimeError, MemoryError) as exc:      # keep the other two solvers' results
+        out.update(highs_lp=None, lp_error=str(exc)[:300])
     return out
 
 
@@ -366,13 +374,17 @@ def cmd_btc(args):
     if not args.policies_only:
         rho, sweeps = hand_share(succ, att, hon, probs, True, args.tol)
         out.update(hand_written=rho, hand_max_sweeps=sweeps, hand_s=round(time.time() - t, 1))
-        out.update(library_checks(succ, att, hon, probs, args.tol, args.tau))
-    if not upper:
+        if not args.no_library:
+            out.update(library_checks(succ, att, hon, probs, args.tol, args.tau))
+    if not upper and args.T_policy:
         out["T_policy"] = args.T_policy
         for name, pol in (("sm1", sm1_action), ("honest", honest_action)):
             tabs = btc_tables(args.alpha, args.gamma, args.T_policy, policy=pol)
             out[f"{name}_hand_written"] = hand_share(*tabs, False, args.tol)[0]
-            out[f"{name}_lp"] = lp_share(*fill_illegal(*tabs[:3]), tabs[3])[0]
+            try:
+                out[f"{name}_lp"] = lp_share(*fill_illegal(*tabs[:3]), tabs[3])[0]
+            except (RuntimeError, MemoryError) as exc:
+                out[f"{name}_lp"], out[f"{name}_lp_error"] = None, str(exc)[:300]
         out["sm1_eyal_sirer"] = es_sm1(args.alpha, args.gamma)
     ref = [v for k, v in SSZ_TABLE2.items() if abs(k - args.alpha) < 1e-9]
     if args.gamma == 0 and ref:
@@ -406,6 +418,7 @@ def main(argv=None):
                    help="truncation for the SM1 / honest evaluations (SM1's lead walk is near-balanced: "
                         "at T 30 the cap costs it 0.0035 at alpha 0.35)")
     p.add_argument("--policies-only", action="store_true", help="skip the optimisation")
+    p.add_argument("--no-library", action="store_true", help="hand-written solver only (large T)")
     p.set_defaults(fn=cmd_btc)
     for p in sub.choices.values():
         p.add_argument("--tol", type=float, default=1e-6, help="bisection tolerance on the share")
