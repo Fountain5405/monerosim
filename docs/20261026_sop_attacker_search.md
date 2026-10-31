@@ -1523,3 +1523,25 @@ guess is that it scores the competing branches' embedded shares by its
 own late receipt times and so disagrees with the network about which is
 heavier. Script: .claude/campaign9/analysis/slow_forks.py (lost blocks
 against the main-chain block at the same height, by found time).
+
+#### The network-advantage attacker at d = 10 and 20 (05:40Z, 05:50Z)
+
+SoP attacker at alpha 0.45, bridges beside both honest miners, 6 s honest
+path (16 daemons logging `delay_ms=10000` and `20000`):
+
+| d | attacker share | gamma | attacker orphans | network orphans |
+|---|---|---|---|---|
+| 5 s (6 s path) | 0.699 | 0.852 | 0.176 | 0.487 |
+| 10 s | 0.763 | 0.885 | 0.134 | 0.470 |
+| 20 s | 0.746 | 0.881 | 0.136 | 0.488 |
+| 5 s, 3 s path (reference) | 0.486 | 0.743 | 0.327 | 0.397 |
+
+A delay that covers the 6 s path does not bring the attacker down toward
+the 3 s path's 0.486; both longer delays sit 0.05-0.06 above d = 5 and
+above the stock tie-racer (0.649 measured, 0.681 formula at gamma 0.5).
+One seed each, inside about one d = 5 seed spread of the param cells, so
+"no better" is the safe reading and "worse" is not established. A longer d
+also widens the attacker's own grace: its block is late only when first
+seen more than d after the honest block at its height (not checked in
+these logs). Health INVALID-CHAIN 1 in both, as in the d = 5 cells (see
+(a) above).
