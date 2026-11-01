@@ -28,4 +28,8 @@ studies/antiproxy/patches/monero-sim-random-whitelist-candidates.patch	antiproxy
 studies/antiproxy/patches/monero-sim-peerlist-limits.patch	antiproxy	--sim-gray-peerlist-limit,--sim-white-peerlist-limit	runtime white/gray peer-list limits (stock 1000 / 5000)
 studies/antiproxy/patches/monero-sim-stemmable-inbound.patch	antiproxy	--sim-stemmable-cidrs,--sim-stemmable-inbound	inbound peers usable as Dandelion++ stems (tevador, MRL #160)
 studies/antiproxy/patches/monero-sim-peerlist-ports-per-host.patch	antiproxy	--sim-peerlist-ports-per-host	at most N gray peer-list entries per host, newest wins (0 = stock)
-studies/antiproxy/patches/monero-sim-id-consistency.patch	antiproxy	--sim-enforce-id-consistency,--sim-shared-spy-id	a peer's advertised entry must carry its handshake id (hours; 0 = stock)
+# Not built until regenerated: the patch includes p2p/id_evidence_map.h, but
+# the header is not in the patch (b051d548 added it to the array without a
+# build), so monerod-sim fails to compile with it. The antiproxy study owns
+# the fix: regenerate the patch with the new file, then uncomment this row.
+# studies/antiproxy/patches/monero-sim-id-consistency.patch	antiproxy	--sim-enforce-id-consistency,--sim-shared-spy-id	a peer's advertised entry must carry its handshake id (hours; 0 = stock)
