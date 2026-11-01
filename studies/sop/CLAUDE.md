@@ -46,7 +46,7 @@ control box.
   `chain_queue.sh <box>` (runs `queues/<box>.txt` in order), `score_pool.sh <spec>`
   and the per-miner analyses in `analysis/`. They live in the control box's
   `.claude/campaign9/`; `studies/sop/dot-claude/campaign9/` is a snapshot with
-  pre-move paths that hard-codes `/home/selfishmining/monerosim`. New drivers
+  pre-move paths that hard-codes the old checkout's absolute path. New drivers
   go in `studies/sop/drivers/`, in git.
 
 ## Conventions

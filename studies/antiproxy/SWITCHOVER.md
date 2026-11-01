@@ -62,9 +62,9 @@ From `HANDOFF.md` section 5, with the new paths:
    with the phantom calibration in place. This builds B1
    (`lean_24_none_h300_k9_w13h_p3_m1_n600_s12345`), the cell whose md5
    HANDOFF.md gives (`ca7ae836...`); HANDOFF.md's command says
-   `--spy-subnets 42`, a typo (that builds the k42 cell). The md5 was taken
-   before the move; the reorganization report says what the moved generator
-   produces.
+   `--spy-subnets 42`, a typo (that builds the k42 cell). On the
+   reorganization's build box both the pre-move tree and main produce
+   `ca7ae836`.
 3. The id-consistency logic driver: skip it until the patch is regenerated.
 4. PoP-patch smoke runs: rerun B1 (k9 m1) and the k42 m1 stock cell (E27's
    shape) under the new binary. Expect light share within ±0.005 of the
