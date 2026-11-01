@@ -1780,3 +1780,10 @@ the heaviest, so the attacker can win both (gamma 0.875 here) while the
 honest half on each rule orphans the other half's blocks. One seed. So
 --sim-no-drop-score is not a fix, and the case for a flag day is stronger
 than the ban mechanism alone suggested.
+
+Second seed of the 25 % adoption cell at alpha 0.45 (k1_a045_s2, 11-01
+06:21Z): the attacker takes 0.817 of the lone SoP node's chain and 0.719
+of the stock side's (seed 1: 0.906 / 0.858). The SoP honest miner keeps 6-8
+blocks on either chain; each stock honest node logged 18 peer bans. The
+split replicates at both adoption levels; its depth varies by seed (183
+here).
