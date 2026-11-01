@@ -1758,3 +1758,24 @@ attacker 0.44-0.46 and costs the stock miners nearly everything. Every
 partial step is worse than either end for someone, at 0.30 as at 0.45:
 SoP needs a flag day (the 14-node caveat stands; owner 10-30: rerun the
 ladder on the 256 GB box with a larger network).
+
+#### The nodrop mechanism cell: the bans are not the cause (10-31, 23:50Z)
+
+The 50 % adoption cell at alpha 0.45 with `--sim-no-drop-score` on every
+stock-rule daemon (share_k2_nodrop_a045_s1, otherwise share_k2_a045_s1;
+pinned by test). Stock nodes skipped 990-1,110 height-drop penalties each
+and blocked no peer (against 21 bans per stock-side node in the k2 cells):
+
+| cell | attacker share | honest blocks h001 / h002 / h003 / h004 | split |
+|---|---|---|---|
+| k2, bans (seed 1 / seed 2) | 0.998 / 0.997 SoP side, 0.836 / 0.809 stock side | (SoP side) 0-3 each | yes |
+| k2, no bans | 0.991, one chain on all four honest nodes (tip 2767) | 10 / 3 / 2 / 1 | no |
+
+Without the bans the network stays connected and agrees on one chain, and
+that chain is 99.1 % the attacker's. The 24 h bans only decide whether
+the mixed network partitions; the attacker's gain comes from the mixed
+fork rules themselves. Stock nodes follow the longest chain and SoP nodes
+the heaviest, so the attacker can win both (gamma 0.875 here) while the
+honest half on each rule orphans the other half's blocks. One seed. So
+--sim-no-drop-score is not a fix, and the case for a flag day is stronger
+than the ban mechanism alone suggested.
