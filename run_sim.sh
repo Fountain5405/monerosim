@@ -823,6 +823,27 @@ preflight_checks() {
                     fi
                 fi
             fi
+            # Provenance: a monerod-sim built from other patches than this
+            # checkout's patches/series runs other code than its configs and
+            # result docs assume. Compared by sha256 and order, not by path.
+            # Refused for the binary setup.sh installs; a binary the config
+            # names by path only warns, like the version pin above.
+            if [[ "$(basename "$(readlink -f "$cap_path")")" == "monerod-sim" ]]; then
+                local prov_err
+                if ! prov_err=$(python3 "$SCRIPT_DIR/scripts/run_sim_helpers.py" sim-provenance-check --binary "$cap_path" 2>&1); then
+                    if [[ "${MONEROSIM_SKIP_PROVENANCE_CHECK:-0}" == "1" ]]; then
+                        log_warn "MONEROSIM_SKIP_PROVENANCE_CHECK=1 — running $cap_path anyway: $prov_err"
+                    elif [[ "$cap_explicit" == "1" ]]; then
+                        log_warn "$cap_path (named by the config): $prov_err"
+                    else
+                        log_err "$cap_path was not built from this checkout's patches/series:"
+                        log_err "  $prov_err"
+                        log_info "Fix: ./setup.sh --sim-binary"
+                        log_info "MONEROSIM_SKIP_PROVENANCE_CHECK=1 runs it anyway; the archive still records its provenance."
+                        exit 1
+                    fi
+                fi
+            fi
             cap_help=$("$cap_path" --help 2>/dev/null)
             # "-" = no flag needed (existence only); the probe writes it so an
             # empty field cannot collapse under IFS=TAB and shift the columns.
@@ -1194,6 +1215,25 @@ build_and_generate() {
             cat "$HOME/.monerosim/bin/monerod-sim.provenance"
         fi
     } > "$ARCHIVE_DIR/binary_provenance.txt" 2>/dev/null || true
+
+    # Source state: the commit this run's code came from, and whether the
+    # checkout had uncommitted changes to tracked files (listed when it did).
+    {
+        echo "recorded_at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        if _head=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null); then
+            echo "commit: $_head"
+            _dirty=$(git -C "$SCRIPT_DIR" status --porcelain --untracked-files=no 2>/dev/null)
+            if [[ -n "$_dirty" ]]; then
+                echo "uncommitted_changes: yes"
+                echo "$_dirty"
+            else
+                echo "uncommitted_changes: no"
+            fi
+            echo "untracked_files: $(git -C "$SCRIPT_DIR" status --porcelain 2>/dev/null | grep -c '^??')"
+        else
+            echo "commit: unknown (not a git checkout)"
+        fi
+    } > "$ARCHIVE_DIR/source_state.txt" 2>/dev/null || true
 
     # Generate Shadow config
     log_info "Generating Shadow configuration..."

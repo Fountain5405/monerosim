@@ -23,6 +23,7 @@ benefit.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -217,6 +218,33 @@ def read_patch_series(path: Path = PATCH_SERIES) -> list[dict]:
 # must appear in `monerod --help`.
 SIM_FLAG_OPTIONS = {flag[2:]: flag[2:]
                     for row in read_patch_series() for flag in row['flags']}
+
+
+def sim_provenance_mismatch(binary: str, series: Path = PATCH_SERIES) -> str | None:
+    """Why `binary` was not built from patches/series, or None when it was.
+
+    setup.sh writes <binary>.provenance next to monerod-sim, one
+    `patch_sha256:` line per patch in apply order. Compared by sha256 and
+    order, not by path: a patch keeps its identity when it moves. The
+    monerod-hf alias is a symlink, so the real binary's provenance is read.
+    """
+    prov = os.path.realpath(binary) + '.provenance'
+    if not os.path.isfile(prov):
+        return f'{prov} is missing (the binary was not built by setup.sh --sim-binary)'
+    with open(prov) as f:
+        recorded = [line.split(':', 1)[1].strip() for line in f if line.startswith('patch_sha256:')]
+    root = Path(series).resolve().parent.parent
+    rows = read_patch_series(series)
+    expected = [hashlib.sha256((root / r['path']).read_bytes()).hexdigest() for r in rows]
+    for i, (have, want) in enumerate(zip(recorded, expected)):
+        if have != want:
+            return (f"patch {i + 1} of patches/series ({rows[i]['path']}) has sha256 "
+                    f"{want[:12]}, but {prov} records {have[:12]}")
+    if len(recorded) != len(expected):
+        return f'{prov} records {len(recorded)} patches; patches/series lists {len(expected)}'
+    return None
+
+
 # general.mining.mode: native drives miners through the sim-mining patch.
 NATIVE_MINING_FLAG = 'sim-hash-interval-ms'
 # Shorthand names setup.sh installs; naming one means the config expects the
@@ -320,6 +348,15 @@ def cmd_daemon_capabilities(args: argparse.Namespace) -> int:
             1 if e['explicit'] else 0, e['path'], ",".join(e['flags']) or "-",
             e['agents'][0] if e['agents'] else '-'))
     return 0
+
+
+def cmd_sim_provenance_check(args: argparse.Namespace) -> int:
+    """Exit 0 when the binary's recorded patches match patches/series, else print why and exit 1."""
+    why = sim_provenance_mismatch(args.binary)
+    if why is None:
+        return 0
+    print(f'{why} (patches/series is the build list; rebuild: ./setup.sh --sim-binary)')
+    return 1
 
 
 def pinned_paths(config_path: str) -> dict:
@@ -1584,6 +1621,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_dc.add_argument('--config', required=True)
     p_dc.set_defaults(func=cmd_daemon_capabilities)
+
+    p_sp = sub.add_parser(
+        'sim-provenance-check',
+        help="Exit 1 (and say why) if a monerod-sim's provenance differs from patches/series.",
+    )
+    p_sp.add_argument('--binary', required=True)
+    p_sp.set_defaults(func=cmd_sim_provenance_check)
 
     return p
 
