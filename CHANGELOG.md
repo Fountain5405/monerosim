@@ -2,6 +2,55 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Research moved out of the core folders into `studies/`**
+  (`docs/20261101_repo_reorganization.md`). The two research branches,
+  `sop-research` and `feat/spy-relay-log`, are merged into main. Each study's
+  files now live in its own folder: `studies/sop/` (Share-or-Perish),
+  `studies/antiproxy/` (spy and proxy nodes) and `studies/eclipse/`
+  (closed). `studies/MOVES.tsv` maps every moved file, old path to new. Paths
+  to change in your own configs and commands:
+  - `test_configs/matrix/` is now `studies/sop/configs/matrix/`. SoP's own
+    configs (`selfish_micro_sop*`, `selfish_n40_sop`, `sop_*`, `pop_*`,
+    `dev_snapshot_sop_smoke`, `selfish_long`, `selfish_micro_honest`) are now
+    in `studies/sop/configs/`, and `data/` is now `studies/sop/data/`.
+  - `scripts/sop_*.py`, `scripts/selfish_mining/`, `make_sop_scale_base.py`
+    and `gml_add_slow_nodes.py` are now in `studies/sop/scripts/`. Their
+    modules changed with them: `scripts.sop_rl` is now
+    `studies.sop.scripts.sop_rl`; run them as
+    `python3 -m studies.sop.scripts.<name>` from the repo root.
+  - `test_configs/x0/` is now `studies/antiproxy/configs/x0/`;
+    `analysis/spy/` and `analysis/mainnet/` are now in
+    `studies/antiproxy/analysis/`; `docs/spy_journal/` is now
+    `studies/antiproxy/docs/spy_journal/`.
+  - `test_configs/eclipse_*.scenario.yaml` are now in `studies/eclipse/configs/`.
+  - Agents did not move. `agents.selfish_miner`, `agents.selfish_bridge`,
+    `agents.eclipse_*` and `agents.spy_*` keep their module names, so configs
+    that name them need no change. The core selfish-mining configs
+    (`selfish_micro.yaml`, `selfish_sweep/`, `selfish_phase2-4/`, ...) stay
+    in `test_configs/`.
+- **One patch list, `patches/series`.** `setup.sh --sim-binary`, `update.sh`,
+  `setup.sh --help` and run_sim.sh's capability gate all read it. Study
+  patches moved to `studies/<study>/patches/`. `monerod-sim` is now 15 patches:
+  the core five, SoP's PoP patch and nine of the antiproxy study's ten, each
+  flag-gated. The tenth, id-consistency, is listed but commented out: it
+  includes a header that the patch does not contain, so it does not compile.
+  `update.sh` used to rebuild `monerod-sim` from only 2 patches and with other
+  cmake flags; it now builds what `setup.sh` builds. Rebuild with
+  `./setup.sh --sim-binary`.
+- **`run_sim.sh` refuses a mismatched `monerod-sim`.** When a config needs
+  `monerod-sim` (or its `monerod-hf` alias), the patches recorded in
+  `~/.monerosim/bin/monerod-sim.provenance` must match `patches/series`, by
+  sha256 and order. `MONEROSIM_SKIP_PROVENANCE_CHECK=1` runs it anyway. A
+  binary the config names by path only gets a warning.
+- **Each run archive records its source state** in `source_state.txt`: the
+  checkout's commit, and whether tracked files had uncommitted changes (listed
+  when they did).
+- **`CLAUDE.md` files are tracked.** There is a root `CLAUDE.md`, and each
+  study has its own `CLAUDE.md` and a `STATUS.md`, the one place its current
+  findings are stated. `CLAUDE.local.md` stays local.
+
 ### Fixed
 
 - **Golden-file tests failed outside a Python 3.12 venv or under `/tmp`**
