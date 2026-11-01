@@ -1,3 +1,5 @@
+> Status: current — this is the study's findings home (E1-E71/P1-P67/111 runs at 2026-11-01).
+
 # Sender exposure to spy relays: findings through 2026-10-27
 
 A human-readable summary of the spy-relay research program's results. Two to three pages,

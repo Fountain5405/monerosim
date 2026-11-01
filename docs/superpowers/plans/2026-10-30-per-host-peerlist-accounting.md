@@ -1,3 +1,5 @@
+> Status: current with the journal correction of 2026-10-31 05:10 — the port-multiplication premise was wrong for lab cells; I1/B1 stand, the hpl arms do not.
+
 # Per-Host Peer-List Accounting Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

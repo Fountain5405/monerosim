@@ -1,3 +1,5 @@
+> Status: current — patch committed (b051d548), logic validated, unbuilt on the boxes at 2026-11-01.
+
 # Identity-consistency enforcement (observational layer) — design spec
 
 Status: design approved in conversation 2026-10-31; spec for review.

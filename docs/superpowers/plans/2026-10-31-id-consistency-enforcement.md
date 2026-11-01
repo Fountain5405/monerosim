@@ -1,3 +1,5 @@
+> Status: current — Tasks 1-2 done, Task 3 (R9 build) stopped by the owner mid-flight.
+
 # Identity-Consistency Enforcement Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax.

@@ -1,0 +1,16 @@
+732924a33a90978d patches/monero-fakechain-hardforks.patch
+38ec8e8446cf11a4 patches/monero-sim-fixed-randomx-seed.patch
+017d58ee2bc792f1 patches/monero-sim-id-consistency.patch
+b25b83ccc9ed0acc patches/monero-sim-mining.patch
+b99de1927045e48a patches/monero-sim-peerlist-dump.patch
+0fd6a0d81c75d63f patches/monero-sim-peerlist-limits.patch
+ca3e8edfa56333f0 patches/monero-sim-peerlist-ports-per-host.patch
+44825cd1ee308ec2 patches/monero-sim-pop.patch
+450a9a84f13358b7 patches/monero-sim-random-whitelist-candidates.patch
+4d4c86d6044eac36 patches/monero-sim-selfish-relay.patch
+29da93b1b5008835 patches/monero-sim-stemmable-inbound.patch
+eb85a3007f29ea75 patches/monero-sim-subnet-dedup.patch
+5a6e3937f0b56abf patches/monero-sim-tail-emission.patch
+aa205115ff75400e patches/monero-sim-txrelay-log.patch
+24969283fc0de702 patches/monero-sim-uniform-whitelist-pick.patch
+17547ed3c7b6ac26 patches/monero-sim-whitelist-candidates.patch

@@ -1,3 +1,5 @@
+> Status: current with appendix A — appendix A corrects section 1 (stock white is already one-per-host); the built defense is gray-side only.
+
 # Per-host peer-list accounting — design spec
 
 Status: design approved in conversation 2026-10-30; spec for review.

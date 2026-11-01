@@ -1,3 +1,5 @@
+> Status: current — the X1 defense-measure doc; its bands are cited by later entries.
+
 # Spy (proxy) nodes: proposed defenses, an evaluation, and a monerosim test plan
 
 *2026-10-18. Research note. It reviews MRL #126, surveys the other MRL threads and

@@ -1,3 +1,5 @@
+> Status: current — byte-identical to the hashrate-gating branch README; that branch is deletable.
+
 # Can hashrate price the spy fleet out of Monero's P2P layer? Paper arithmetic
 
 *2026-10-28. A note from the spy-relay lab, written against the Monero P2P Observatory's counts of the same day and the network difficulty of 2026-10-27. Nothing here is simulated; the unit costs are stated assumptions and the script that produced every number is `docs/spy_journal/adhoc/hashrate_admission_arithmetic.py`.*

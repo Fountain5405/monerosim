@@ -1,3 +1,5 @@
+> Status: current — verified against v0.18.5.1 at pin 4f92268d; the hook table drives the defense specs.
+
 # monerod p2p code map (v0.18.5.1, tag `v0.18.5.1` @ 4f92268d)
 
 Written 2026-10-30 from a source dive (two read-only scouts over the pinned tree, key lines
