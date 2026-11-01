@@ -1,0 +1,64 @@
+diff --git a/src/p2p/net_node.cpp b/src/p2p/net_node.cpp
+index 71c82e5be..c2fd9162f 100644
+--- a/src/p2p/net_node.cpp
++++ b/src/p2p/net_node.cpp
+@@ -162,6 +162,7 @@ namespace nodetool
+     const command_line::arg_descriptor<bool> arg_enable_dns_blocklist = {"enable-dns-blocklist", "Apply realtime blocklist from DNS", false};
+     const command_line::arg_descriptor<std::string> arg_sim_log_txrelay = {"sim-log-txrelay", "Simulation only (measurement): append a JSONL line for every Dandelion++ relay event (tx received, stem send, fluff, epoch, stem change, pool re-relay) to this file. Off by default; read-only w.r.t. relay.", ""};
+     const command_line::arg_descriptor<std::string> arg_sim_subnet_dedup = {"sim-subnet-dedup", "Simulation only: outbound peer grouping. 24 (stock): one candidate per /24, skipping /24s already connected. 16: the same at /16. none: no subnet grouping (ports still collapsed). legacy: v0.18.4.2's selection, before #9939 (skip /16s already connected).", "24"};
++    const command_line::arg_descriptor<size_t> arg_sim_whitelist_candidates = {"sim-whitelist-candidates", "Simulation only: how many of the newest (by last_seen) subnet-deduplicated white-list peers are candidates for an outbound pick. Stock monero uses 20; 0 = every unconnected subnet is a candidate.", 20};
+     const command_line::arg_descriptor<bool> arg_sim_uniform_whitelist_pick = {"sim-uniform-whitelist-pick", "Simulation only: pick white-list peers uniformly instead of the stock recency-biased cubic draw (get_random_index_with_fixed_probability). Off = stock behaviour.", false};
+     const command_line::arg_descriptor<std::string> arg_peerlist_dump_file = {"peerlist-dump-file", "MEASUREMENT ONLY (Shadow eclipse reproduction): if set, periodically append the full white+gray peer list as JSONL to this file. Off by default; read-only w.r.t. peering.", ""};
+ 
+diff --git a/src/p2p/net_node.h b/src/p2p/net_node.h
+index 58e9f625e..0b44651fb 100644
+--- a/src/p2p/net_node.h
++++ b/src/p2p/net_node.h
+@@ -453,6 +453,7 @@ namespace nodetool
+     bool m_use_ipv6;
+     bool m_require_ipv4;
+     uint32_t m_sim_subnet_mask = ntohl(0xffffff00);  // --sim-subnet-dedup; 0 = no subnet dedup
++    size_t m_sim_whitelist_candidates = 20;  // --sim-whitelist-candidates: stock 20, 0 = no cap (open question 10 probe)
+     bool m_sim_uniform_whitelist_pick = false;  // --sim-uniform-whitelist-pick: uniform white-list pick (open question 10 probe)
+     bool m_sim_legacy_selection = false;              // --sim-subnet-dedup=legacy
+     std::atomic<bool> is_closing;
+@@ -553,6 +554,7 @@ namespace nodetool
+     extern const command_line::arg_descriptor<std::string> arg_peerlist_dump_file;
+     extern const command_line::arg_descriptor<std::string> arg_sim_log_txrelay;
+     extern const command_line::arg_descriptor<std::string> arg_sim_subnet_dedup;
++    extern const command_line::arg_descriptor<size_t> arg_sim_whitelist_candidates;
+     extern const command_line::arg_descriptor<bool> arg_sim_uniform_whitelist_pick;
+ }
+ 
+diff --git a/src/p2p/net_node.inl b/src/p2p/net_node.inl
+index 5143ba528..226246581 100644
+--- a/src/p2p/net_node.inl
++++ b/src/p2p/net_node.inl
+@@ -125,6 +125,7 @@ namespace nodetool
+     command_line::add_arg(desc, arg_peerlist_dump_file);
+     command_line::add_arg(desc, arg_sim_log_txrelay);
+     command_line::add_arg(desc, arg_sim_subnet_dedup);
++    command_line::add_arg(desc, arg_sim_whitelist_candidates);
+     command_line::add_arg(desc, arg_sim_uniform_whitelist_pick);
+     command_line::add_arg(desc, arg_no_igd);
+     command_line::add_arg(desc, arg_igd);
+@@ -457,6 +458,9 @@ namespace nodetool
+     m_use_ipv6 = command_line::get_arg(vm, arg_p2p_use_ipv6);
+     m_require_ipv4 = !command_line::get_arg(vm, arg_p2p_ignore_ipv4);
+     {
++      m_sim_whitelist_candidates = command_line::get_arg(vm, arg_sim_whitelist_candidates);
++      if (m_sim_whitelist_candidates != 20)
++        MGINFO("--sim-whitelist-candidates " << m_sim_whitelist_candidates << ": white-list candidates per pick (stock 20, 0 = every unconnected subnet)");
+       m_sim_uniform_whitelist_pick = command_line::get_arg(vm, arg_sim_uniform_whitelist_pick);
+       if (m_sim_uniform_whitelist_pick)
+         MGINFO("--sim-uniform-whitelist-pick: white-list peer pick is uniform (stock recency bias off)");
+@@ -1761,7 +1765,8 @@ namespace nodetool
+         // else, for step 1 / second pass of inner try loop, take all peers from all subnets
+ 
+         // Take as many candidates as we need and care about stripes if pruning
+-        const size_t limit = use_white_list ? 20 : std::numeric_limits<size_t>::max();
++        // --sim-whitelist-candidates replaces the stock 20 (0 = no cap).
++        const size_t limit = use_white_list && m_sim_whitelist_candidates ? m_sim_whitelist_candidates : std::numeric_limits<size_t>::max();
+         for (const peerlist_entry &peer : candidate_peers) {
+           if (filtered.size() >= limit)
+             break;

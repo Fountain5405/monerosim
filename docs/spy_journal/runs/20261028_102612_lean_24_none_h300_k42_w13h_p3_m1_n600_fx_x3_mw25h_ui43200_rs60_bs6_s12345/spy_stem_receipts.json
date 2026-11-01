@@ -1,0 +1,24 @@
+{
+ "archive": "/home/lever65/monerosim_archives/20261028_102612_lean_24_none_h300_k42_w13h_p3_m1_n600_fx_x3_mw25h_ui43200_rs60_bs6_s12345",
+ "spies": 42,
+ "local_txs": 431,
+ "spy_stem_rx": 386,
+ "spy_stem_rx_dir": {
+  "in": 386
+ },
+ "stem_txs_at_spies": 283,
+ "stem_tx_share": 0.6566,
+ "hop1_stem_txs": 120,
+ "hop1_user_txs": 9,
+ "user_txs": 55,
+ "x3_adopters": 289,
+ "rx_from_adopters": 146,
+ "virtual_rx": 0,
+ "virtual_rx_share": 0.0,
+ "per_spy": {
+  "min": 3,
+  "median": 9.0,
+  "max": 19,
+  "zeros": 0
+ }
+}

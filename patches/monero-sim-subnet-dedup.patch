@@ -1,0 +1,303 @@
+diff --git a/src/p2p/net_node.cpp b/src/p2p/net_node.cpp
+index 03171ad42..03bb76ece 100644
+--- a/src/p2p/net_node.cpp
++++ b/src/p2p/net_node.cpp
+@@ -161,6 +161,7 @@ namespace nodetool
+     const command_line::arg_descriptor<bool> arg_no_sync = {"no-sync", "Don't synchronize the blockchain with other peers", false};
+     const command_line::arg_descriptor<bool> arg_enable_dns_blocklist = {"enable-dns-blocklist", "Apply realtime blocklist from DNS", false};
+     const command_line::arg_descriptor<std::string> arg_sim_log_txrelay = {"sim-log-txrelay", "Simulation only (measurement): append a JSONL line for every Dandelion++ relay event (tx received, stem send, fluff, epoch, stem change, pool re-relay) to this file. Off by default; read-only w.r.t. relay.", ""};
++    const command_line::arg_descriptor<std::string> arg_sim_subnet_dedup = {"sim-subnet-dedup", "Simulation only: outbound peer grouping. 24 (stock): one candidate per /24, skipping /24s already connected. 16: the same at /16. none: no subnet grouping (ports still collapsed). legacy: v0.18.4.2's selection, before #9939 (skip /16s already connected).", "24"};
+     const command_line::arg_descriptor<std::string> arg_peerlist_dump_file = {"peerlist-dump-file", "MEASUREMENT ONLY (Shadow eclipse reproduction): if set, periodically append the full white+gray peer list as JSONL to this file. Off by default; read-only w.r.t. peering.", ""};
+ 
+     const command_line::arg_descriptor<bool>        arg_no_igd  = {"no-igd", "Disable UPnP port mapping"};
+diff --git a/src/p2p/net_node.h b/src/p2p/net_node.h
+index ea580dc59..31aab47fc 100644
+--- a/src/p2p/net_node.h
++++ b/src/p2p/net_node.h
+@@ -371,6 +371,7 @@ namespace nodetool
+ 
+     bool make_new_connection_from_anchor_peerlist(const std::vector<anchor_peerlist_entry>& anchor_peerlist);
+     bool make_new_connection_from_peerlist(network_zone& zone, bool use_white_list);
++    bool make_new_connection_from_peerlist_legacy(network_zone& zone, bool use_white_list);
+     bool try_to_connect_and_handshake_with_new_peer(const epee::net_utils::network_address& na, bool just_take_peerlist = false, uint64_t last_seen_stamp = 0, PeerType peer_type = white, uint64_t first_seen_stamp = 0);
+     size_t get_random_index_with_fixed_probability(size_t max_index);
+     bool is_peer_used(const peerlist_entry& peer);
+@@ -451,6 +452,8 @@ namespace nodetool
+     bool m_offline;
+     bool m_use_ipv6;
+     bool m_require_ipv4;
++    uint32_t m_sim_subnet_mask = ntohl(0xffffff00);  // --sim-subnet-dedup; 0 = no subnet dedup
++    bool m_sim_legacy_selection = false;              // --sim-subnet-dedup=legacy
+     std::atomic<bool> is_closing;
+     std::atomic<bool> m_stop_signal_sent_once{false};
+     std::unique_ptr<boost::thread> mPeersLoggerThread;
+@@ -548,6 +551,7 @@ namespace nodetool
+     extern const command_line::arg_descriptor<uint32_t> arg_max_connections_per_ip;
+     extern const command_line::arg_descriptor<std::string> arg_peerlist_dump_file;
+     extern const command_line::arg_descriptor<std::string> arg_sim_log_txrelay;
++    extern const command_line::arg_descriptor<std::string> arg_sim_subnet_dedup;
+ }
+ 
+ POP_WARNINGS
+diff --git a/src/p2p/net_node.inl b/src/p2p/net_node.inl
+index 8f903755a..d9c68332f 100644
+--- a/src/p2p/net_node.inl
++++ b/src/p2p/net_node.inl
+@@ -124,6 +124,7 @@ namespace nodetool
+     command_line::add_arg(desc, arg_enable_dns_blocklist);
+     command_line::add_arg(desc, arg_peerlist_dump_file);
+     command_line::add_arg(desc, arg_sim_log_txrelay);
++    command_line::add_arg(desc, arg_sim_subnet_dedup);
+     command_line::add_arg(desc, arg_no_igd);
+     command_line::add_arg(desc, arg_igd);
+     command_line::add_arg(desc, arg_out_peers);
+@@ -454,6 +455,23 @@ namespace nodetool
+     m_offline = command_line::get_arg(vm, cryptonote::arg_offline);
+     m_use_ipv6 = command_line::get_arg(vm, arg_p2p_use_ipv6);
+     m_require_ipv4 = !command_line::get_arg(vm, arg_p2p_ignore_ipv4);
++    {
++      const std::string dedup = command_line::get_arg(vm, arg_sim_subnet_dedup);
++      m_sim_legacy_selection = dedup == "legacy";
++      if (dedup == "24" || dedup == "legacy")
++        m_sim_subnet_mask = ntohl(0xffffff00);
++      else if (dedup == "16")
++        m_sim_subnet_mask = ntohl(0xffff0000);
++      else if (dedup == "none")
++        m_sim_subnet_mask = 0;
++      else
++      {
++        MERROR("Invalid --sim-subnet-dedup '" << dedup << "': expected 24, 16, none or legacy");
++        return false;
++      }
++      if (dedup != "24")
++        MGINFO_RED("*** SIMULATION: --sim-subnet-dedup=" << dedup << ", outbound peer selection differs from stock monerod. ***");
++    }
+     // Opened before the notifier below, whose constructor starts the first epoch.
+     // A relative path is resolved against the data dir, like --peerlist-dump-file.
+     std::string sim_txrelay_log_path = command_line::get_arg(vm, arg_sim_log_txrelay);
+@@ -1580,6 +1598,8 @@ namespace nodetool
+   template<class t_payload_net_handler>
+   bool node_server<t_payload_net_handler>::make_new_connection_from_peerlist(network_zone& zone, bool use_white_list)
+   {
++    if (m_sim_legacy_selection)
++      return make_new_connection_from_peerlist_legacy(zone, use_white_list);
+ 
+     // Local helper method to get the host string, i.e. the pure IP address without port
+     const auto get_host_string = [](const epee::net_utils::network_address &address) {
+@@ -1636,7 +1656,7 @@ namespace nodetool
+       // Build a list of all distinct /24 subnets we are connected to now right now; to catch
+       // any connection changes, re-build the list for every outer try loop pass
+       std::set<uint32_t> connected_subnets;
+-      const uint32_t subnet_mask = ntohl(0xffffff00);
++      const uint32_t subnet_mask = m_sim_subnet_mask;  // stock: ntohl(0xffffff00); --sim-subnet-dedup
+       const bool is_public_zone = &zone == &m_network_zones.at(epee::net_utils::zone::public_);
+       if (is_public_zone)
+       {
+@@ -1676,7 +1696,7 @@ namespace nodetool
+         if ((step == 1) && !is_public_zone)
+           break;
+ 
+-        const bool try_subnet_dedup = step == 0 && is_public_zone;
++        const bool try_subnet_dedup = step == 0 && is_public_zone && subnet_mask != 0;
+         const std::vector<peerlist_entry> &candidate_peers = try_subnet_dedup ? subnet_peers : peers;
+         if (try_subnet_dedup)
+         {
+@@ -1839,6 +1859,198 @@ namespace nodetool
+     return false;
+   }
+   //-----------------------------------------------------------------------------------
++  // Simulation only (--sim-subnet-dedup=legacy): make_new_connection_from_peerlist as of
++  // v0.18.4.2, verbatim, i.e. before #9939's /24 deduplication. Skips candidates in a /16
++  // that any current connection is in, and takes one candidate per host, but does not
++  // limit candidates to one per subnet.
++  template<class t_payload_net_handler>
++  bool node_server<t_payload_net_handler>::make_new_connection_from_peerlist_legacy(network_zone& zone, bool use_white_list)
++  {
++    size_t max_random_index = 0;
++
++    std::set<size_t> tried_peers;
++
++    size_t try_count = 0;
++    size_t rand_count = 0;
++    while(rand_count < (max_random_index+1)*3 &&  try_count < 10 && !zone.m_net_server.is_stop_signal_sent())
++    {
++      ++rand_count;
++      size_t random_index;
++      const uint32_t next_needed_pruning_stripe = m_payload_handler.get_next_needed_pruning_stripe().second;
++
++      // build a set of all the /16 we're connected to, and prefer a peer that's not in that set
++      std::set<uint32_t> classB;
++      if (&zone == &m_network_zones.at(epee::net_utils::zone::public_)) // at returns reference, not copy
++      {
++        zone.m_net_server.get_config_object().foreach_connection([&](const p2p_connection_context& cntxt)
++        {
++          if (cntxt.m_remote_address.get_type_id() == epee::net_utils::ipv4_network_address::get_type_id())
++          {
++
++            const epee::net_utils::network_address na = cntxt.m_remote_address;
++            const uint32_t actual_ip = na.as<const epee::net_utils::ipv4_network_address>().ip();
++            classB.insert(actual_ip & 0x0000ffff);
++          }
++          else if (cntxt.m_remote_address.get_type_id() == epee::net_utils::ipv6_network_address::get_type_id())
++          {
++            const epee::net_utils::network_address na = cntxt.m_remote_address;
++            const boost::asio::ip::address_v6 &actual_ip = na.as<const epee::net_utils::ipv6_network_address>().ip();
++            if (actual_ip.is_v4_mapped())
++            {
++              boost::asio::ip::address_v4 v4ip = make_address_v4_from_v6(actual_ip);
++              uint32_t actual_ipv4;
++              memcpy(&actual_ipv4, v4ip.to_bytes().data(), sizeof(actual_ipv4));
++              classB.insert(actual_ipv4 & ntohl(0xffff0000));
++            }
++          }
++          return true;
++        });
++      }
++
++      auto get_host_string = [](const epee::net_utils::network_address &address) {
++        if (address.get_type_id() == epee::net_utils::ipv6_network_address::get_type_id())
++        {
++          boost::asio::ip::address_v6 actual_ip = address.as<const epee::net_utils::ipv6_network_address>().ip();
++          if (actual_ip.is_v4_mapped())
++          {
++            boost::asio::ip::address_v4 v4ip = make_address_v4_from_v6(actual_ip);
++            uint32_t actual_ipv4;
++            memcpy(&actual_ipv4, v4ip.to_bytes().data(), sizeof(actual_ipv4));
++            return epee::net_utils::ipv4_network_address(actual_ipv4, 0).host_str();
++          }
++        }
++        return address.host_str();
++      };
++      std::unordered_set<std::string> hosts_added;
++      std::deque<size_t> filtered;
++      const size_t limit = use_white_list ? 20 : std::numeric_limits<size_t>::max();
++      for (int step = 0; step < 2; ++step)
++      {
++        bool skip_duplicate_class_B = step == 0;
++        size_t idx = 0, skipped = 0;
++        zone.m_peerlist.foreach (use_white_list, [&classB, &filtered, &idx, &skipped, skip_duplicate_class_B, limit, next_needed_pruning_stripe, &hosts_added, &get_host_string](const peerlist_entry &pe){
++          if (filtered.size() >= limit)
++            return false;
++          bool skip = false;
++          if (skip_duplicate_class_B && pe.adr.get_type_id() == epee::net_utils::ipv4_network_address::get_type_id())
++          {
++            const epee::net_utils::network_address na = pe.adr;
++            uint32_t actual_ip = na.as<const epee::net_utils::ipv4_network_address>().ip();
++            skip = classB.find(actual_ip & 0x0000ffff) != classB.end();
++          }
++          else if (skip_duplicate_class_B && pe.adr.get_type_id() == epee::net_utils::ipv6_network_address::get_type_id())
++          {
++            const epee::net_utils::network_address na = pe.adr;
++            const boost::asio::ip::address_v6 &actual_ip = na.as<const epee::net_utils::ipv6_network_address>().ip();
++            if (actual_ip.is_v4_mapped())
++            {
++              boost::asio::ip::address_v4 v4ip = make_address_v4_from_v6(actual_ip);
++              uint32_t actual_ipv4;
++              memcpy(&actual_ipv4, v4ip.to_bytes().data(), sizeof(actual_ipv4));
++              skip = classB.find(actual_ipv4 & ntohl(0xffff0000)) != classB.end();
++            }
++          }
++
++          // consider each host once, to avoid giving undue inflence to hosts running several nodes
++          if (!skip)
++          {
++            const auto i = hosts_added.find(get_host_string(pe.adr));
++            if (i != hosts_added.end())
++              skip = true;
++          }
++
++          if (skip)
++            ++skipped;
++          else if (next_needed_pruning_stripe == 0 || pe.pruning_seed == 0)
++            filtered.push_back(idx);
++          else if (next_needed_pruning_stripe == tools::get_pruning_stripe(pe.pruning_seed))
++            filtered.push_front(idx);
++          ++idx;
++          hosts_added.insert(get_host_string(pe.adr));
++          return true;
++        });
++        if (skipped == 0 || !filtered.empty())
++          break;
++        if (skipped)
++          MDEBUG("Skipping " << skipped << " possible peers as they share a class B with existing peers");
++      }
++      if (filtered.empty())
++      {
++        MINFO("No available peer in " << (use_white_list ? "white" : "gray") << " list filtered by " << next_needed_pruning_stripe);
++        return false;
++      }
++      if (use_white_list)
++      {
++        // if using the white list, we first pick in the set of peers we've already been using earlier
++        random_index = get_random_index_with_fixed_probability(std::min<uint64_t>(filtered.size() - 1, 20));
++        CRITICAL_REGION_LOCAL(m_used_stripe_peers_mutex);
++        if (next_needed_pruning_stripe > 0 && next_needed_pruning_stripe <= (1ul << CRYPTONOTE_PRUNING_LOG_STRIPES) && !m_used_stripe_peers[next_needed_pruning_stripe-1].empty())
++        {
++          const epee::net_utils::network_address na = m_used_stripe_peers[next_needed_pruning_stripe-1].front();
++          m_used_stripe_peers[next_needed_pruning_stripe-1].pop_front();
++          for (size_t i = 0; i < filtered.size(); ++i)
++          {
++            peerlist_entry pe;
++            if (zone.m_peerlist.get_white_peer_by_index(pe, filtered[i]) && pe.adr == na)
++            {
++              MDEBUG("Reusing stripe " << next_needed_pruning_stripe << " peer " << pe.adr.str());
++              random_index = i;
++              break;
++            }
++          }
++        }
++      }
++      else
++        random_index = crypto::rand_idx(filtered.size());
++
++      CHECK_AND_ASSERT_MES(random_index < filtered.size(), false, "random_index < filtered.size() failed!!");
++      random_index = filtered[random_index];
++      CHECK_AND_ASSERT_MES(random_index < (use_white_list ? zone.m_peerlist.get_white_peers_count() : zone.m_peerlist.get_gray_peers_count()),
++          false, "random_index < peers size failed!!");
++
++      if(tried_peers.count(random_index))
++        continue;
++
++      tried_peers.insert(random_index);
++      peerlist_entry pe = AUTO_VAL_INIT(pe);
++      bool r = use_white_list ? zone.m_peerlist.get_white_peer_by_index(pe, random_index):zone.m_peerlist.get_gray_peer_by_index(pe, random_index);
++      CHECK_AND_ASSERT_MES(r, false, "Failed to get random peer from peerlist(white:" << use_white_list << ")");
++
++      ++try_count;
++
++      _note("Considering connecting (out) to " << (use_white_list ? "white" : "gray") << " list peer: " <<
++          peerid_to_string(pe.id) << " " << pe.adr.str() << ", pruning seed " << epee::string_tools::to_string_hex(pe.pruning_seed) <<
++          " (stripe " << next_needed_pruning_stripe << " needed)");
++
++      if(zone.m_our_address == pe.adr)
++        continue;
++
++      if(is_peer_used(pe)) {
++        _note("Peer is used");
++        continue;
++      }
++
++      if(!is_remote_host_allowed(pe.adr))
++        continue;
++
++      if(is_addr_recently_failed(pe.adr))
++        continue;
++
++      MDEBUG("Selected peer: " << peerid_to_string(pe.id) << " " << pe.adr.str()
++                    << ", pruning seed " << epee::string_tools::to_string_hex(pe.pruning_seed) << " "
++                    << "[peer_list=" << (use_white_list ? white : gray)
++                    << "] last_seen: " << (pe.last_seen ? epee::misc_utils::get_time_interval_string(time(NULL) - pe.last_seen) : "never"));
++
++      if(!try_to_connect_and_handshake_with_new_peer(pe.adr, false, pe.last_seen, use_white_list ? white : gray)) {
++        _note("Handshake failed");
++        continue;
++      }
++
++      return true;
++    }
++    return false;
++  }
++  //-----------------------------------------------------------------------------------
+   template<class t_payload_net_handler>
+   bool node_server<t_payload_net_handler>::connect_to_seed(epee::net_utils::zone zone)
+   {

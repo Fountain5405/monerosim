@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_151500_lean_24_none_h300_k21_w13h_m1_n600_s12345",
+ "box": "phantom",
+ "cell": "lean_24_none_h300_k21_w13h_m1_n600_s12345",
+ "archived_at": "2026-10-23T15:15:36Z",
+ "monerod_sim_sha": "1472ed18703f",
+ "wall": "2h 32m",
+ "exit_code": 0,
+ "min_avail_mb": 12495,
+ "txs_created": 1066,
+ "txs_in_blocks": 1063,
+ "note": "E24/P13a: tail at 1 spy per /24 (21 spies); light 0.1978 flat against 0.1662 at 2 per /24 (E19) and 0.1749 at 8 (P13b): P13a's dilution range 0.18-0.27 hit, but the three points are not 1/m and the E24 candidate-count expectation (0.16-0.18) was wrong; relays 0.225, users 0.0605",
+ "scored_cell": "24/none",
+ "spies": 21,
+ "spy_24s": 21,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.1978,
+ "light_out_quarters": [
+  0.1969,
+  0.1955,
+  0.2005,
+  0.1984
+ ],
+ "model_out": 0.0822,
+ "fluff_per_hop": 0.192,
+ "stem_txs": 1099,
+ "stem_hops_implied": 5.21,
+ "embargo_rate": 0.0
+}

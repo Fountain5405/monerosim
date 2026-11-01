@@ -1,0 +1,17 @@
+{
+ "archive": "/fast/antiproxy/monerosim_archives/20261029_020725_lean_24_none_h300_k42_w13h_p3_m1_n600_x3_sd12_sc_s12345",
+ "x3_events": 30961,
+ "virtual_epoch_share": 0.599,
+ "union_min": 0,
+ "union_median": 13,
+ "union_max": 40,
+ "edge2_epochs": 40619,
+ "edge2_join_misses": 22088,
+ "edge2_virtual": 3441,
+ "edge2_virtual_share": 0.085,
+ "relayed_stems_at_users": 0,
+ "users_reached": 0,
+ "users_total": 40,
+ "user_own_sends": 1033,
+ "relayed_per_user": {}
+}

@@ -1,0 +1,30 @@
+{
+ "run_id": "20261024_052857_lean_legacy_none_h71_k1_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_legacy_none_h71_k1_s12345",
+ "archived_at": "2026-10-24T05:29:34Z",
+ "monerod_sim_sha": "bb53709efe74",
+ "wall": "41m 48s",
+ "exit_code": 0,
+ "min_avail_mb": 170713,
+ "txs_created": 936,
+ "txs_in_blocks": 904,
+ "note": "P22, the Threadripper's platform check (H=71 legacy, seed 12345): 0.0624 against phantom 0.0610, simbox2 0.0614, simbox3 0.0641; hit on all four clauses; first run on zenith2alpha (64 threads, 251 GB), live run on /fast",
+ "scored_cell": "legacy/none",
+ "spies": 13,
+ "spy_24s": 1,
+ "honest_reachable": 71,
+ "honest_reachable_24s": 60,
+ "light_out": 0.0624,
+ "light_out_quarters": [
+  0.059,
+  0.0625,
+  0.0624,
+  0.0651
+ ],
+ "model_out": 0.075,
+ "fluff_per_hop": 0.171,
+ "stem_txs": 953,
+ "stem_hops_implied": 5.85,
+ "embargo_rate": 0.0
+}

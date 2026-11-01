@@ -1,0 +1,22 @@
+cell 24/half   /mnt/ssdpool/monerosim_archives/20261022_143050_x0_24_half_s34567
+
+group      nodes spy share out spy share in
+honest       407        0.0487        0.002
+light        348        0.0382          0.0
+observer       8        0.0697          0.0
+user          80         0.036          0.0
+relay        260        0.0379          0.0
+medium        48        0.0541          0.0
+miner          5        0.1542          0.0
+monero-seed     6         0.076       0.0207
+no-list      209        0.0907       0.0034
+ban-list     198           0.0          0.0
+
+model (12 slots, one per subnet): 12 spies in 6 /24s, 71 honest reachable in 69 /24s: legacy 0.1363, 24 0.0825, none 0.1453
+light outbound share by quarter of the window: [0.0418, 0.0398, 0.0365, 0.0349]
+
+stems: 1865 txs, mean hops 4.46, 3.91 on paths ended by a fluff epoch
+  fluff per hop 0.194 (stock 0.2): implied uncensored mean 5.15 hops (target ~5)
+  ended {'epoch': 1610, 'loop': 234, 'no_stem': 21}
+  embargo rate 0.0, loop rate 0.1255, fluff epochs 0.199, hops without rx 0
+  hops histogram {0: 7, 1: 361, 2: 319, 3: 254, 4: 205, 5: 162, 6: 143, 7: 97, 8: 81, 9: 57, 10: 37, 11: 43, 12: 28, 13: 25, 14: 16, 15: 15, 16: 6, 17: 4, 18: 1, 19: 1, 20: 1, 23: 2}

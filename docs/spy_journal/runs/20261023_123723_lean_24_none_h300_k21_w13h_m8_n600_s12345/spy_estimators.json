@@ -1,0 +1,601 @@
+{
+  "spies": [
+    "spy-a-001",
+    "spy-a-002",
+    "spy-a-003",
+    "spy-a-004",
+    "spy-a-005",
+    "spy-a-006",
+    "spy-a-007",
+    "spy-a-008",
+    "spy-b-001",
+    "spy-b-002",
+    "spy-b-003",
+    "spy-b-004",
+    "spy-b-005",
+    "spy-b-006",
+    "spy-b-007",
+    "spy-b-008",
+    "spy-c-001",
+    "spy-c-002",
+    "spy-c-003",
+    "spy-c-004",
+    "spy-c-005",
+    "spy-c-006",
+    "spy-c-007",
+    "spy-c-008",
+    "spy-d-001",
+    "spy-d-002",
+    "spy-d-003",
+    "spy-d-004",
+    "spy-d-005",
+    "spy-d-006",
+    "spy-d-007",
+    "spy-d-008",
+    "spy-e-001",
+    "spy-e-002",
+    "spy-e-003",
+    "spy-e-004",
+    "spy-e-005",
+    "spy-e-006",
+    "spy-e-007",
+    "spy-e-008",
+    "spy-f-001",
+    "spy-f-002",
+    "spy-f-003",
+    "spy-f-004",
+    "spy-f-005",
+    "spy-f-006",
+    "spy-f-007",
+    "spy-f-008",
+    "spy-g-001",
+    "spy-g-002",
+    "spy-g-003",
+    "spy-g-004",
+    "spy-g-005",
+    "spy-g-006",
+    "spy-g-007",
+    "spy-g-008",
+    "spy-h-001",
+    "spy-h-002",
+    "spy-h-003",
+    "spy-h-004",
+    "spy-h-005",
+    "spy-h-006",
+    "spy-h-007",
+    "spy-h-008",
+    "spy-i-001",
+    "spy-i-002",
+    "spy-i-003",
+    "spy-i-004",
+    "spy-i-005",
+    "spy-i-006",
+    "spy-i-007",
+    "spy-i-008",
+    "spy-j-001",
+    "spy-j-002",
+    "spy-j-003",
+    "spy-j-004",
+    "spy-j-005",
+    "spy-j-006",
+    "spy-j-007",
+    "spy-j-008",
+    "spy-k-001",
+    "spy-k-002",
+    "spy-k-003",
+    "spy-k-004",
+    "spy-k-005",
+    "spy-k-006",
+    "spy-k-007",
+    "spy-k-008",
+    "spy-l-001",
+    "spy-l-002",
+    "spy-l-003",
+    "spy-l-004",
+    "spy-l-005",
+    "spy-l-006",
+    "spy-l-007",
+    "spy-l-008",
+    "spy-m-001",
+    "spy-m-002",
+    "spy-m-003",
+    "spy-m-004",
+    "spy-m-005",
+    "spy-m-006",
+    "spy-m-007",
+    "spy-m-008",
+    "spy-n-001",
+    "spy-n-002",
+    "spy-n-003",
+    "spy-n-004",
+    "spy-n-005",
+    "spy-n-006",
+    "spy-n-007",
+    "spy-n-008",
+    "spy-o-001",
+    "spy-o-002",
+    "spy-o-003",
+    "spy-o-004",
+    "spy-o-005",
+    "spy-o-006",
+    "spy-o-007",
+    "spy-o-008",
+    "spy-p-001",
+    "spy-p-002",
+    "spy-p-003",
+    "spy-p-004",
+    "spy-p-005",
+    "spy-p-006",
+    "spy-p-007",
+    "spy-p-008",
+    "spy-q-001",
+    "spy-q-002",
+    "spy-q-003",
+    "spy-q-004",
+    "spy-q-005",
+    "spy-q-006",
+    "spy-q-007",
+    "spy-q-008",
+    "spy-r-001",
+    "spy-r-002",
+    "spy-r-003",
+    "spy-r-004",
+    "spy-r-005",
+    "spy-r-006",
+    "spy-r-007",
+    "spy-r-008",
+    "spy-s-001",
+    "spy-s-002",
+    "spy-s-003",
+    "spy-s-004",
+    "spy-s-005",
+    "spy-s-006",
+    "spy-s-007",
+    "spy-s-008",
+    "spy-t-001",
+    "spy-t-002",
+    "spy-t-003",
+    "spy-t-004",
+    "spy-t-005",
+    "spy-t-006",
+    "spy-t-007",
+    "spy-t-008",
+    "spy-u-001",
+    "spy-u-002",
+    "spy-u-003",
+    "spy-u-004",
+    "spy-u-005",
+    "spy-u-006",
+    "spy-u-007",
+    "spy-u-008"
+  ],
+  "spies_logging": [
+    "spy-a-001",
+    "spy-a-002",
+    "spy-a-003",
+    "spy-a-004",
+    "spy-a-005",
+    "spy-a-006",
+    "spy-a-007",
+    "spy-a-008",
+    "spy-b-001",
+    "spy-b-002",
+    "spy-b-003",
+    "spy-b-004",
+    "spy-b-005",
+    "spy-b-006",
+    "spy-b-007",
+    "spy-b-008",
+    "spy-c-001",
+    "spy-c-002",
+    "spy-c-003",
+    "spy-c-004",
+    "spy-c-005",
+    "spy-c-006",
+    "spy-c-007",
+    "spy-c-008",
+    "spy-d-001",
+    "spy-d-002",
+    "spy-d-003",
+    "spy-d-004",
+    "spy-d-005",
+    "spy-d-006",
+    "spy-d-007",
+    "spy-d-008",
+    "spy-e-001",
+    "spy-e-002",
+    "spy-e-003",
+    "spy-e-004",
+    "spy-e-005",
+    "spy-e-006",
+    "spy-e-007",
+    "spy-e-008",
+    "spy-f-001",
+    "spy-f-002",
+    "spy-f-003",
+    "spy-f-004",
+    "spy-f-005",
+    "spy-f-006",
+    "spy-f-007",
+    "spy-f-008",
+    "spy-g-001",
+    "spy-g-002",
+    "spy-g-003",
+    "spy-g-004",
+    "spy-g-005",
+    "spy-g-006",
+    "spy-g-007",
+    "spy-g-008",
+    "spy-h-001",
+    "spy-h-002",
+    "spy-h-003",
+    "spy-h-004",
+    "spy-h-005",
+    "spy-h-006",
+    "spy-h-007",
+    "spy-h-008",
+    "spy-i-001",
+    "spy-i-002",
+    "spy-i-003",
+    "spy-i-004",
+    "spy-i-005",
+    "spy-i-006",
+    "spy-i-007",
+    "spy-i-008",
+    "spy-j-001",
+    "spy-j-002",
+    "spy-j-003",
+    "spy-j-004",
+    "spy-j-005",
+    "spy-j-006",
+    "spy-j-007",
+    "spy-j-008",
+    "spy-k-001",
+    "spy-k-002",
+    "spy-k-003",
+    "spy-k-004",
+    "spy-k-005",
+    "spy-k-006",
+    "spy-k-007",
+    "spy-k-008",
+    "spy-l-001",
+    "spy-l-002",
+    "spy-l-003",
+    "spy-l-004",
+    "spy-l-005",
+    "spy-l-006",
+    "spy-l-007",
+    "spy-l-008",
+    "spy-m-001",
+    "spy-m-002",
+    "spy-m-003",
+    "spy-m-004",
+    "spy-m-005",
+    "spy-m-006",
+    "spy-m-007",
+    "spy-m-008",
+    "spy-n-001",
+    "spy-n-002",
+    "spy-n-003",
+    "spy-n-004",
+    "spy-n-005",
+    "spy-n-006",
+    "spy-n-007",
+    "spy-n-008",
+    "spy-o-001",
+    "spy-o-002",
+    "spy-o-003",
+    "spy-o-004",
+    "spy-o-005",
+    "spy-o-006",
+    "spy-o-007",
+    "spy-o-008",
+    "spy-p-001",
+    "spy-p-002",
+    "spy-p-003",
+    "spy-p-004",
+    "spy-p-005",
+    "spy-p-006",
+    "spy-p-007",
+    "spy-p-008",
+    "spy-q-001",
+    "spy-q-002",
+    "spy-q-003",
+    "spy-q-004",
+    "spy-q-005",
+    "spy-q-006",
+    "spy-q-007",
+    "spy-q-008",
+    "spy-r-001",
+    "spy-r-002",
+    "spy-r-003",
+    "spy-r-004",
+    "spy-r-005",
+    "spy-r-006",
+    "spy-r-007",
+    "spy-r-008",
+    "spy-s-001",
+    "spy-s-002",
+    "spy-s-003",
+    "spy-s-004",
+    "spy-s-005",
+    "spy-s-006",
+    "spy-s-007",
+    "spy-s-008",
+    "spy-t-001",
+    "spy-t-002",
+    "spy-t-003",
+    "spy-t-004",
+    "spy-t-005",
+    "spy-t-006",
+    "spy-t-007",
+    "spy-t-008",
+    "spy-u-001",
+    "spy-u-002",
+    "spy-u-003",
+    "spy-u-004",
+    "spy-u-005",
+    "spy-u-006",
+    "spy-u-007",
+    "spy-u-008"
+  ],
+  "txs": 1073,
+  "txs_seen_by_spies": 1073,
+  "senders": {
+    "unreachable": 40,
+    "reachable": 0,
+    "busy": 5
+  },
+  "busy_min": 5,
+  "scores": {
+    "sp": {
+      "unreachable": {
+        "n": 1007,
+        "guesses": 63,
+        "correct": 63,
+        "recall": 0.06256206554121152,
+        "precision": 1.0,
+        "recall_ci": [
+          0.03197674418604651,
+          0.09693372898120672
+        ],
+        "precision_ci": [
+          1.0,
+          1.0
+        ]
+      },
+      "reachable": {
+        "n": 0,
+        "guesses": 438,
+        "correct": 0,
+        "recall": null,
+        "precision": 0.0,
+        "precision_ci": [
+          0.0,
+          0.0
+        ]
+      },
+      "busy": {
+        "n": 66,
+        "guesses": 22,
+        "correct": 13,
+        "recall": 0.19696969696969696,
+        "precision": 0.5909090909090909,
+        "recall_ci": [
+          0.07692307692307693,
+          0.38095238095238093
+        ],
+        "precision_ci": [
+          0.16666666666666666,
+          0.8490566037735849
+        ]
+      }
+    },
+    "sp_r": {
+      "unreachable": {
+        "n": 1007,
+        "guesses": 63,
+        "correct": 63,
+        "recall": 0.06256206554121152,
+        "precision": 1.0,
+        "recall_ci": [
+          0.03197674418604651,
+          0.09693372898120672
+        ],
+        "precision_ci": [
+          1.0,
+          1.0
+        ]
+      },
+      "reachable": {
+        "n": 0,
+        "guesses": 0,
+        "correct": 0,
+        "recall": null,
+        "precision": null
+      },
+      "busy": {
+        "n": 66,
+        "guesses": 0,
+        "correct": 0,
+        "recall": 0.0,
+        "precision": null,
+        "recall_ci": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "fs": {
+      "unreachable": {
+        "n": 1007,
+        "guesses": 11,
+        "correct": 0,
+        "recall": 0.0,
+        "precision": 0.0,
+        "recall_ci": [
+          0.0,
+          0.0
+        ],
+        "precision_ci": [
+          0.0,
+          0.0
+        ]
+      },
+      "reachable": {
+        "n": 0,
+        "guesses": 925,
+        "correct": 0,
+        "recall": null,
+        "precision": 0.0,
+        "precision_ci": [
+          0.0,
+          0.0
+        ]
+      },
+      "busy": {
+        "n": 66,
+        "guesses": 137,
+        "correct": 4,
+        "recall": 0.06060606060606061,
+        "precision": 0.029197080291970802,
+        "recall_ci": [
+          0.0,
+          0.13333333333333333
+        ],
+        "precision_ci": [
+          0.0,
+          0.07462686567164178
+        ]
+      }
+    },
+    "combined": {
+      "unreachable": {
+        "n": 1007,
+        "guesses": 71,
+        "correct": 63,
+        "recall": 0.06256206554121152,
+        "precision": 0.8873239436619719,
+        "recall_ci": [
+          0.03197674418604651,
+          0.09693372898120672
+        ],
+        "precision_ci": [
+          0.7619047619047619,
+          0.9642857142857143
+        ]
+      },
+      "reachable": {
+        "n": 0,
+        "guesses": 926,
+        "correct": 0,
+        "recall": null,
+        "precision": 0.0,
+        "precision_ci": [
+          0.0,
+          0.0
+        ]
+      },
+      "busy": {
+        "n": 66,
+        "guesses": 76,
+        "correct": 13,
+        "recall": 0.19696969696969696,
+        "precision": 0.17105263157894737,
+        "recall_ci": [
+          0.07692307692307693,
+          0.38095238095238093
+        ],
+        "precision_ci": [
+          0.028985507246376812,
+          0.345679012345679
+        ]
+      }
+    }
+  },
+  "first_hop_spy": {
+    "unreachable": {
+      "txs": 1006,
+      "to_spy": 63,
+      "share": 0.063
+    },
+    "reachable": {
+      "txs": 0,
+      "to_spy": 0,
+      "share": null
+    },
+    "busy": {
+      "txs": 66,
+      "to_spy": 13,
+      "share": 0.197
+    }
+  },
+  "exposure": {
+    "sp_r": {
+      "unreachable": {
+        "20+": [
+          39,
+          16
+        ],
+        "10-19": [
+          1,
+          1
+        ]
+      },
+      "reachable": {},
+      "busy": {
+        "10-19": [
+          5,
+          0
+        ]
+      }
+    },
+    "combined": {
+      "unreachable": {
+        "20+": [
+          39,
+          16
+        ],
+        "10-19": [
+          1,
+          1
+        ]
+      },
+      "reachable": {},
+      "busy": {
+        "10-19": [
+          5,
+          5
+        ]
+      }
+    }
+  },
+  "window": [
+    54000,
+    68400
+  ],
+  "p_stem": {
+    "unreachable": {
+      "nodes": 40,
+      "median_of_means": 0.035,
+      "ever_spy": 0.725
+    },
+    "reachable": {
+      "nodes": 300,
+      "median_of_means": 0.167,
+      "ever_spy": 0.963
+    }
+  },
+  "p_out": {
+    "unreachable": {
+      "nodes": 40,
+      "median_of_means": 0.048,
+      "ever_spy": 1.0
+    },
+    "reachable": {
+      "nodes": 300,
+      "median_of_means": 0.179,
+      "ever_spy": 1.0
+    }
+  }
+}

@@ -1,0 +1,483 @@
+{
+  "spies": [
+    "spy-a-001",
+    "spy-a-002",
+    "spy-a-003",
+    "spy-a-004",
+    "spy-a-005",
+    "spy-a-006",
+    "spy-a-007",
+    "spy-a-008",
+    "spy-a-009",
+    "spy-a-010",
+    "spy-a-011",
+    "spy-a-012",
+    "spy-a-013",
+    "spy-a-014",
+    "spy-a-015",
+    "spy-a-016",
+    "spy-a-017",
+    "spy-a-018",
+    "spy-a-019",
+    "spy-b-001",
+    "spy-b-002",
+    "spy-b-003",
+    "spy-b-004",
+    "spy-b-005",
+    "spy-b-006",
+    "spy-b-007",
+    "spy-b-008",
+    "spy-b-009",
+    "spy-b-010",
+    "spy-b-011",
+    "spy-b-012",
+    "spy-b-013",
+    "spy-b-014",
+    "spy-b-015",
+    "spy-b-016",
+    "spy-b-017",
+    "spy-b-018",
+    "spy-b-019",
+    "spy-c-001",
+    "spy-c-002",
+    "spy-c-003",
+    "spy-c-004",
+    "spy-c-005",
+    "spy-c-006",
+    "spy-c-007",
+    "spy-c-008",
+    "spy-c-009",
+    "spy-c-010",
+    "spy-c-011",
+    "spy-c-012",
+    "spy-c-013",
+    "spy-c-014",
+    "spy-c-015",
+    "spy-c-016",
+    "spy-c-017",
+    "spy-c-018",
+    "spy-c-019",
+    "spy-d-001",
+    "spy-d-002",
+    "spy-d-003",
+    "spy-d-004",
+    "spy-d-005",
+    "spy-d-006",
+    "spy-d-007",
+    "spy-d-008",
+    "spy-d-009",
+    "spy-d-010",
+    "spy-d-011",
+    "spy-d-012",
+    "spy-d-013",
+    "spy-d-014",
+    "spy-d-015",
+    "spy-d-016",
+    "spy-d-017",
+    "spy-d-018",
+    "spy-d-019",
+    "spy-e-001",
+    "spy-e-002",
+    "spy-e-003",
+    "spy-e-004",
+    "spy-e-005",
+    "spy-e-006",
+    "spy-e-007",
+    "spy-e-008",
+    "spy-e-009",
+    "spy-e-010",
+    "spy-e-011",
+    "spy-e-012",
+    "spy-e-013",
+    "spy-e-014",
+    "spy-e-015",
+    "spy-e-016",
+    "spy-e-017",
+    "spy-e-018",
+    "spy-e-019",
+    "spy-f-001",
+    "spy-f-002",
+    "spy-f-003",
+    "spy-f-004",
+    "spy-f-005",
+    "spy-f-006",
+    "spy-f-007",
+    "spy-f-008",
+    "spy-f-009",
+    "spy-f-010",
+    "spy-f-011",
+    "spy-f-012",
+    "spy-f-013",
+    "spy-f-014",
+    "spy-f-015",
+    "spy-f-016",
+    "spy-f-017",
+    "spy-f-018"
+  ],
+  "spies_logging": [
+    "spy-a-001",
+    "spy-a-002",
+    "spy-a-003",
+    "spy-a-004",
+    "spy-a-005",
+    "spy-a-006",
+    "spy-a-007",
+    "spy-a-008",
+    "spy-a-009",
+    "spy-a-010",
+    "spy-a-011",
+    "spy-a-012",
+    "spy-a-013",
+    "spy-a-014",
+    "spy-a-015",
+    "spy-a-016",
+    "spy-a-017",
+    "spy-a-018",
+    "spy-a-019",
+    "spy-b-001",
+    "spy-b-002",
+    "spy-b-003",
+    "spy-b-004",
+    "spy-b-005",
+    "spy-b-006",
+    "spy-b-007",
+    "spy-b-008",
+    "spy-b-009",
+    "spy-b-010",
+    "spy-b-011",
+    "spy-b-012",
+    "spy-b-013",
+    "spy-b-014",
+    "spy-b-015",
+    "spy-b-016",
+    "spy-b-017",
+    "spy-b-018",
+    "spy-b-019",
+    "spy-c-001",
+    "spy-c-002",
+    "spy-c-003",
+    "spy-c-004",
+    "spy-c-005",
+    "spy-c-006",
+    "spy-c-007",
+    "spy-c-008",
+    "spy-c-009",
+    "spy-c-010",
+    "spy-c-011",
+    "spy-c-012",
+    "spy-c-013",
+    "spy-c-014",
+    "spy-c-015",
+    "spy-c-016",
+    "spy-c-017",
+    "spy-c-018",
+    "spy-c-019",
+    "spy-d-001",
+    "spy-d-002",
+    "spy-d-003",
+    "spy-d-004",
+    "spy-d-005",
+    "spy-d-006",
+    "spy-d-007",
+    "spy-d-008",
+    "spy-d-009",
+    "spy-d-010",
+    "spy-d-011",
+    "spy-d-012",
+    "spy-d-013",
+    "spy-d-014",
+    "spy-d-015",
+    "spy-d-016",
+    "spy-d-017",
+    "spy-d-018",
+    "spy-d-019",
+    "spy-e-001",
+    "spy-e-002",
+    "spy-e-003",
+    "spy-e-004",
+    "spy-e-005",
+    "spy-e-006",
+    "spy-e-007",
+    "spy-e-008",
+    "spy-e-009",
+    "spy-e-010",
+    "spy-e-011",
+    "spy-e-012",
+    "spy-e-013",
+    "spy-e-014",
+    "spy-e-015",
+    "spy-e-016",
+    "spy-e-017",
+    "spy-e-018",
+    "spy-e-019",
+    "spy-f-001",
+    "spy-f-002",
+    "spy-f-003",
+    "spy-f-004",
+    "spy-f-005",
+    "spy-f-006",
+    "spy-f-007",
+    "spy-f-008",
+    "spy-f-009",
+    "spy-f-010",
+    "spy-f-011",
+    "spy-f-012",
+    "spy-f-013",
+    "spy-f-014",
+    "spy-f-015",
+    "spy-f-016",
+    "spy-f-017",
+    "spy-f-018"
+  ],
+  "txs": 1078,
+  "txs_seen_by_spies": 1078,
+  "senders": {
+    "unreachable": 40,
+    "reachable": 0,
+    "busy": 5
+  },
+  "busy_min": 5,
+  "scores": {
+    "sp": {
+      "unreachable": {
+        "n": 1016,
+        "guesses": 3,
+        "correct": 3,
+        "recall": 0.002952755905511811,
+        "precision": 1.0,
+        "recall_ci": [
+          0.0,
+          0.008048289738430584
+        ],
+        "precision_ci": [
+          1.0,
+          1.0
+        ]
+      },
+      "reachable": {
+        "n": 0,
+        "guesses": 66,
+        "correct": 0,
+        "recall": null,
+        "precision": 0.0,
+        "precision_ci": [
+          0.0,
+          0.0
+        ]
+      },
+      "busy": {
+        "n": 62,
+        "guesses": 22,
+        "correct": 4,
+        "recall": 0.06451612903225806,
+        "precision": 0.18181818181818182,
+        "recall_ci": [
+          0.0,
+          0.17391304347826086
+        ],
+        "precision_ci": [
+          0.0,
+          0.41379310344827586
+        ]
+      }
+    },
+    "sp_r": {
+      "unreachable": {
+        "n": 1016,
+        "guesses": 3,
+        "correct": 3,
+        "recall": 0.002952755905511811,
+        "precision": 1.0,
+        "recall_ci": [
+          0.0,
+          0.008048289738430584
+        ],
+        "precision_ci": [
+          1.0,
+          1.0
+        ]
+      },
+      "reachable": {
+        "n": 0,
+        "guesses": 0,
+        "correct": 0,
+        "recall": null,
+        "precision": null
+      },
+      "busy": {
+        "n": 62,
+        "guesses": 0,
+        "correct": 0,
+        "recall": 0.0,
+        "precision": null,
+        "recall_ci": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "fs": {
+      "unreachable": {
+        "n": 1016,
+        "guesses": 2,
+        "correct": 0,
+        "recall": 0.0,
+        "precision": 0.0,
+        "recall_ci": [
+          0.0,
+          0.0
+        ],
+        "precision_ci": [
+          0.0,
+          0.0
+        ]
+      },
+      "reachable": {
+        "n": 0,
+        "guesses": 726,
+        "correct": 0,
+        "recall": null,
+        "precision": 0.0,
+        "precision_ci": [
+          0.0,
+          0.0
+        ]
+      },
+      "busy": {
+        "n": 62,
+        "guesses": 350,
+        "correct": 4,
+        "recall": 0.06451612903225806,
+        "precision": 0.011428571428571429,
+        "recall_ci": [
+          0.0,
+          0.12307692307692308
+        ],
+        "precision_ci": [
+          0.0,
+          0.027855153203342618
+        ]
+      }
+    },
+    "combined": {
+      "unreachable": {
+        "n": 1016,
+        "guesses": 4,
+        "correct": 3,
+        "recall": 0.002952755905511811,
+        "precision": 0.75,
+        "recall_ci": [
+          0.0,
+          0.008048289738430584
+        ],
+        "precision_ci": [
+          0.0,
+          1.0
+        ]
+      },
+      "reachable": {
+        "n": 0,
+        "guesses": 728,
+        "correct": 0,
+        "recall": null,
+        "precision": 0.0,
+        "precision_ci": [
+          0.0,
+          0.0
+        ]
+      },
+      "busy": {
+        "n": 62,
+        "guesses": 346,
+        "correct": 8,
+        "recall": 0.12903225806451613,
+        "precision": 0.023121387283236993,
+        "recall_ci": [
+          0.041666666666666664,
+          0.22413793103448276
+        ],
+        "precision_ci": [
+          0.002932551319648094,
+          0.052478134110787174
+        ]
+      }
+    }
+  },
+  "first_hop_spy": {
+    "unreachable": {
+      "txs": 1013,
+      "to_spy": 3,
+      "share": 0.003
+    },
+    "reachable": {
+      "txs": 0,
+      "to_spy": 0,
+      "share": null
+    },
+    "busy": {
+      "txs": 62,
+      "to_spy": 4,
+      "share": 0.065
+    }
+  },
+  "exposure": {
+    "sp_r": {
+      "unreachable": {
+        "20+": [
+          40,
+          2
+        ]
+      },
+      "reachable": {},
+      "busy": {
+        "10-19": [
+          5,
+          0
+        ]
+      }
+    },
+    "combined": {
+      "unreachable": {
+        "20+": [
+          40,
+          2
+        ]
+      },
+      "reachable": {},
+      "busy": {
+        "10-19": [
+          5,
+          4
+        ]
+      }
+    }
+  },
+  "window": [
+    28800,
+    43200
+  ],
+  "p_stem": {
+    "unreachable": {
+      "nodes": 40,
+      "median_of_means": 0.0,
+      "ever_spy": 0.1
+    },
+    "reachable": {
+      "nodes": 300,
+      "median_of_means": 0.0,
+      "ever_spy": 0.217
+    }
+  },
+  "p_out": {
+    "unreachable": {
+      "nodes": 40,
+      "median_of_means": 0.0,
+      "ever_spy": 0.3
+    },
+    "reachable": {
+      "nodes": 300,
+      "median_of_means": 0.0,
+      "ever_spy": 0.353
+    }
+  }
+}

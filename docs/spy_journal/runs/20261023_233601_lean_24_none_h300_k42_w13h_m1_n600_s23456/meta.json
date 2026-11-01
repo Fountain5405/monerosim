@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_233601_lean_24_none_h300_k42_w13h_m1_n600_s23456",
+ "box": "simbox2",
+ "cell": "lean_24_none_h300_k42_w13h_m1_n600_s23456",
+ "archived_at": "2026-10-23T23:36:01Z",
+ "monerod_sim_sha": "345d4ced95f1",
+ "wall": "2h 32m",
+ "exit_code": 0,
+ "min_avail_mb": 12819,
+ "txs_created": 1084,
+ "txs_in_blocks": 1078,
+ "note": "P19: E27's 42-/24 cell at seed 23456; light 0.334 vs 0.3369 (1% spread), 2.17x ceiling, flat; users 0.103 (seed 12345: 0.133); 26 of 40 exposed",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 240,
+ "light_out": 0.334,
+ "light_out_quarters": [
+  0.3278,
+  0.3344,
+  0.3378,
+  0.3358
+ ],
+ "model_out": 0.1539,
+ "fluff_per_hop": 0.197,
+ "stem_txs": 1097,
+ "stem_hops_implied": 5.08,
+ "embargo_rate": 0.0
+}

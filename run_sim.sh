@@ -2077,12 +2077,14 @@ archive_daemon_logs() {
     # --full call at the end of archive_results() and the only way to keep
     # them was --no-clean plus a manual copy out of /tmp. Land each one beside
     # that node's bitmonero.log; analysis/eclipse/analyze_peerlist_dumps.py
-    # reads this layout directly.
+    # reads this layout directly. The Dandelion++ relay logs
+    # (--sim-log-txrelay=txrelay.jsonl, patches/monero-sim-txrelay-log.patch)
+    # resolve the same way and are archived the same way.
     # The find is rooted at the monero-* dirs, not at $DAEMON_DATA_BASE: that
     # base is normally this run's own /tmp/monerosim-<run_id>/, but a config
     # may point daemon_data_dir at a shared /tmp, and we must never sweep up a
     # concurrent run's dumps.
-    local dump_count=0
+    local dump_count=0 txrelay_count=0
     local dump_file dump_rel dump_node
     while IFS= read -r dump_file; do
         [[ -f "$dump_file" ]] || continue
@@ -2091,8 +2093,12 @@ archive_daemon_logs() {
         [[ "$dump_node" == monero-* ]] || continue
         mkdir -p "$logs_dir/$dump_node"
         mv "$dump_file" "$logs_dir/$dump_node/"
-        dump_count=$((dump_count + 1))
-    done < <(find "$DAEMON_DATA_BASE"/monero-* -maxdepth 2 -name 'peerlist_dump.jsonl' -type f 2>/dev/null)
+        if [[ "$(basename "$dump_file")" == txrelay.jsonl ]]; then
+            txrelay_count=$((txrelay_count + 1))
+        else
+            dump_count=$((dump_count + 1))
+        fi
+    done < <(find "$DAEMON_DATA_BASE"/monero-* -maxdepth 2 \( -name 'peerlist_dump.jsonl' -o -name 'txrelay.jsonl' \) -type f 2>/dev/null)
 
     if [[ $((count + cup_count)) -gt 0 ]]; then
         local total_size
@@ -2103,6 +2109,9 @@ archive_daemon_logs() {
     fi
     if [[ $dump_count -gt 0 ]]; then
         log_ok "Peer-list dumps: $dump_count peerlist_dump.jsonl archived into daemon_logs/<node>/"
+    fi
+    if [[ $txrelay_count -gt 0 ]]; then
+        log_ok "Tx relay logs: $txrelay_count txrelay.jsonl archived into daemon_logs/<node>/"
     fi
     # NOTE: the daemon data dirs themselves (blockchain DBs, config, lock
     # files — tens of GB on a 1000-node sim) are cleaned by the

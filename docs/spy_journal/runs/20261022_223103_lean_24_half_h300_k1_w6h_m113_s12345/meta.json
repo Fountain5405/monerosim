@@ -1,0 +1,30 @@
+{
+ "run_id": "20261022_223103_lean_24_half_h300_k1_w6h_m113_s12345",
+ "box": "phantom",
+ "cell": "lean_24_half_h300_k1_w6h_m113_s12345",
+ "archived_at": "2026-10-22T22:31:39Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "2h 0m",
+ "exit_code": 0,
+ "min_avail_mb": 9997,
+ "txs_created": 1078,
+ "txs_in_blocks": 1051,
+ "note": "E17: X1 core with the spy ban list on half the honest nodes (list in full, seed 12345, 6.4 h warmup); 0.0162 = 0.46 x the no-list cell",
+ "scored_cell": "24/half",
+ "spies": 113,
+ "spy_24s": 1,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0162,
+ "light_out_quarters": [
+  0.0219,
+  0.0174,
+  0.0143,
+  0.0115
+ ],
+ "model_out": 0.0045,
+ "fluff_per_hop": 0.192,
+ "stem_txs": 1078,
+ "stem_hops_implied": 5.21,
+ "embargo_rate": 0.0
+}

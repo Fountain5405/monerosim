@@ -1,0 +1,30 @@
+{
+ "run_id": "20261022_043220_x0_24_none_s12345",
+ "box": "phantom",
+ "cell": "x0_24_none_s12345",
+ "archived_at": "2026-10-22T04:32:20Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "1h 55m",
+ "exit_code": 0,
+ "min_avail_mb": 11138,
+ "txs_created": 1896,
+ "txs_in_blocks": 1851,
+ "note": "X0 24/none, seed 12345; about 48% below legacy/none (target about 70%); estimators run on this cell: sp_r precision 1.00, recall 0.071",
+ "scored_cell": "24/none",
+ "spies": 12,
+ "spy_24s": 6,
+ "honest_reachable": 71,
+ "honest_reachable_24s": 69,
+ "light_out": 0.0703,
+ "light_out_quarters": [
+  0.0726,
+  0.0716,
+  0.0701,
+  0.0671
+ ],
+ "model_out": 0.0825,
+ "fluff_per_hop": 0.203,
+ "stem_txs": 1897,
+ "stem_hops_implied": 4.93,
+ "embargo_rate": 0.0
+}

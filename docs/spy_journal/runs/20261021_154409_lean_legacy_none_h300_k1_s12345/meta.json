@@ -1,0 +1,30 @@
+{
+ "run_id": "20261021_154409_lean_legacy_none_h300_k1_s12345",
+ "box": "phantom",
+ "cell": "lean_legacy_none_h300_k1_s12345",
+ "archived_at": "2026-10-21T15:44:10Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "1h 22m",
+ "exit_code": 0,
+ "min_avail_mb": 8778,
+ "txs_created": 1064,
+ "txs_in_blocks": 1055,
+ "note": "Lean H=300, 393 daemons; min free RAM 8.1-8.8 GB, no swap",
+ "scored_cell": "legacy/none",
+ "spies": 53,
+ "spy_24s": 1,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0707,
+ "light_out_quarters": [
+  0.0734,
+  0.0725,
+  0.0697,
+  0.0673
+ ],
+ "model_out": 0.073,
+ "fluff_per_hop": 0.194,
+ "stem_txs": 1080,
+ "stem_hops_implied": 5.15,
+ "embargo_rate": 0.0
+}

@@ -1,0 +1,113 @@
+diff --git a/src/p2p/net_node.cpp b/src/p2p/net_node.cpp
+index 5c3483f..d6ba229 100644
+--- a/src/p2p/net_node.cpp
++++ b/src/p2p/net_node.cpp
+@@ -164,6 +164,8 @@ namespace nodetool
+     const command_line::arg_descriptor<std::string> arg_sim_subnet_dedup = {"sim-subnet-dedup", "Simulation only: outbound peer grouping. 24 (stock): one candidate per /24, skipping /24s already connected. 16: the same at /16. none: no subnet grouping (ports still collapsed). legacy: v0.18.4.2's selection, before #9939 (skip /16s already connected).", "24"};
+     const command_line::arg_descriptor<size_t> arg_sim_whitelist_candidates = {"sim-whitelist-candidates", "Simulation only: how many of the newest (by last_seen) subnet-deduplicated white-list peers are candidates for an outbound pick. Stock monero uses 20; 0 = every unconnected subnet is a candidate.", 20};
+     const command_line::arg_descriptor<bool> arg_sim_random_whitelist_candidates = {"sim-random-whitelist-candidates", "Simulation only: the white-list candidates for an outbound pick (--sim-whitelist-candidates of them, stock 20) are a uniform random sample of the subnet-deduplicated white list instead of its newest entries by last_seen; the draw among them (stock cubic by recency, or --sim-uniform-whitelist-pick) is unchanged. Off = stock behaviour.", false};
++    const command_line::arg_descriptor<size_t> arg_sim_white_peerlist_limit = {"sim-white-peerlist-limit", "Simulation only: cap the white peer list at this many entries, trimmed oldest-last_seen first, in place of the compile-time 1000, so a small network reproduces a list that cannot hold every peer. 0 = stock.", 0};
++    const command_line::arg_descriptor<size_t> arg_sim_gray_peerlist_limit = {"sim-gray-peerlist-limit", "Simulation only: cap the gray peer list at this many entries in place of the compile-time 5000. 0 = stock.", 0};
+     const command_line::arg_descriptor<bool> arg_sim_uniform_whitelist_pick = {"sim-uniform-whitelist-pick", "Simulation only: pick white-list peers uniformly instead of the stock recency-biased cubic draw (get_random_index_with_fixed_probability). Off = stock behaviour.", false};
+     const command_line::arg_descriptor<std::string> arg_peerlist_dump_file = {"peerlist-dump-file", "MEASUREMENT ONLY (Shadow eclipse reproduction): if set, periodically append the full white+gray peer list as JSONL to this file. Off by default; read-only w.r.t. peering.", ""};
+ 
+diff --git a/src/p2p/net_node.h b/src/p2p/net_node.h
+index fe7865d..9f2692d 100644
+--- a/src/p2p/net_node.h
++++ b/src/p2p/net_node.h
+@@ -455,6 +455,8 @@ namespace nodetool
+     uint32_t m_sim_subnet_mask = ntohl(0xffffff00);  // --sim-subnet-dedup; 0 = no subnet dedup
+     size_t m_sim_whitelist_candidates = 20;  // --sim-whitelist-candidates: stock 20, 0 = no cap (open question 10 probe)
+     bool m_sim_random_whitelist_candidates = false;  // --sim-random-whitelist-candidates: candidates sampled at random, not the newest (open question 10 defense variant)
++    size_t m_sim_white_peerlist_limit = 0;  // --sim-white-peerlist-limit (0 = stock 1000)
++    size_t m_sim_gray_peerlist_limit = 0;  // --sim-gray-peerlist-limit (0 = stock 5000)
+     bool m_sim_uniform_whitelist_pick = false;  // --sim-uniform-whitelist-pick: uniform white-list pick (open question 10 probe)
+     bool m_sim_legacy_selection = false;              // --sim-subnet-dedup=legacy
+     std::atomic<bool> is_closing;
+@@ -557,6 +559,8 @@ namespace nodetool
+     extern const command_line::arg_descriptor<std::string> arg_sim_subnet_dedup;
+     extern const command_line::arg_descriptor<size_t> arg_sim_whitelist_candidates;
+     extern const command_line::arg_descriptor<bool> arg_sim_random_whitelist_candidates;
++    extern const command_line::arg_descriptor<size_t> arg_sim_white_peerlist_limit;
++    extern const command_line::arg_descriptor<size_t> arg_sim_gray_peerlist_limit;
+     extern const command_line::arg_descriptor<bool> arg_sim_uniform_whitelist_pick;
+ }
+ 
+diff --git a/src/p2p/net_node.inl b/src/p2p/net_node.inl
+index ddae0e9..0f25dfb 100644
+--- a/src/p2p/net_node.inl
++++ b/src/p2p/net_node.inl
+@@ -127,6 +127,8 @@ namespace nodetool
+     command_line::add_arg(desc, arg_sim_subnet_dedup);
+     command_line::add_arg(desc, arg_sim_whitelist_candidates);
+     command_line::add_arg(desc, arg_sim_random_whitelist_candidates);
++    command_line::add_arg(desc, arg_sim_white_peerlist_limit);
++    command_line::add_arg(desc, arg_sim_gray_peerlist_limit);
+     command_line::add_arg(desc, arg_sim_uniform_whitelist_pick);
+     command_line::add_arg(desc, arg_no_igd);
+     command_line::add_arg(desc, arg_igd);
+@@ -465,6 +467,10 @@ namespace nodetool
+       m_sim_random_whitelist_candidates = command_line::get_arg(vm, arg_sim_random_whitelist_candidates);
+       if (m_sim_random_whitelist_candidates)
+         MGINFO("--sim-random-whitelist-candidates: white-list candidates are a random sample of the deduplicated list, not its newest entries");
++      m_sim_white_peerlist_limit = command_line::get_arg(vm, arg_sim_white_peerlist_limit);
++      m_sim_gray_peerlist_limit = command_line::get_arg(vm, arg_sim_gray_peerlist_limit);
++      if (m_sim_white_peerlist_limit || m_sim_gray_peerlist_limit)
++        MGINFO("--sim-white-peerlist-limit " << m_sim_white_peerlist_limit << " --sim-gray-peerlist-limit " << m_sim_gray_peerlist_limit << ": peer-list limits (0 = stock 1000 / 5000)");
+       m_sim_uniform_whitelist_pick = command_line::get_arg(vm, arg_sim_uniform_whitelist_pick);
+       if (m_sim_uniform_whitelist_pick)
+         MGINFO("--sim-uniform-whitelist-pick: white-list peer pick is uniform (stock recency bias off)");
+@@ -992,6 +998,8 @@ namespace nodetool
+     {
+       res = zone.second.m_peerlist.init(m_peerlist_storage.take_zone(zone.first), m_allow_local_ip);
+       CHECK_AND_ASSERT_MES(res, false, "Failed to init peerlist.");
++      if (m_sim_white_peerlist_limit || m_sim_gray_peerlist_limit)
++        zone.second.m_peerlist.set_limits(m_sim_white_peerlist_limit, m_sim_gray_peerlist_limit);
+     }
+ 
+     for(const auto& p: m_command_line_peers)
+diff --git a/src/p2p/net_peerlist.h b/src/p2p/net_peerlist.h
+index 1aac135..65977ce 100644
+--- a/src/p2p/net_peerlist.h
++++ b/src/p2p/net_peerlist.h
+@@ -100,6 +100,16 @@ namespace nodetool
+   {
+   public: 
+     bool init(peerlist_types&& peers, bool allow_local_ip);
++    // --sim-white-peerlist-limit / --sim-gray-peerlist-limit (simulation only): replace the compile-time list
++    // limits so a small lab network can reproduce a list that is trimmed by last_seen as mainnet's is. 0 = stock.
++    void set_limits(size_t white_limit, size_t gray_limit)
++    {
++      CRITICAL_REGION_LOCAL(m_peerlist_lock);
++      if (white_limit) m_white_limit = white_limit;
++      if (gray_limit) m_gray_limit = gray_limit;
++      trim_white_peerlist();
++      trim_gray_peerlist();
++    }
+     size_t get_white_peers_count(){CRITICAL_REGION_LOCAL(m_peerlist_lock); return m_peers_white.size();}
+     size_t get_gray_peers_count(){CRITICAL_REGION_LOCAL(m_peerlist_lock); return m_peers_gray.size();}
+     bool merge_peerlist(const std::vector<peerlist_entry>& outer_bs, const std::function<bool(const peerlist_entry&)> &f = NULL);
+@@ -195,11 +205,13 @@ namespace nodetool
+     peers_indexed m_peers_gray;
+     peers_indexed m_peers_white;
+     anchor_peers_indexed m_peers_anchor;
++    size_t m_white_limit = P2P_LOCAL_WHITE_PEERLIST_LIMIT;  // set_limits(); stock unless a --sim-*-peerlist-limit flag is given
++    size_t m_gray_limit = P2P_LOCAL_GRAY_PEERLIST_LIMIT;
+   };
+   //--------------------------------------------------------------------------------------------------
+   inline void peerlist_manager::trim_gray_peerlist()
+   {
+-    while(m_peers_gray.size() > P2P_LOCAL_GRAY_PEERLIST_LIMIT)
++    while(m_peers_gray.size() > m_gray_limit)
+     {
+       peers_indexed::index<by_time>::type& sorted_index=m_peers_gray.get<by_time>();
+       sorted_index.erase(sorted_index.begin());
+@@ -208,7 +220,7 @@ namespace nodetool
+   //--------------------------------------------------------------------------------------------------
+   inline void peerlist_manager::trim_white_peerlist()
+   {
+-    while(m_peers_white.size() > P2P_LOCAL_WHITE_PEERLIST_LIMIT)
++    while(m_peers_white.size() > m_white_limit)
+     {
+       peers_indexed::index<by_time>::type& sorted_index=m_peers_white.get<by_time>();
+       sorted_index.erase(sorted_index.begin());

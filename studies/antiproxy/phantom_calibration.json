@@ -1,0 +1,26 @@
+{
+  "verify_time_us": {
+    "p50": 36501,
+    "p95": 36685,
+    "p99": 36731,
+    "max": 36731,
+    "samples": 10
+  },
+  "components": {
+    "clsag_ring16_2in_2out": {
+      "median_us": 6447,
+      "p90_us": 6459,
+      "stddev_us": 9,
+      "loops": 1000
+    },
+    "bulletproof_plus_verify_2out": {
+      "median_us": 30054,
+      "p90_us": 30179,
+      "stddev_us": 94,
+      "loops": 10
+    }
+  },
+  "timestamp": "2026-10-20T12:58:44Z",
+  "method": "performance_tests",
+  "binary": "/home/lever65/monerosim/sibling_repos/monero/build/release/tests/performance_tests/performance_tests"
+}

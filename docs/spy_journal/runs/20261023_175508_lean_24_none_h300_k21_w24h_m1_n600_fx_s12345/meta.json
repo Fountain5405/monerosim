@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_175508_lean_24_none_h300_k21_w24h_m1_n600_fx_s12345",
+ "box": "phantom",
+ "cell": "lean_24_none_h300_k21_w24h_m1_n600_fx_s12345",
+ "archived_at": "2026-10-23T17:55:43Z",
+ "monerod_sim_sha": "1472ed18703f",
+ "wall": "3h 41m",
+ "exit_code": 0,
+ "min_avail_mb": 10838,
+ "txs_created": 1084,
+ "txs_in_blocks": 1064,
+ "note": "P16a: tail at 1 spy per /24, 24 h warmup (window 26-30 h), fixed RandomX seed; light 0.1911 (13 h cell: 0.1978), flat; relays 0.2187; all P16a clauses hit",
+ "scored_cell": "24/none",
+ "spies": 21,
+ "spy_24s": 21,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.1911,
+ "light_out_quarters": [
+  0.1911,
+  0.1889,
+  0.192,
+  0.1922
+ ],
+ "model_out": 0.0822,
+ "fluff_per_hop": 0.203,
+ "stem_txs": 1109,
+ "stem_hops_implied": 4.93,
+ "embargo_rate": 0.0
+}

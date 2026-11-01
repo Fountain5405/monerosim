@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_080537_lean_24_half_h300_k1_w24h_m113_fx_s12345",
+ "box": "simbox2",
+ "cell": "lean_24_half_h300_k1_w24h_m113_fx_s12345",
+ "archived_at": "2026-10-23T08:05:38Z",
+ "monerod_sim_sha": "345d4ced95f1",
+ "wall": "4h 4m",
+ "exit_code": 0,
+ "min_avail_mb": 9973,
+ "txs_created": 1074,
+ "txs_in_blocks": 1065,
+ "note": "E22 / P11b: X1 core with the spy ban list on half the honest nodes, 24 h warmup with --sim-fixed-randomx-seed (stop 30 h, window 26-30 h), seed 12345; 0.0025 flat by quarter (6 h warmup, E17: 0.0162); adopters 0.0, non-adopters 0.0148 (with the miners); relays 0.0027, users 0.0019; sp_r made no guess (0 of 1,015 user txs stemmed to a spy), 0 of 40 exposed; relay curve reaches the half-list model (0.0023) by hour 28; min free RAM 10.0 GB over 30 simulated hours",
+ "scored_cell": "24/half",
+ "spies": 113,
+ "spy_24s": 1,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0025,
+ "light_out_quarters": [
+  0.0024,
+  0.0026,
+  0.0026,
+  0.0024
+ ],
+ "model_out": 0.0045,
+ "fluff_per_hop": 0.197,
+ "stem_txs": 1090,
+ "stem_hops_implied": 5.08,
+ "embargo_rate": 0.0
+}

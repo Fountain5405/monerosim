@@ -1,0 +1,30 @@
+{
+ "run_id": "20261025_003506_lean_24_none_h300_k42_w24h_m1_n600_fx_up_wc0_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w24h_m1_n600_fx_up_wc0_s12345",
+ "archived_at": "2026-10-25T00:35:46Z",
+ "monerod_sim_sha": "8d8255edb4ea",
+ "wall": "3h 17m",
+ "exit_code": 0,
+ "min_avail_mb": 161265,
+ "txs_created": 1079,
+ "txs_in_blocks": 1075,
+ "note": "P29 (E39): the 24 h spread fleet (42 spies in 42 /24s) with the 20-candidate cap lifted and the uniform white-list draw, fixed RandomX seed, window 26-30 h, seed 12345; light 0.1655 = 1.08x the 0.1531 ceiling (13 h cells 1.01-1.03x), quarters 0.168-0.163 (-3%), relays 0.1635, users 0.1787; start-order quarters 0.159/0.146/0.174/0.174 (latest 1.10x earliest); sp_r recall 0.187, 31 of 40 exposed; both flag lines in all 382 logs; wall 3 h 18 m",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.1655,
+ "light_out_quarters": [
+  0.1682,
+  0.1668,
+  0.1642,
+  0.163
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.212,
+ "stem_txs": 1102,
+ "stem_hops_implied": 4.72,
+ "embargo_rate": 0.0
+}

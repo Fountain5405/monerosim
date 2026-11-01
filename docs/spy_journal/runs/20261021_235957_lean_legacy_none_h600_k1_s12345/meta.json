@@ -1,0 +1,30 @@
+{
+ "run_id": "20261021_235957_lean_legacy_none_h600_k1_s12345",
+ "box": "phantom",
+ "cell": "lean_legacy_none_h600_k1_s12345",
+ "archived_at": "2026-10-21T23:59:57Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "2h 14m",
+ "exit_code": 0,
+ "min_avail_mb": 1750,
+ "txs_created": 967,
+ "txs_in_blocks": 937,
+ "note": "746 daemons on 32 GB + 8 GB swap allowance: min free RAM 1.75 GB vs the 1.5 GB guard; swap +1.8 GB; legacy flat at the model",
+ "scored_cell": "legacy/none",
+ "spies": 106,
+ "spy_24s": 1,
+ "honest_reachable": 600,
+ "honest_reachable_24s": 480,
+ "light_out": 0.0749,
+ "light_out_quarters": [
+  0.0693,
+  0.0809,
+  0.0767,
+  0.0724
+ ],
+ "model_out": 0.0726,
+ "fluff_per_hop": 0.216,
+ "stem_txs": 1022,
+ "stem_hops_implied": 4.63,
+ "embargo_rate": 0.0
+}

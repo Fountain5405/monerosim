@@ -1,0 +1,10 @@
+churn cost  20261026_040527_lean_24_none_h300_k42_w13h_p3_m1_n600_tor1h1h_s12345  slots=12 window=300s
+class      nodes  sess restarts   hours | fill first med/p90 | fill restart med/p90 | unfilled | per node-hour: connect_failed handshake_failed timed_out back_ping_failed handshake_ok
+medium        48   481      433   891.1 |    0.7m    0.9m |    1.6m    5.0m |        4 | 0.00 2.11 0.00 4.13 0.00
+miner          5     5        0    95.0 |    0.9m    1.1m |       -       - |        0 | 0.00 0.55 0.00 468.59 0.00
+monero-seed     6     6        0   114.0 |    0.9m    0.9m |       -       - |        0 | 0.00 1.96 0.00 3.94 0.00
+observer       8    74       66   144.9 |    0.9m    0.9m |    2.0m    6.1m |        1 | 0.00 1.56 0.00 5.02 0.00
+relay        233  2267     2034  4079.4 |    1.9m    6.0m |    1.6m    5.0m |       32 | 2.85 1.77 0.00 4.64 3.58
+spy           42    42        0   795.6 |       -       - |       -       - |       42 | 0.00 0.00 0.00 4.29 0.00
+user          40   412      372   731.2 |    1.1m    1.7m |    2.1m    5.5m |       10 | 0.00 0.08 0.00 0.00 0.00
+json: /home/antiproxy/queue/cc_P42.json

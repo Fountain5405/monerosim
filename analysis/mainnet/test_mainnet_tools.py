@@ -156,6 +156,128 @@ class TestPollerRunLoop:
         assert rec["get_info"] is None
 
 
+class TestPeerlistDedup:
+    def _poller(self, tmp_path, monkeypatch, payloads):
+        it = iter(payloads)
+
+        def plain(url, path, timeout=10):
+            r = next(it)
+            if isinstance(r, Exception):
+                raise r
+            return r
+        monkeypatch.setattr(poll_node, "rpc_plain", plain)
+        clock = [100.0]
+        return poll_node.Poller("http://x", tmp_path, now_fn=lambda: clock[0],
+                                peerlist_dedup=True)
+
+    def test_dedup(self, tmp_path, monkeypatch):
+        a = {"white_list": [{"host": "192.0.2.1"}], "gray_list": []}
+        b = {"white_list": [{"host": "192.0.2.2"}], "gray_list": []}
+        p = self._poller(tmp_path, monkeypatch, [a, a, b, a, RuntimeError("x"), a])
+        t1 = p.tick_peerlist()
+        assert t1["white_list"] and len(t1["hash"]) == 16
+        t2 = p.tick_peerlist()
+        assert t2 == {"ts": 100.0, "unchanged": True, "hash": t1["hash"]}
+        t3 = p.tick_peerlist()
+        assert t3["white_list"] and t3["hash"] != t1["hash"]
+        t4 = p.tick_peerlist()
+        assert t4["hash"] == t1["hash"] and "white_list" in t4
+        t5 = p.tick_peerlist()
+        assert t5["error"] == "x" and "hash" not in t5
+        t6 = p.tick_peerlist()
+        assert "white_list" in t6 and not t6.get("unchanged")
+
+
+class TestDialTail:
+    def test_read_new_and_truncate(self, tmp_path):
+        f = tmp_path / "m.log"
+        f.write_text("old line one\nold line two\n")
+        t = poll_node.DialTail(f)
+        assert t.read_new() == []
+        with open(f, "a") as fh:
+            fh.write("new1 [192.0.2.7:1234 INC]\nnew2\n")
+        assert t.read_new() == ["new1 [192.0.2.7:1234 INC]", "new2"]
+        assert t.read_new() == []
+        f.write_text("x\n")  # shorter than stored offset: rotated
+        with open(f, "a") as fh:
+            fh.write("after\n")
+        assert t.read_new() == ["x", "after"]
+
+    def test_missing_file(self, tmp_path):
+        assert poll_node.DialTail(tmp_path / "nope").read_new() == []
+
+    def test_poller_writes_dials(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(poll_node, "rpc_json",
+                            lambda url, method, timeout=10: {"connections": []})
+        log = tmp_path / "m.log"
+        log.write_text("")
+        out = tmp_path / "out"
+        p = poll_node.Poller("http://x", out, now_fn=lambda: 5000.0, dial_log=log)
+        with open(log, "a") as fh:
+            fh.write("a [192.0.2.9:5 INC] hi\nunrelated\n")
+        p.tick_connections()
+        rec = json.loads((out / "dials-19700101.jsonl").read_text())
+        assert rec["ip"] == "192.0.2.9" and rec["ts"] == 5000.0
+
+
+class TestMonitorSeries:
+    def test_series(self, tmp_path):
+        import monitor_series as ms
+        mon = tmp_path / "mon"
+        mon.mkdir()
+        (tmp_path / "spy.txt").write_text("# spy\n192.0.2.0/24\n\n")
+
+        def pe(host, age, t):
+            return {"host": host, "ip": 0, "port": 18080, "last_seen": t - age}
+        t1, t2, t3 = 10000.0, 10600.0, 11200.0
+        w1 = [pe("192.0.2.1", 100, t1), pe("192.0.2.2", 200, t1),
+              pe("198.51.100.1", 1000, t1), pe("198.51.100.2", 3000, t1)]
+        w3 = [pe("192.0.2.5", 10, t3), pe("198.51.100.9", 20, t3),
+              pe("203.0.113.1", 30, t3)]
+        ticks = [poll_node.build_peerlist_tick(t1, w1, [{"host": "192.0.2.3"}]),
+                 {"ts": t2, "unchanged": True, "hash": "h"},
+                 poll_node.build_peerlist_tick(t3, w3, [])]
+        with gzip.open(mon / "peerlist-19700101.jsonl.gz", "wt") as f:
+            for t in ticks:
+                f.write(json.dumps(t) + "\n")
+        conns = [
+            poll_node.build_connections_tick(10100.0, {}, [
+                {"host": "192.0.2.1", "incoming": True},
+                {"host": "198.51.100.1", "incoming": False}]),
+            poll_node.build_connections_tick(11100.0, {}, [
+                {"host": "192.0.2.1", "incoming": True},
+                {"host": "192.0.2.2", "incoming": True}]),
+        ]
+        (mon / "connections-19700101.jsonl").write_text(
+            "".join(json.dumps(c) + "\n" for c in conns))
+        dials = [(10000.0, "192.0.2.1"), (10100.0, "192.0.2.4"), (11000.0, "198.51.100.3")]
+        (mon / "dials-19700101.jsonl").write_text(
+            "".join(json.dumps({"ts": t, "ip": ip, "line": "l"}) + "\n" for t, ip in dials))
+
+        csvp, jsp = tmp_path / "s.csv", tmp_path / "s.json"
+        import subprocess
+        subprocess.run([sys.executable, str(MAINNET_DIR / "monitor_series.py"), str(mon),
+                        "--spy-cidrs", str(tmp_path / "spy.txt"),
+                        "--csv", str(csvp), "--json", str(jsp)], check=True)
+        import csv as _csv
+        rows = list(_csv.DictReader(open(csvp)))
+        assert len(rows) == 3
+        assert [r["spy_white"] for r in rows] == ["2", "2", "1"]
+        assert [r["newest20_spy"] for r in rows] == ["1", "1", "1"]
+        assert [r["spy_gray"] for r in rows] == ["1", "1", "0"]
+        assert rows[0]["n_in"] == "" and rows[1]["n_in"] == "1" and rows[2]["spy_in"] == "2"
+        summ = json.loads(jsp.read_text())
+        assert summ["ticks"] == 3
+        assert summ["white_size_med"] == 4
+        assert summ["spy_white_share_med"] == 0.5
+        assert summ["spy_age_med_s_med"] == 150
+        assert summ["n_in_med"] == 1.5
+        assert summ["dials_per_hour"] == {"total_med": 1.5, "spy_med": 1.0, "hours": 2}
+        blob = csvp.read_text() + jsp.read_text()
+        for needle in ("192.0.2", "198.51.100", "203.0.113"):
+            assert needle not in blob
+        assert ms.ts_to_unix(5) == 5.0
+
 # ===== crawl ==================================================================
 class FakeSock:
     def close(self):

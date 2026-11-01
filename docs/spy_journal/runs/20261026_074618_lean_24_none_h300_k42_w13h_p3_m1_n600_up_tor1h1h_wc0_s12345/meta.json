@@ -1,0 +1,30 @@
+{
+ "run_id": "20261026_074618_lean_24_none_h300_k42_w13h_p3_m1_n600_up_tor1h1h_wc0_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_up_tor1h1h_wc0_s12345",
+ "archived_at": "2026-10-26T07:46:59Z",
+ "monerod_sim_sha": "ab6646d74725",
+ "wall": "3h 30m",
+ "exit_code": 0,
+ "min_avail_mb": 159860,
+ "txs_created": 582,
+ "txs_in_blocks": 569,
+ "note": "P43, the churn gate's second half (cap lifted + uniform draw, tor1h1h): light 0.3237 = 1.35x the online ceiling, above its 0.17-0.30 band; stock read 0.3936. Clause (c) missed the other way: the lifted cap is CHEAPER than stock (1.37 vs 2.85 connect failures per relay-hour; fill 1.7 vs 1.6 m; 30 vs 32 unfilled) - the recency filter buys nothing at this churn. Two of four: (a) hit (h 2061), (d) hit (211 m); sp precision 0.932. E52; run 92.",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.3237,
+ "light_out_quarters": [
+  0.3349,
+  0.3274,
+  0.3122,
+  0.3216
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.203,
+ "stem_txs": 586,
+ "stem_hops_implied": 4.93,
+ "embargo_rate": 0.0034
+}

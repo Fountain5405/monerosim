@@ -1,0 +1,30 @@
+{
+ "run_id": "20261020_165536_x0_legacy_none_s12345_nochurn",
+ "box": "phantom",
+ "cell": "x0_legacy_none_s12345_nochurn",
+ "archived_at": "2026-10-20T16:56:11Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "1h 15m",
+ "exit_code": 0,
+ "min_avail_mb": 6726,
+ "txs_created": 236,
+ "txs_in_blocks": 234,
+ "note": "Pilot, 48 spies, no churn; 0.286 FAIL; still ~2 txs per user",
+ "scored_cell": "legacy/none",
+ "spies": 48,
+ "spy_24s": 6,
+ "honest_reachable": 71,
+ "honest_reachable_24s": 69,
+ "light_out": 0.2856,
+ "light_out_quarters": [
+  0.2874,
+  0.2865,
+  0.2861,
+  0.2824
+ ],
+ "model_out": 0.3146,
+ "fluff_per_hop": 0.213,
+ "stem_txs": 244,
+ "stem_hops_implied": 4.69,
+ "embargo_rate": 0.0
+}

@@ -1,0 +1,30 @@
+{
+ "run_id": "20261021_102615_x0_legacy_half_s12345",
+ "box": "phantom",
+ "cell": "x0_legacy_half_s12345",
+ "archived_at": "2026-10-21T10:26:15Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "1h 58m",
+ "exit_code": 0,
+ "min_avail_mb": 6043,
+ "txs_created": 1887,
+ "txs_in_blocks": 1862,
+ "note": "X0 legacy/half, seed 12345; 0.0687 vs target 0.07 PASS",
+ "scored_cell": "legacy/half",
+ "spies": 12,
+ "spy_24s": 6,
+ "honest_reachable": 71,
+ "honest_reachable_24s": 69,
+ "light_out": 0.0687,
+ "light_out_quarters": [
+  null,
+  null,
+  null,
+  null
+ ],
+ "model_out": null,
+ "fluff_per_hop": 0.209,
+ "stem_txs": 1887,
+ "stem_hops_implied": 4.78,
+ "embargo_rate": 0.0
+}

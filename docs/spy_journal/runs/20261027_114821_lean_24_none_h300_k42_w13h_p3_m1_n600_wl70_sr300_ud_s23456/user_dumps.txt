@@ -1,0 +1,11 @@
+{
+  "run": "/home/lever65/monerosim_archives/20261027_114821_lean_24_none_h300_k42_w13h_p3_m1_n600_wl70_sr300_ud_s23456",
+  "users": 40,
+  "white_size": "70-70",
+  "spy_entries": "25-32 (med 29) of white",
+  "spy_entry_age_med_s": "644-1620 (med 999)",
+  "honest_age_med_s": "588-1225 (med 918)",
+  "honest_age_p10_s": "2077-2749 (med 2490)",
+  "honest_age_p90_s": "28-65 (med 30)",
+  "newest20_spy": "3-7 (med 5.0)"
+}

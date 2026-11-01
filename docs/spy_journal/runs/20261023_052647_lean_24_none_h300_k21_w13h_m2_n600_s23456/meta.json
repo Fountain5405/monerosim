@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_052647_lean_24_none_h300_k21_w13h_m2_n600_s23456",
+ "box": "simbox2",
+ "cell": "lean_24_none_h300_k21_w13h_m2_n600_s23456",
+ "archived_at": "2026-10-23T05:26:47Z",
+ "monerod_sim_sha": "39709561bce4",
+ "wall": "2h 33m",
+ "exit_code": 0,
+ "min_avail_mb": 12750,
+ "txs_created": 1099,
+ "txs_in_blocks": 1096,
+ "note": "E21 / P10b: seed replicate of the 13 h tail cell (seed 23456); 0.1626 vs 0.1662 for seed 12345",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 21,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 240,
+ "light_out": 0.1626,
+ "light_out_quarters": [
+  0.1651,
+  0.1658,
+  0.1611,
+  0.1586
+ ],
+ "model_out": 0.0831,
+ "fluff_per_hop": 0.192,
+ "stem_txs": 1099,
+ "stem_hops_implied": 5.21,
+ "embargo_rate": 0.0
+}

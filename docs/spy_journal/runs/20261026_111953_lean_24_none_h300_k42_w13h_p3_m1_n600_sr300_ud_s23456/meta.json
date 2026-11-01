@@ -1,0 +1,30 @@
+{
+ "run_id": "20261026_111953_lean_24_none_h300_k42_w13h_p3_m1_n600_sr300_ud_s23456",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_sr300_ud_s23456",
+ "archived_at": "2026-10-26T11:20:34Z",
+ "monerod_sim_sha": "ab6646d74725",
+ "wall": "2h 25m",
+ "exit_code": 0,
+ "min_avail_mb": 105049,
+ "txs_created": 1118,
+ "txs_in_blocks": 1102,
+ "note": "P45, the active adversary replicate (seed 23456): light 0.9075 against P44's 0.9083 - 0.09% seed spread. Combined recall 0.969 at 0.997, 40/40 users, users p_out median 1.0. Clauses as P44: (a) missed above identically, (b) hit, (c) hit (dumps identical: rank 0.000, 42 entries per node, fronts ~118 s), (d) hit (146 m - tr runs the agent-loaded cell near twice simbox3's pace). E54; run 94.",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 240,
+ "light_out": 0.9075,
+ "light_out_quarters": [
+  0.8493,
+  0.8906,
+  0.9233,
+  0.9456
+ ],
+ "model_out": 0.1539,
+ "fluff_per_hop": 0.209,
+ "stem_txs": 1127,
+ "stem_hops_implied": 4.78,
+ "embargo_rate": 0.6788
+}

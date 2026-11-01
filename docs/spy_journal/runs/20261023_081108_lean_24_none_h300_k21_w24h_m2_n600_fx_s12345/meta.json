@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_081108_lean_24_none_h300_k21_w24h_m2_n600_fx_s12345",
+ "box": "phantom",
+ "cell": "lean_24_none_h300_k21_w24h_m2_n600_fx_s12345",
+ "archived_at": "2026-10-23T08:11:44Z",
+ "monerod_sim_sha": "1472ed18703f",
+ "wall": "3h 47m",
+ "exit_code": 0,
+ "min_avail_mb": 10925,
+ "txs_created": 990,
+ "txs_in_blocks": 985,
+ "note": "E22 / P11a: X1 tail, no list, 24 h warmup with --sim-fixed-randomx-seed (stop 30 h, window 26-30 h), seed 12345; 0.1572 (6 h warmup 0.1946, 13 h 0.1662); relays 0.1805, users 0.0431; sp_r precision 1.00, recall 0.035 at its ceiling, 12 of 40 exposed; min free RAM 10.9 GB over 30 simulated hours on a 32 GB box",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 21,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.1572,
+ "light_out_quarters": [
+  0.1591,
+  0.1593,
+  0.1572,
+  0.1535
+ ],
+ "model_out": 0.0822,
+ "fluff_per_hop": 0.196,
+ "stem_txs": 1099,
+ "stem_hops_implied": 5.1,
+ "embargo_rate": 0.0
+}

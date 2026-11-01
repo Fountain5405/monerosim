@@ -1,0 +1,24 @@
+{
+ "archive": "/spinny/readfrom/20261024_monerosim_research_effort/archives/20261023_205427_lean_24_none_h300_k42_w13h_m1_n600_s12345",
+ "spies": 42,
+ "local_txs": 1098,
+ "spy_stem_rx": 1031,
+ "spy_stem_rx_dir": {
+  "in": 1031
+ },
+ "stem_txs_at_spies": 713,
+ "stem_tx_share": 0.6494,
+ "hop1_stem_txs": 137,
+ "hop1_user_txs": 130,
+ "user_txs": 1033,
+ "x3_adopters": 0,
+ "rx_from_adopters": 0,
+ "virtual_rx": 0,
+ "virtual_rx_share": null,
+ "per_spy": {
+  "min": 5,
+  "median": 24.0,
+  "max": 57,
+  "zeros": 0
+ }
+}

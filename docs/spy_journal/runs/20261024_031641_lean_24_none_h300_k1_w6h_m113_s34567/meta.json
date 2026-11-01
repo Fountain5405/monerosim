@@ -1,0 +1,30 @@
+{
+ "run_id": "20261024_031641_lean_24_none_h300_k1_w6h_m113_s34567",
+ "box": "simbox3",
+ "cell": "lean_24_none_h300_k1_w6h_m113_s34567",
+ "archived_at": "2026-10-24T03:16:43Z",
+ "monerod_sim_sha": "4258da26e187",
+ "wall": "3h 17m",
+ "exit_code": 0,
+ "min_avail_mb": 79118,
+ "txs_created": 1063,
+ "txs_in_blocks": 1051,
+ "note": "E10 replicate (filler): core at the 6 h warmup, seed 34567: 0.0348 against seed 12345's 0.0352 and seed 23456's 0.0428; every quarter falls (drain transient); sp_r precision 1.00, recall 0.009, 3 of 39 heavy users exposed",
+ "scored_cell": "24/none",
+ "spies": 113,
+ "spy_24s": 1,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 243,
+ "light_out": 0.0348,
+ "light_out_quarters": [
+  0.046,
+  0.0371,
+  0.0305,
+  0.0265
+ ],
+ "model_out": 0.0045,
+ "fluff_per_hop": 0.195,
+ "stem_txs": 1068,
+ "stem_hops_implied": 5.13,
+ "embargo_rate": 0.0
+}

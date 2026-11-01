@@ -1,0 +1,30 @@
+{
+ "run_id": "20261026_221003_lean_24_none_h300_k42_w13h_p3_m1_n600_wl70_sr300_ro60_ud_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_wl70_sr300_ro60_ud_s12345",
+ "archived_at": "2026-10-26T22:10:44Z",
+ "monerod_sim_sha": "ab6646d74725",
+ "wall": "2h 23m",
+ "exit_code": 0,
+ "min_avail_mb": 59708,
+ "txs_created": 1065,
+ "txs_in_blocks": 1039,
+ "note": "P48, the arms race at its tightest (wl70, 60 s rotation): light 0.0262 against P47's 0.0248 - the 30x faster rotation changes nothing. sp/combined 0.002 at precision 1.000, 1/40 users exposed. The front entries effective freshness is bounded by the sweep cadence (300 s), not the rotation; newest-20 held 1-4 spies of 20; evictions continue (26-33 of 70). Two of four, both misses confirming the defense: (a) missed below 0.10 - the trim wins outright; (b) missed below; (c) hit; (d) hit (144 m, min_avail 59.7 GB). E57; run 97.",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0262,
+ "light_out_quarters": [
+  0.0284,
+  0.0252,
+  0.0254,
+  0.026
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.219,
+ "stem_txs": 1128,
+ "stem_hops_implied": 4.57,
+ "embargo_rate": 0.2402
+}

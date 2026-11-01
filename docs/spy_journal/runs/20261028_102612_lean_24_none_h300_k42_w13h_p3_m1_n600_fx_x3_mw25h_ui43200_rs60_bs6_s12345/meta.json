@@ -1,0 +1,30 @@
+{
+ "run_id": "20261028_102612_lean_24_none_h300_k42_w13h_p3_m1_n600_fx_x3_mw25h_ui43200_rs60_bs6_s12345",
+ "box": "simbox3",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_fx_x3_mw25h_ui43200_rs60_bs6_s12345",
+ "archived_at": "2026-10-28T10:27:15Z",
+ "monerod_sim_sha": "3d8e94c94b6b",
+ "wall": "9h 11m",
+ "exit_code": 0,
+ "min_avail_mb": 76919,
+ "txs_created": 426,
+ "txs_in_blocks": 426,
+ "note": "P53 X3 at mainnet sender rate (X1a + stemmable): 4/6 - sp precision on unreachable users 1.000 (band 0.45-0.92, missed above: the cover is 13 relayed stems at 11 of 40 users against 55 own sends, none forwarded to a spy), recall 0.164, reachable-occasional 0.288, busy 0.773, light 0.3066 (X1a 0.2935; 2.36x the cell model 0.1299), census 13 (band 15-100, missed below); the cover is closed at every rate (E64)",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 366,
+ "honest_reachable_24s": 295,
+ "light_out": 0.3066,
+ "light_out_quarters": [
+  0.3062,
+  0.3069,
+  0.304,
+  0.3092
+ ],
+ "model_out": 0.1299,
+ "fluff_per_hop": 0.206,
+ "stem_txs": 431,
+ "stem_hops_implied": 4.85,
+ "embargo_rate": 0.0
+}

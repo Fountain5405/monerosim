@@ -1,0 +1,45 @@
+============================================================
+MONEROSIM SIMULATION SUMMARY
+============================================================
+
+Run:            x0_legacy_none_s12345
+Wall time:      18m 18s
+Exit code:      1
+
+SUCCESS CRITERIA
+----------------------------------------
+  Blocks created                 PASS
+  Nodes funded                   PASS
+  Blocks propagated (actual)     PASS
+  Transactions broadcast         FAIL
+  Transactions in blocks         FAIL
+
+  Result: SOME CHECKS FAILED
+
+NETWORK
+----------------------------------------
+  Nodes online:     115
+  Sync:             96%
+  Block height:     1545
+  Blocks mined:     1544
+  Alerts:           0
+
+TRANSACTIONS
+----------------------------------------
+  Created:          0
+  In blocks:        0
+
+NODE STATUS (final)
+----------------------------------------
+  Node                  Height      Balance  Conns  Pool TXs
+  medium-a-001            1541            -     41         -
+  medium-a-002            1541            -     32         -
+  medium-a-003            1541            -     35         -
+  medium-a-004            1541            -     33         -
+  medium-a-005            1541            -     33         -
+  medium-a-006            1541            -     29         -
+  medium-a-007            1541            -     31         -
+  medium-a-008            1541            -     28         -
+  medium-a-009            1541            -     45         -
+  medium-a-010            1541            -     46         -
+  medium-a-011            1541            -     29         -

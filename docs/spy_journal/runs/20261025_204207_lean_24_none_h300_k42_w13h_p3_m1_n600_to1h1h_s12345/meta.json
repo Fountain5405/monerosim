@@ -1,0 +1,30 @@
+{
+ "run_id": "20261025_204207_lean_24_none_h300_k42_w13h_p3_m1_n600_to1h1h_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_to1h1h_s12345",
+ "archived_at": "2026-10-25T20:42:45Z",
+ "monerod_sim_sha": "ab6646d74725",
+ "wall": "2h 15m",
+ "exit_code": 1,
+ "min_avail_mb": 156857,
+ "txs_created": 383,
+ "txs_in_blocks": 341,
+ "note": "P38 as run: 1 h/1 h turnover reached only the 40 users (reachable nodes set hide-my-port false and are kept up as pinned); exit 1 from 15 user agents stopped by Shadow at the end (fixed in 5115b02b); window data complete; light 0.3512",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.3512,
+ "light_out_quarters": [
+  0.3458,
+  0.3518,
+  0.3523,
+  0.3544
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.207,
+ "stem_txs": 575,
+ "stem_hops_implied": 4.83,
+ "embargo_rate": 0.0
+}

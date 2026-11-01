@@ -1,0 +1,30 @@
+{
+ "run_id": "20261022_235712_lean_24_none_h300_k1_w16h_m113_s12345",
+ "box": "simbox2",
+ "cell": "lean_24_none_h300_k1_w16h_m113_s12345",
+ "archived_at": "2026-10-22T23:57:12Z",
+ "monerod_sim_sha": "39709561bce4",
+ "wall": "2h 37m",
+ "exit_code": 137,
+ "min_avail_mb": 10286,
+ "txs_created": 467,
+ "txs_in_blocks": 431,
+ "note": "E18 / P7a, PARTIAL: killed by the kernel OOM (exit 137) at sim 20:26:35 = block 2112, the RandomX seed change; scored window is 18-20.4 h of 18-22 h. Light share 0.0099 (provisional)",
+ "scored_cell": "24/none",
+ "spies": 113,
+ "spy_24s": 1,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0099,
+ "light_out_quarters": [
+  0.0104,
+  0.0099,
+  0.0088,
+  null
+ ],
+ "model_out": 0.0045,
+ "fluff_per_hop": 0.214,
+ "stem_txs": 501,
+ "stem_hops_implied": 4.67,
+ "embargo_rate": 0.0
+}

@@ -1,0 +1,122 @@
+[
+  {
+    "run": "/fast/antiproxy/monerosim_archives/20261027_114619_lean_24_none_h300_k42_w13h_p3_m1_n600_wl70_sr60_ud_s12345",
+    "cell": "24/none",
+    "slots": {
+      "honest": {
+        "out": 0.0382,
+        "in": 0.0932,
+        "nodes": 340
+      },
+      "medium": {
+        "out": 0.0462,
+        "in": 0.0296,
+        "nodes": 48
+      },
+      "no-list": {
+        "out": 0.0382,
+        "in": 0.0932,
+        "nodes": 340
+      },
+      "miner": {
+        "out": 0.1678,
+        "in": 0.0242,
+        "nodes": 5
+      },
+      "monero-seed": {
+        "out": 0.0154,
+        "in": 0.293,
+        "nodes": 6
+      },
+      "observer": {
+        "out": 0.0032,
+        "in": 0.0268,
+        "nodes": 8
+      },
+      "light": {
+        "out": 0.0239,
+        "in": 0.0988,
+        "nodes": 281
+      },
+      "light:q1": {
+        "out": 0.0256,
+        "in": 0.105,
+        "nodes": 281
+      },
+      "relay": {
+        "out": 0.0277,
+        "in": 0.1023,
+        "nodes": 233
+      },
+      "user": {
+        "out": 0.0033,
+        "in": 0.0,
+        "nodes": 40
+      },
+      "light:q2": {
+        "out": 0.023,
+        "in": 0.0987,
+        "nodes": 281
+      },
+      "light:q3": {
+        "out": 0.0233,
+        "in": 0.0984,
+        "nodes": 281
+      },
+      "light:q4": {
+        "out": 0.0239,
+        "in": 0.0936,
+        "nodes": 281
+      }
+    },
+    "model": {
+      "spies": 42,
+      "spy_24s": 42,
+      "honest_reachable": 300,
+      "honest_reachable_24s": 242,
+      "out_peers": 12,
+      "legacy": 0.1235,
+      "24": 0.1531,
+      "none": 0.1231
+    },
+    "stems": {
+      "txs": 1129,
+      "stem_hops_mean": 2.19,
+      "stem_hops_mean_epoch": 3.01,
+      "fluff_per_hop": 0.258,
+      "stem_hops_implied": 3.88,
+      "stem_hops_hist": {
+        "0": 280,
+        "1": 302,
+        "2": 197,
+        "3": 121,
+        "4": 83,
+        "5": 45,
+        "6": 27,
+        "7": 25,
+        "8": 14,
+        "9": 17,
+        "10": 6,
+        "11": 1,
+        "12": 2,
+        "13": 3,
+        "14": 1,
+        "17": 2,
+        "19": 1,
+        "24": 1,
+        "26": 1
+      },
+      "stem_end": {
+        "epoch": 637,
+        "embargo": 446,
+        "no_stem": 21,
+        "loop": 23,
+        "unlogged": 2
+      },
+      "embargo_rate": 0.395,
+      "loop_rate": 0.0204,
+      "fluff_epoch_share": 0.205,
+      "stem_hops_without_rx": 2
+    }
+  }
+]

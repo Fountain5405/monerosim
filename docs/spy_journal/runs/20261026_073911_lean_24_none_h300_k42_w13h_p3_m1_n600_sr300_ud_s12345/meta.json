@@ -1,0 +1,30 @@
+{
+ "run_id": "20261026_073911_lean_24_none_h300_k42_w13h_p3_m1_n600_sr300_ud_s12345",
+ "box": "simbox3",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_sr300_ud_s12345",
+ "archived_at": "2026-10-26T07:40:28Z",
+ "monerod_sim_sha": "c1a4e6708ac3",
+ "wall": "4h 29m",
+ "exit_code": 0,
+ "min_avail_mb": 82101,
+ "txs_created": 1105,
+ "txs_in_blocks": 1064,
+ "note": "P44, the active adversary on the spread fleet (v2 rotating fronts, stock rule): light 0.9083 = 5.93x the ceiling - the eclipse regime, far above the 0.40-0.75 band. Combined recall 0.967 at precision 1.000, 40/40 users exposed, users' p_out median 1.0. Three of four: (a) missed above (the finding); (b) hit; (c) hit (freshest spy rank 0.000 in every list, fronts ~110 s old, 41-42 spy entries per node - evict_host_from_peerlist keeps one entry per host, so the rotation self-cleans: white 341 = 299 honest + 42 fronts, nothing evicted); (d) 271 m. E53; run 93.",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.9083,
+ "light_out_quarters": [
+  0.8524,
+  0.8928,
+  0.9217,
+  0.9471
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.265,
+ "stem_txs": 1105,
+ "stem_hops_implied": 3.77,
+ "embargo_rate": 0.7005
+}

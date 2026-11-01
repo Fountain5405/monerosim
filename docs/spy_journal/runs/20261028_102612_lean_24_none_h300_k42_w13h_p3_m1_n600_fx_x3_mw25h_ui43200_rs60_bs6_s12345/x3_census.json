@@ -1,0 +1,29 @@
+{
+ "archive": "/home/lever65/monerosim_archives/20261028_102612_lean_24_none_h300_k42_w13h_p3_m1_n600_fx_x3_mw25h_ui43200_rs60_bs6_s12345",
+ "x3_events": 66485,
+ "virtual_epoch_share": 0.931,
+ "union_min": 0,
+ "union_median": 21,
+ "union_max": 40,
+ "edge2_epochs": 91773,
+ "edge2_join_misses": 29897,
+ "edge2_virtual": 26088,
+ "edge2_virtual_share": 0.284,
+ "relayed_stems_at_users": 13,
+ "users_reached": 11,
+ "users_total": 40,
+ "user_own_sends": 55,
+ "relayed_per_user": {
+  "user-004": 1,
+  "user-007": 1,
+  "user-013": 1,
+  "user-016": 1,
+  "user-020": 2,
+  "user-022": 1,
+  "user-027": 1,
+  "user-029": 1,
+  "user-030": 1,
+  "user-031": 1,
+  "user-032": 2
+ }
+}

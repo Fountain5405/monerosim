@@ -1,0 +1,30 @@
+{
+ "run_id": "20261027_114821_lean_24_none_h300_k42_w13h_p3_m1_n600_wl70_sr300_ud_s23456",
+ "box": "simbox3",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_wl70_sr300_ud_s23456",
+ "archived_at": "2026-10-27T11:49:31Z",
+ "monerod_sim_sha": "c1a4e6708ac3",
+ "wall": "4h 36m",
+ "exit_code": 0,
+ "min_avail_mb": 81424,
+ "txs_created": 1107,
+ "txs_in_blocks": 1089,
+ "note": "P50 E56 replicate seed 23456: 0.0261 vs 0.0248 - the defense headline on two seeds; 4/4 clauses (E60)",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 240,
+ "light_out": 0.0261,
+ "light_out_quarters": [
+  0.029,
+  0.0254,
+  0.0254,
+  0.0248
+ ],
+ "model_out": 0.1539,
+ "fluff_per_hop": 0.229,
+ "stem_txs": 1107,
+ "stem_hops_implied": 4.37,
+ "embargo_rate": 0.2204
+}

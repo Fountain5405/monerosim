@@ -1,0 +1,30 @@
+{
+ "run_id": "20261021_195300_lean_24_none_h300_k1_p3_s12345",
+ "box": "phantom",
+ "cell": "lean_24_none_h300_k1_p3_s12345",
+ "archived_at": "2026-10-21T19:53:36Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "1h 23m",
+ "exit_code": 0,
+ "min_avail_mb": 10526,
+ "txs_created": 1065,
+ "txs_in_blocks": 1037,
+ "note": "Probe cell (first/last 3 relays dump peer lists, net.p2p DEBUG): gray-list drain table in X0_CALIBRATION.md",
+ "scored_cell": "24/none",
+ "spies": 53,
+ "spy_24s": 1,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0467,
+ "light_out_quarters": [
+  0.0832,
+  0.0459,
+  0.0342,
+  0.0252
+ ],
+ "model_out": 0.0045,
+ "fluff_per_hop": 0.207,
+ "stem_txs": 1082,
+ "stem_hops_implied": 4.83,
+ "embargo_rate": 0.0
+}

@@ -16,7 +16,9 @@ Usage:
 import argparse
 import gzip
 import json
+import hashlib
 import logging
+import re
 import shutil
 import statistics
 import sys
@@ -86,7 +88,41 @@ def median_live_time(connections):
     return statistics.median(vals) if vals else None
 
 
-def hourly_summary_line(ticks):
+DEFAULT_DIAL_REGEX = r"\[(?P<ip>\d+\.\d+\.\d+\.\d+):\d+ INC\]"
+
+
+def peerlist_hash(white_list, gray_list):
+    blob = json.dumps({"white_list": white_list, "gray_list": gray_list}, sort_keys=True)
+    return hashlib.sha256(blob.encode()).hexdigest()[:16]
+
+
+class DialTail:
+    """Tail a monerod log: read_new() returns lines appended since the last
+    call (first call starts at the current end of file)."""
+
+    def __init__(self, path):
+        self.path = Path(path)
+        self.offset = None
+        self.read_new()  # position at current EOF
+
+    def read_new(self):
+        try:
+            size = self.path.stat().st_size
+        except OSError:
+            return []
+        if self.offset is None:
+            self.offset = size
+            return []
+        if size < self.offset:
+            self.offset = 0
+        with open(self.path, "rb") as f:
+            f.seek(self.offset)
+            data = f.read()
+        self.offset += len(data)
+        return data.decode("utf-8", "replace").splitlines()
+
+
+def hourly_summary_line(ticks, dials=None):
     """ticks: list of get_connections results (may include None/error ticks).
     Returns a one-line summary string, or None if there is nothing to report."""
     usable = [t for t in ticks if t is not None]
@@ -95,8 +131,11 @@ def hourly_summary_line(ticks):
     last = usable[-1]
     inc, out = connection_counts(last)
     med = median_live_time(last)
-    return ("ticks=%d last_in=%d last_out=%d median_live_time=%s" %
-           (len(usable), inc, out, "%.0f" % med if med is not None else "n/a"))
+    line = ("ticks=%d last_in=%d last_out=%d median_live_time=%s" %
+            (len(usable), inc, out, "%.0f" % med if med is not None else "n/a"))
+    if dials is not None:
+        line += " dials=%d" % dials
+    return line
 
 
 def append_jsonl(path, obj):
@@ -125,7 +164,8 @@ def rollover_if_needed(out_dir, prefix, prev_date, cur_date):
 # ---- the poll loop --------------------------------------------------------
 class Poller:
     def __init__(self, rpc, out_dir, interval=60, peerlist_interval=600,
-                duration=None, sleep_fn=time.sleep, now_fn=time.time):
+                duration=None, sleep_fn=time.sleep, now_fn=time.time,
+                peerlist_dedup=False, dial_log=None, dial_regex=DEFAULT_DIAL_REGEX):
         self.rpc = rpc
         self.out_dir = Path(out_dir)
         self.out_dir.mkdir(parents=True, exist_ok=True)
@@ -140,6 +180,12 @@ class Poller:
         self._last_peerlist_ts = None
         self._cur_date = None
         self._cur_peerlist_date = None
+        self.peerlist_dedup = peerlist_dedup
+        self._last_hash = None
+        self._cur_dials_date = None
+        self._dial_re = re.compile(dial_regex)
+        self.dial_tail = DialTail(dial_log) if dial_log else None
+        self._dials_hour = 0
 
     def _write_pidfile(self):
         import os
@@ -160,16 +206,40 @@ class Poller:
         append_jsonl(self.out_dir / ("connections-%s.jsonl" % date), tick)
         self._recent_connections.append(tick.get("connections"))
         self._recent_connections = self._recent_connections[-10000:]
+        self.tick_dials(ts)
         return tick
+
+    def tick_dials(self, ts):
+        if self.dial_tail is None:
+            return
+        date = utc_date_str(ts)
+        rollover_if_needed(self.out_dir, "dials", self._cur_dials_date, date)
+        self._cur_dials_date = date
+        for line in self.dial_tail.read_new():
+            m = self._dial_re.search(line)
+            if not m:
+                continue
+            ip = m.groupdict().get("ip")
+            append_jsonl(self.out_dir / ("dials-%s.jsonl" % date),
+                         {"ts": ts, "ip": ip, "line": line[:300]})
+            self._dials_hour += 1
 
     def tick_peerlist(self):
         ts = self.now_fn()
         try:
             res = rpc_plain(self.rpc, "/get_peer_list")
             tick = build_peerlist_tick(ts, res.get("white_list"), res.get("gray_list"))
+            if self.peerlist_dedup:
+                h = peerlist_hash(tick["white_list"], tick["gray_list"])
+                if h == self._last_hash:
+                    tick = {"ts": ts, "unchanged": True, "hash": h}
+                else:
+                    tick["hash"] = h
+                self._last_hash = h
         except Exception as exc:  # noqa: BLE001
             logger.warning("get_peer_list failed: %s", exc)
             tick = build_peerlist_tick(ts, error=str(exc))
+            self._last_hash = None
         date = utc_date_str(ts)
         rollover_if_needed(self.out_dir, "peerlist", self._cur_peerlist_date, date)
         self._cur_peerlist_date = date
@@ -179,7 +249,10 @@ class Poller:
     def maybe_summarize(self, now):
         if self._last_summary_ts is not None and now - self._last_summary_ts < 3600:
             return
-        line = hourly_summary_line(self._recent_connections)
+        line = hourly_summary_line(
+            self._recent_connections,
+            self._dials_hour if self.dial_tail else None)
+        self._dials_hour = 0
         if line:
             logger.info(line)
         self._last_summary_ts = now
@@ -215,6 +288,16 @@ def main():
     p.add_argument("--peerlist-interval", type=float, default=600)
     p.add_argument("--duration", default=None,
                   help="e.g. 7d, 12h, 600s; omit to run until killed")
+    p.add_argument("--peerlist-dedup", action="store_true",
+                  help="write {ts, unchanged, hash} instead of the full peer list "
+                       "when it equals the previous peer-list tick")
+    p.add_argument("--dial-log", default=None,
+                  help="monerod log file to tail; matching lines go to dials-YYYYMMDD.jsonl. "
+                       "monerod prints the '[ip:port INC]' prefix for incoming connections "
+                       "only when net.p2p logs at INFO or above (--log-level 0,net.p2p:INFO); "
+                       "without it the dials file stays empty")
+    p.add_argument("--dial-regex", default=DEFAULT_DIAL_REGEX,
+                  help="regex for dial lines; optional named group 'ip' (default: %(default)s)")
     args = p.parse_args()
 
     Path(args.out).mkdir(parents=True, exist_ok=True)
@@ -227,7 +310,9 @@ def main():
 
     duration = parse_duration(args.duration) if args.duration else None
     poller = Poller(args.rpc, args.out, interval=args.interval,
-                    peerlist_interval=args.peerlist_interval, duration=duration)
+                    peerlist_interval=args.peerlist_interval, duration=duration,
+                    peerlist_dedup=args.peerlist_dedup, dial_log=args.dial_log,
+                    dial_regex=args.dial_regex)
 
     import signal
 

@@ -1,0 +1,349 @@
+{
+  "spies": [
+    "spy-a-001",
+    "spy-b-001",
+    "spy-c-001",
+    "spy-d-001",
+    "spy-e-001",
+    "spy-f-001",
+    "spy-g-001",
+    "spy-h-001",
+    "spy-i-001",
+    "spy-j-001",
+    "spy-k-001",
+    "spy-l-001",
+    "spy-m-001",
+    "spy-n-001",
+    "spy-o-001",
+    "spy-p-001",
+    "spy-q-001",
+    "spy-r-001",
+    "spy-s-001",
+    "spy-t-001",
+    "spy-u-001",
+    "spy-v-001",
+    "spy-w-001",
+    "spy-x-001",
+    "spy-x26-001",
+    "spy-x27-001",
+    "spy-x28-001",
+    "spy-x29-001",
+    "spy-x30-001",
+    "spy-x31-001",
+    "spy-x32-001",
+    "spy-x33-001",
+    "spy-x34-001",
+    "spy-x35-001",
+    "spy-x36-001",
+    "spy-x37-001",
+    "spy-x38-001",
+    "spy-x39-001",
+    "spy-x40-001",
+    "spy-x41-001",
+    "spy-y-001",
+    "spy-z-001"
+  ],
+  "spies_logging": [
+    "spy-a-001",
+    "spy-b-001",
+    "spy-c-001",
+    "spy-d-001",
+    "spy-e-001",
+    "spy-f-001",
+    "spy-g-001",
+    "spy-h-001",
+    "spy-i-001",
+    "spy-j-001",
+    "spy-k-001",
+    "spy-l-001",
+    "spy-m-001",
+    "spy-n-001",
+    "spy-o-001",
+    "spy-p-001",
+    "spy-q-001",
+    "spy-r-001",
+    "spy-s-001",
+    "spy-t-001",
+    "spy-u-001",
+    "spy-v-001",
+    "spy-w-001",
+    "spy-x-001",
+    "spy-x26-001",
+    "spy-x27-001",
+    "spy-x28-001",
+    "spy-x29-001",
+    "spy-x30-001",
+    "spy-x31-001",
+    "spy-x32-001",
+    "spy-x33-001",
+    "spy-x34-001",
+    "spy-x35-001",
+    "spy-x36-001",
+    "spy-x37-001",
+    "spy-x38-001",
+    "spy-x39-001",
+    "spy-x40-001",
+    "spy-x41-001",
+    "spy-y-001",
+    "spy-z-001"
+  ],
+  "txs": 1102,
+  "txs_seen_by_spies": 1102,
+  "senders": {
+    "unreachable": 40,
+    "reachable": 0,
+    "busy": 5
+  },
+  "busy_min": 5,
+  "scores": {
+    "sp": {
+      "unreachable": {
+        "n": 1032,
+        "guesses": 193,
+        "correct": 193,
+        "recall": 0.187015503875969,
+        "precision": 1.0,
+        "recall_ci": [
+          0.1422924901185771,
+          0.23116089613034624
+        ],
+        "precision_ci": [
+          1.0,
+          1.0
+        ]
+      },
+      "reachable": {
+        "n": 0,
+        "guesses": 345,
+        "correct": 0,
+        "recall": null,
+        "precision": 0.0,
+        "precision_ci": [
+          0.0,
+          0.0
+        ]
+      },
+      "busy": {
+        "n": 70,
+        "guesses": 15,
+        "correct": 12,
+        "recall": 0.17142857142857143,
+        "precision": 0.8,
+        "recall_ci": [
+          0.0,
+          0.4375
+        ],
+        "precision_ci": [
+          0.0,
+          1.0
+        ]
+      }
+    },
+    "sp_r": {
+      "unreachable": {
+        "n": 1032,
+        "guesses": 193,
+        "correct": 193,
+        "recall": 0.187015503875969,
+        "precision": 1.0,
+        "recall_ci": [
+          0.1422924901185771,
+          0.23116089613034624
+        ],
+        "precision_ci": [
+          1.0,
+          1.0
+        ]
+      },
+      "reachable": {
+        "n": 0,
+        "guesses": 0,
+        "correct": 0,
+        "recall": null,
+        "precision": null
+      },
+      "busy": {
+        "n": 70,
+        "guesses": 0,
+        "correct": 0,
+        "recall": 0.0,
+        "precision": null,
+        "recall_ci": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "fs": {
+      "unreachable": {
+        "n": 1032,
+        "guesses": 17,
+        "correct": 3,
+        "recall": 0.0029069767441860465,
+        "precision": 0.17647058823529413,
+        "recall_ci": [
+          0.0,
+          0.006150061500615006
+        ],
+        "precision_ci": [
+          0.0,
+          0.38461538461538464
+        ]
+      },
+      "reachable": {
+        "n": 0,
+        "guesses": 904,
+        "correct": 0,
+        "recall": null,
+        "precision": 0.0,
+        "precision_ci": [
+          0.0,
+          0.0
+        ]
+      },
+      "busy": {
+        "n": 70,
+        "guesses": 180,
+        "correct": 1,
+        "recall": 0.014285714285714285,
+        "precision": 0.005555555555555556,
+        "recall_ci": [
+          0.0,
+          0.044444444444444446
+        ],
+        "precision_ci": [
+          0.0,
+          0.017857142857142856
+        ]
+      }
+    },
+    "combined": {
+      "unreachable": {
+        "n": 1032,
+        "guesses": 203,
+        "correct": 196,
+        "recall": 0.18992248062015504,
+        "precision": 0.9655172413793104,
+        "recall_ci": [
+          0.1442687747035573,
+          0.23402163225172073
+        ],
+        "precision_ci": [
+          0.9367088607594937,
+          0.9876543209876543
+        ]
+      },
+      "reachable": {
+        "n": 0,
+        "guesses": 845,
+        "correct": 0,
+        "recall": null,
+        "precision": 0.0,
+        "precision_ci": [
+          0.0,
+          0.0
+        ]
+      },
+      "busy": {
+        "n": 70,
+        "guesses": 54,
+        "correct": 13,
+        "recall": 0.18571428571428572,
+        "precision": 0.24074074074074073,
+        "recall_ci": [
+          0.0,
+          0.453125
+        ],
+        "precision_ci": [
+          0.0,
+          0.47692307692307695
+        ]
+      }
+    }
+  },
+  "first_hop_spy": {
+    "unreachable": {
+      "txs": 1025,
+      "to_spy": 193,
+      "share": 0.188
+    },
+    "reachable": {
+      "txs": 0,
+      "to_spy": 0,
+      "share": null
+    },
+    "busy": {
+      "txs": 70,
+      "to_spy": 12,
+      "share": 0.171
+    }
+  },
+  "exposure": {
+    "sp_r": {
+      "unreachable": {
+        "20+": [
+          40,
+          31
+        ]
+      },
+      "reachable": {},
+      "busy": {
+        "10-19": [
+          4,
+          0
+        ],
+        "5-9": [
+          1,
+          0
+        ]
+      }
+    },
+    "combined": {
+      "unreachable": {
+        "20+": [
+          40,
+          31
+        ]
+      },
+      "reachable": {},
+      "busy": {
+        "10-19": [
+          4,
+          2
+        ],
+        "5-9": [
+          1,
+          1
+        ]
+      }
+    }
+  },
+  "window": [
+    93600,
+    108000
+  ],
+  "p_stem": {
+    "unreachable": {
+      "nodes": 40,
+      "median_of_means": 0.157,
+      "ever_spy": 1.0
+    },
+    "reachable": {
+      "nodes": 300,
+      "median_of_means": 0.149,
+      "ever_spy": 0.95
+    }
+  },
+  "p_out": {
+    "unreachable": {
+      "nodes": 40,
+      "median_of_means": 0.176,
+      "ever_spy": 1.0
+    },
+    "reachable": {
+      "nodes": 300,
+      "median_of_means": 0.158,
+      "ever_spy": 1.0
+    }
+  }
+}

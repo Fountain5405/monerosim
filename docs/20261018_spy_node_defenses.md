@@ -1,8 +1,13 @@
+> Status: current — the X1 defense-measure doc; its bands are cited by later entries.
+
 # Spy (proxy) nodes: proposed defenses, an evaluation, and a monerosim test plan
 
 *2026-10-18. Research note. It reviews MRL #126, surveys the other MRL threads and
 the related monero PRs, evaluates what has been proposed, adds new ideas, and
 proposes monerosim experiments. Nothing here has been implemented or run.*
+
+*2026-10-25: reviewed against the lab's results (journal E1-E43); section 7 holds the review, the corrections to
+sections 3-5 as dated notes, and the revised order. Nothing above section 7 is deleted or rewritten.*
 
 Claims are marked **measured** (by the cited source), **code** (read in the
 monerod-sim tree, which is monerod v0.18.5.1 plus simulator patches; references
@@ -350,6 +355,10 @@ stem.
 - **Adopters indirectly protect everyone else (derived).** Adopters gossip
   peer-list samples free of spies, so non-adopters see fewer spy addresses.
   Rucknium uses the same effect to detect adoption. X7 can measure it.
+  *2026-10-25, measured:* not observed in the lab. With the full list on half the nodes the non-adopters carried 10%
+  *more* than without the list under the stock rule (journal E29) and exactly their subnet share with the 20-candidate
+  cap lifted (E40, E42). The lab is a weak test of a gossip effect, since every relay's white list already holds every
+  spy /24; the claim stays unproven rather than refuted. See section 7.
 - **Verdict.** Banning on fingerprints was rejected (selsta: the spies patch them
   before a release ships). That holds for deterministic fingerprints; statistical
   ones cost the spy more to dodge (§4 N7). Keep the list as a stopgap.
@@ -395,6 +404,13 @@ stem.
 - **Verdict.** This is an empirical question. Answer it with the PR's code and an
   asmap built from the simulation's own IP-to-AS allocation (§5 X2). Include a
   hierarchical rule (ASN first, then /24 within it) as a middle ground.
+  *2026-10-25, measured (journal E27-E43, open question 10):* under the stock `24` rule a /24-diversified fleet gets
+  2.0-2.4x its subnet share of honest outbound slots, and the whole excess is the white-list pick's candidate set, the
+  20 *newest-by-`last_seen`* unconnected /24s (`make_new_connection_from_peerlist`). Drawing from every unconnected /24
+  (1.005x the subnet share, three seeds) or from 20 /24s sampled at random (1.08x) removes it; the cubic draw's shape
+  is worth the last 8%. Under the stock rule the unreachable users sit at 0.75x their share and the fix raises them to
+  1.0x, so the fix trades relays' share for senders' recall (section 7, Q2). Transfer to mainnet is unverified: the
+  lab's white lists hold the whole network, mainnet's hold 1,000 of ~4,600 reachable, trimmed by `last_seen`.
 
 ### 3.5 Other MRL threads
 
@@ -588,10 +604,14 @@ stem.
 
 - **Relay logging.** Neither spies nor honest nodes log the stem/fluff flag.
   The parsed line `Received NOTIFY_NEW_TRANSACTIONS (N txes)` doesn't carry it.
+  *(2026-10-19: I1 below is built on branch `feat/spy-relay-log`:
+  `patches/monero-sim-txrelay-log.patch`, `docs/TXRELAY_LOG.md`.)*
 - **Spy-side estimators.** No estimator uses only spy vantage points, and none
   reports precision and recall against ground truth by sender reachability.
 - **Exposure over time.** There is no per-node time series of the spy share of
   outbound and stem slots, because stem peers aren't logged.
+  *(2026-10-20: both are covered by I3 below, on the same branch:
+  `analysis/spy/spy_estimators.py`, `docs/SPY_ESTIMATORS.md`.)*
 - **Forwarding.** `spy_proxy` doesn't forward, so a backend never sees honest
   traffic the way a class-B backend does.
 - **Defenses.** monerod-sim has no flags for any of the defenses above.
@@ -619,7 +639,9 @@ stem.
 
   Ground truth comes from `transactions.json`, the agent registry and I1.
 - **I4, defense flags (monerod-sim, each off by default):**
-  - `--sim-subnet-dedup=none|24|16`;
+  - `--sim-subnet-dedup=none|24|16`; *(2026-10-20: built, plus `legacy` for
+    v0.18.4.2's selection; `patches/monero-sim-subnet-dedup.patch`,
+    `docs/X0_CALIBRATION.md`)*;
   - `--asmap <file>`, cherry-picked from #11474;
   - `--sim-addrbook-buckets` (N2);
   - `--sim-stem-filter=...` (N1);
@@ -642,6 +664,14 @@ stem.
 
   A 1,000-host replica can't hold mainnet's ratio of 9 spy /24s to ~3,700 honest
   ones, so each preset must state which ratio it keeps.
+
+  *(2026-10-20: the 2024 preset for X0 is built at ~400 honest daemons,
+  `test_configs/x0/`, with its kept ratios stated in `docs/X0_CALIBRATION.md`.
+  Building it showed that how variant-R spies reach peer lists decides their
+  share more than the grouping rule does. Spies that never dial are in nobody's
+  peer list. Spies that dial honest nodes land in those nodes' connected-subnet
+  sets, which counts inbound connections too, so the nodes then skip them. The
+  preset's spies announce through the seeds only.)*
 
 ### 5.3 The experiments
 
@@ -771,6 +801,8 @@ stem.
   per-proxy delays.
 - **Cost.** Uses X1's logs, so it needs no new runs unless the adapted spy
   needs one.
+  *2026-10-25:* false as the lab stands. X1's spies are variant R (stock monerod), which show none of the five
+  fingerprints, so X6 needs the splice-mode spy (I2) first.
 
 **X7: ban-list dynamics (small).**
 
@@ -800,6 +832,8 @@ stem.
 5. Run X5 for the RPC probe, which the 0.18.5.1 code leaves open. X6 is
    analysis only; run X7 and X8 as needed.
 
+*Order revised 2026-10-25: see section 7, "Revised order".*
+
 **Constraints:**
 
 - **Timing.** Nothing runs before the campaign-8 queue and the follow-up SoP
@@ -815,10 +849,101 @@ stem.
 
 - Whether the #9496 fix (assembling RPC-submitted blocks from broadcast
   transactions only) landed upstream after 0.18.5.1.
+  *2026-10-25: not landed.* On `origin/master` at `3fd0f88c2` (merge of #11396) `core::get_block_complete_entry`
+  still fetches each transaction with `relay_category::all` and `submitblock` still calls `handle_block_found`
+  unchanged, so X5 stands.
 - Whether IPv4-mapped duplicates are still stored.
 - The mainnet transaction rate and the unreachable share to use in the presets.
 - The private fingerprints (SyntheticBird45, plowsof). They aren't public, and
   this note doesn't need them.
+
+## 7. Review of the plan against its questions (2026-10-25)
+
+Written after journal entries E1-E43 (X0 closed; X1's unreachable-sender numbers stable at three seeds and two
+warmups; the candidate-cap finding, section 3.4's dated note, at three seeds, two warmups and two boxes). An
+independent reviewer with a fresh context read the plan and the journal and reached the same ranking; this section
+is the merged view. The research must deliver three answers: (Q1) how exposed senders are today, by class; (Q2) which
+defenses reduce that exposure, by how much and at what honest cost; (Q3) the adversary's best response to each.
+
+**Q1.** Answered for unreachable senders: precision 1, recall equal to the user's own spy stem share (E36-E43), the
+plan's §2.3 claim against the 0.035 figure confirmed. Not answered for occasional reachable senders or busy reachable
+senders: every cell runs users at one transaction per 5 min (about 150x mainnet), which manufactures the relayed-stem
+cover that decides those classes' precision, and the lean cells hold no reachable home senders at all (the estimator's
+reachable row has n = 0). The fluff-epoch leak (N4) is computable from existing relay logs and has not been computed.
+The 2026-09 preset has never run (no 8-ports-per-IP, no list poisoning, no 9-dense-plus-322-sparse layout); the "today"
+number is extrapolated from a 42-spy family in which spies hold 15% of the /24s against mainnet's 0.2% (9 dense /24s
+of ~3,700) to 8% (if the 322 sparse /24s are the fleet's).
+
+**Q2.** Effect: measured for /24 dedup (E13, E28), the ban list at 50% adoption (E25, E29, E40, E42), the lifted cap
+(E36-E41) and the random candidate sample (E43), each at two or three seeds. Cost: nothing. X2's five honest-cost
+metrics (outbound diversity, propagation delay, time to a full outbound set, outage connectivity, eclipse success) have
+been scored for no cell, including the cap-lifted and random-sample cells, which are now a de facto proposal. The
+newest-by-`last_seen` cap is a liveness filter in a churning network; the lab has no churn (section 5.2 I5 note,
+`docs/X0_CALIBRATION.md`), so the cost of removing it is invisible by construction. asmap, N1, N2, N3 and #160 are
+unbuilt.
+
+**Q3.** Every adversary run so far is passive, static, non-poisoning (variant R) and fully named by the ban list. One
+response has been measured, spreading across /24s (E27, E28). The splice-mode spy, the black-hole switch and list
+poisoning (I2) are prerequisites and none exists.
+
+**Threats to validity, ranked by how much each would change the recommendation.**
+
+1. *List age structure* (journal open question 8). The 2.2x, the users' 0.75x and the cap finding depend on where the
+   spies sit in the relays' `last_seen` order, in a lab whose white lists hold the whole network (342 reachable).
+   Mainnet's white list holds 1,000 of ~4,600 reachable nodes, trimmed by `last_seen`, so "the 20 newest of 242 /24s"
+   becomes "the 20 newest of a list that is itself the 1,000 newest". The effect could be larger, absent, or the whole
+   list. A peer-list dump from one long-running mainnet node (`print_pl`: spy rank in `last_seen` order, the spies'
+   share of the 20 newest /24s) decides whether lifting the cap is a defense, a no-op or a liveness regression. Nothing
+   else moves the recommendation this much, and no simulation replaces it. The lab's counterpart is the thirteenth
+   patch (`--sim-white-peerlist-limit`, built 2026-10-25): the same cells with the white list trimmed to the lab's ratio.
+   *2026-10-25 20:49, first lab result (journal E45, E46):* with the white list trimmed to 70 entries the stock rule reads 1.06x the
+   ceiling and the cap-lifted rule 1.06x; the probes' trimmed lists hold the spies below their pool share. The 2.2x is a property of a list that
+   holds the whole network. The dump decides whether mainnet's trimmed lists are like P36's; the sweep at 140 and 35 entries runs.
+2. *No churn, so no cost* (Q2).
+3. *An adversary that refreshes its own recency.* Under the stock rule a fleet that re-announces or re-dials to stay
+   newest holds the 2.2x as a floor and removes the users' accidental 0.75x protection too; under the random-sample rule
+   with the cubic draw kept it still gets the newest-of-20 preference (E43's residual 1.28x gradient). Open question 10
+   (c) notes this is untested. It is the most important missing cell under today's code.
+4. *The 150x transaction rate*, which invalidates the reachable classes and makes "N of 40 exposed in 4 h" a
+   per-twenty-transactions figure.
+5. *Spy /24 ratio and unreachable share.* 15% of /24s against mainnet's 0.2-8%; 12% unreachable nodes against mainnet's
+   85%. The subnet ceiling scales linearly with the first; the cap effect need not. The second also means X3 cannot run
+   on the lean cell's shape, since #160's mechanism is the unreachable majority; a majority-unreachable cell fits the
+   Threadripper (600 unreachable nodes peaked at 24 GB, journal section 2).
+6. *The ceiling model* ignores anchors, the 70/30 white/gray split and the inbound skip. It is validated as a reference
+   under the cap-lifted rule in the lab; "1.0x the ceiling" must not be quoted as a mainnet share. The recency Monte
+   Carlo (`recency_model.py`) is retired for predicting changed rules: its lists come from the stock regime and it said
+   1.51x and 1.53x where the sims read 1.11x and 1.08x (E37, E43).
+7. *User-level power.* Forty users give a 25% seed band; report per-transaction recall with its confidence interval and
+   treat exposed-user counts as secondary (they saturate for twenty-transaction senders, E39).
+
+**Revised order** (replaces section 5.4's items 3-5; items 1-2 are done):
+
+1. *Mainnet peer-list dump* (the owner; no simulation): spy rank in `last_seen` order and the spies' share of the 20
+   newest /24s on a long-running node. In the lab, the stock and cap-lifted spread-fleet cells with
+   `--sim-white-peerlist-limit` at the lab's ratio (about 70 of 342 reachable, mainnet's 1,000 of ~4,600), filed as
+   predictions first.
+2. *Active-recency adversary* under the stock rule: spies that re-handshake with honest nodes periodically so their
+   entries are always the newest (an agent on the py-Levin tooling, or a `--sim-*` flag on the variant-R spies), two
+   seeds, with user-side peer-list dumps so the cell also answers why users sit at 0.75x (open question 10 (d)).
+3. *Churn cell pricing the new rules*: `general.turnover` (`make_lean.py --turnover 1h,1h`, built 2026-10-25) under the
+   stock rule against the cap-lifted and random-sample rules, scoring time to a full outbound set after each restart,
+   failed dials and block propagation (a scorer addition). Without this neither new rule can be recommended.
+4. *A mainnet-rate X1 cell* with reachable home senders, a 24 h window and more users, for the two unanswered classes;
+   N4 from existing logs first.
+5. *Then X2's asmap branch* (the #11474 cherry-pick, a synthetic map from the lab's AS allocation), and X3 on a
+   majority-unreachable cell; X4 after.
+
+No further candidate-rule cell is queued until items 1-3 are done. The completion of that line, the random sample with
+the uniform draw (`_rc_up`), is deferred behind them.
+
+**Already settled.** X0. Unreachable-sender exposure under today's code. The draw's shape (5-8%, E35, E37, E43). The
+embargo rate (stock behaviour, open question 4). The #9496 question (section 6: not landed; X5 stands).
+
+**Scaling note for the spy /24 ratio.** The lab's spread fleet holds 42 of 284 /24s. Under the subnet model the spies'
+share of a 12-slot node's picks is close to their share of unconnected /24s, so at mainnet's 9 dense /24s of ~3,700
+the ceiling is about 0.3%, and at 331 /24s about 8%; what the stock rule's recency edge does at those ratios is the
+open transfer question above, not something the lab's 15% can be scaled to.
 
 ## Sources
 

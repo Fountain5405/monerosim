@@ -1,0 +1,30 @@
+{
+ "run_id": "20261026_031725_lean_24_none_h71_k1_p2_m13_sr60_ud_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h71_k1_p2_m13_sr60_ud_s12345",
+ "archived_at": "2026-10-26T03:18:07Z",
+ "monerod_sim_sha": "ab6646d74725",
+ "wall": "46m 26s",
+ "exit_code": 0,
+ "min_avail_mb": 199920,
+ "txs_created": 828,
+ "txs_in_blocks": 824,
+ "note": "OQ13 mechanism smoke, no prediction: the v1 re-handshake design. Exit 0, 47 m, agents swept cleanly (50/71 per sweep, identity and chain state learned from the daemon), but the spies' white entries' last_seen never moved (median age 20,288 s vs honest 18,586 s at the end): the ping-back's append_with_peer_white preserves existing timestamps (trust_last_seen=false). Superseded by v2 (rotating front ports). Not comparable to the h300 cells (6 h, 71 reachable, exposure window empty).",
+ "scored_cell": "24/none",
+ "spies": 13,
+ "spy_24s": 1,
+ "honest_reachable": 71,
+ "honest_reachable_24s": 60,
+ "light_out": 0.0179,
+ "light_out_quarters": [
+  0.0244,
+  0.0201,
+  0.0167,
+  0.0115
+ ],
+ "model_out": 0.0181,
+ "fluff_per_hop": 0.204,
+ "stem_txs": 847,
+ "stem_hops_implied": 4.9,
+ "embargo_rate": 0.0
+}

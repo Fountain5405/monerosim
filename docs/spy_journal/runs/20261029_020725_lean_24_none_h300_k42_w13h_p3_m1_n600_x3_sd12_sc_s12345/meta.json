@@ -1,0 +1,30 @@
+{
+ "run_id": "20261029_020725_lean_24_none_h300_k42_w13h_p3_m1_n600_x3_sd12_sc_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_x3_sd12_sc_s12345",
+ "archived_at": "2026-10-29T02:07:25Z",
+ "monerod_sim_sha": "8f93538bc745",
+ "wall": "2h 32m",
+ "exit_code": 0,
+ "min_avail_mb": 55337,
+ "txs_created": 1049,
+ "txs_in_blocks": 1046,
+ "note": "P55 X3b-pay (visible dialing spies, out-peers 12, cidrs = spy /24s only, fabric not stemmable): light 0.0923 (band 0.30-0.38; relays p_out 0.081 vs E27 0.325, users 0.137 vs 0.119), 763 spy stem receipts (462 relay-dialed + 301 virtual, virtual_rx_share 0.526), hop-1 user txs 133, sp recall 0.129 / precision 1.000, 0 relayed stems at users, 31/40 users exposed, 30,961 x3 events, union median 13, edge-2 virtual 8.5%; E69",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0923,
+ "light_out_quarters": [
+  0.0917,
+  0.0919,
+  0.0935,
+  0.092
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.192,
+ "stem_txs": 1097,
+ "stem_hops_implied": 5.21,
+ "embargo_rate": 0.0
+}

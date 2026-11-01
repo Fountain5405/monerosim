@@ -1,0 +1,30 @@
+{
+ "run_id": "20261028_233022_lean_24_none_h300_k42_w13h_p3_m1_n600_x3_sph_sd12_sc_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_x3_sph_sd12_sc_s12345",
+ "archived_at": "2026-10-28T23:30:22Z",
+ "monerod_sim_sha": "8f93538bc745",
+ "wall": "2h 34m",
+ "exit_code": 0,
+ "min_avail_mb": 55629,
+ "txs_created": 1024,
+ "txs_in_blocks": 995,
+ "note": "P58 X3b-hidden, the fleet pays alone (hidden dialing spies, out-peers 12, cidrs = spy /24s only): 238 spy stem receipts, all virtual (virtual_rx_share 1.000), 3.05x P57 (78), hop-1 0, sp/sp_r recall 0.000, light 0.000, 0 relayed stems at users, 30,967 x3 events, virtual epochs 64.9%, union median 13, edge-2 virtual 9.1%; E68",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0,
+ "light_out_quarters": [
+  0.0,
+  0.0,
+  0.0,
+  0.0
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.209,
+ "stem_txs": 1093,
+ "stem_hops_implied": 4.78,
+ "embargo_rate": 0.0
+}

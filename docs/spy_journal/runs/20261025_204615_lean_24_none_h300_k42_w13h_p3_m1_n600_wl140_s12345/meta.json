@@ -1,0 +1,30 @@
+{
+ "run_id": "20261025_204615_lean_24_none_h300_k42_w13h_p3_m1_n600_wl140_s12345",
+ "box": "simbox3",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m1_n600_wl140_s12345",
+ "archived_at": "2026-10-25T20:47:18Z",
+ "monerod_sim_sha": "c1a4e6708ac3",
+ "wall": "4h 32m",
+ "exit_code": 0,
+ "min_avail_mb": 81294,
+ "txs_created": 1074,
+ "txs_in_blocks": 1059,
+ "note": "P40, the trim sweep's 140 point (stock rule, white list limited to 140): light 0.164, 1.07x the ceiling, flat with the 70 point's 1.06x - the multiplier needs a list holding nearly every /24. Two of four: (a) missed below 0.18; (b) hit (white lists at the 140 limit, spies 6.5-10.4% of entries, mean 8.8%, rank 0.48); (c) n/a; (d) wall 274 m. E49.",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.164,
+ "light_out_quarters": [
+  0.1647,
+  0.1637,
+  0.1644,
+  0.1634
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.201,
+ "stem_txs": 1096,
+ "stem_hops_implied": 4.98,
+ "embargo_rate": 0.0
+}

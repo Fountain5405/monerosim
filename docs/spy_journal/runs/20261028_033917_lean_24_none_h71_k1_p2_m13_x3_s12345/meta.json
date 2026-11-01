@@ -1,0 +1,30 @@
+{
+ "run_id": "20261028_033917_lean_24_none_h71_k1_p2_m13_x3_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h71_k1_p2_m13_x3_s12345",
+ "archived_at": "2026-10-28T03:39:17Z",
+ "monerod_sim_sha": "cbfcec341390",
+ "wall": "43m 47s",
+ "exit_code": 0,
+ "min_avail_mb": 135994,
+ "txs_created": 840,
+ "txs_in_blocks": 803,
+ "note": "X3 smoke (run of the 14-patch binary): mechanism verified - 2140 x3 events, edge2 38 pct virtual (peers dialed-by), edge1 outgoing, users receive relayed stems 107 vs 0 stock; local-pin path unexercised (adopters do not originate txs in this shape); exit 0 wall 44m",
+ "scored_cell": "24/none",
+ "spies": 13,
+ "spy_24s": 1,
+ "honest_reachable": 71,
+ "honest_reachable_24s": 60,
+ "light_out": 0.0151,
+ "light_out_quarters": [
+  0.0254,
+  0.015,
+  0.0118,
+  0.0104
+ ],
+ "model_out": 0.0181,
+ "fluff_per_hop": 0.221,
+ "stem_txs": 855,
+ "stem_hops_implied": 4.52,
+ "embargo_rate": 0.0
+}

@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_205427_lean_24_none_h300_k42_w13h_m1_n600_s12345",
+ "box": "simbox2",
+ "cell": "lean_24_none_h300_k42_w13h_m1_n600_s12345",
+ "archived_at": "2026-10-23T20:54:28Z",
+ "monerod_sim_sha": "345d4ced95f1",
+ "wall": "2h 33m",
+ "exit_code": 0,
+ "min_avail_mb": 12835,
+ "txs_created": 1098,
+ "txs_in_blocks": 1095,
+ "note": "P17: tail's 42 spies spread over 42 /24s at 1 each, stock 24; light 0.3369 = 2.20x the 0.1531 ceiling, flat; 27 of 40 users exposed",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.3369,
+ "light_out_quarters": [
+  0.3387,
+  0.3375,
+  0.3371,
+  0.3344
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.214,
+ "stem_txs": 1098,
+ "stem_hops_implied": 4.67,
+ "embargo_rate": 0.0
+}

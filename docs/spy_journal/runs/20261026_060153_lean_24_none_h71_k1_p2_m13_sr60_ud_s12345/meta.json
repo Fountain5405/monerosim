@@ -1,0 +1,30 @@
+{
+ "run_id": "20261026_060153_lean_24_none_h71_k1_p2_m13_sr60_ud_s12345",
+ "box": "simbox3",
+ "cell": "lean_24_none_h71_k1_p2_m13_sr60_ud_s12345",
+ "archived_at": "2026-10-26T06:02:56Z",
+ "monerod_sim_sha": "c1a4e6708ac3",
+ "wall": "1h 27m",
+ "exit_code": 0,
+ "min_avail_mb": 88735,
+ "txs_created": 948,
+ "txs_in_blocks": 938,
+ "note": "OQ13 mechanism smoke #2, no prediction: v2 (rotating front ends). Exit 0, 88 m. The mechanism works: light 0.2299 = 12.7x the cell's 0.0181 ceiling (v1 read 0.0179); relays/observers hold 12-13 accumulated front entries, freshest ~102 s against honest ~19,600 s, rank 0.10-0.15; fresh front entries reach the unreachable users via gossip + gray-list dials. Gates P44/P45.",
+ "scored_cell": "24/none",
+ "spies": 13,
+ "spy_24s": 1,
+ "honest_reachable": 71,
+ "honest_reachable_24s": 60,
+ "light_out": 0.2299,
+ "light_out_quarters": [
+  0.2083,
+  0.2373,
+  0.2295,
+  0.248
+ ],
+ "model_out": 0.0181,
+ "fluff_per_hop": 0.239,
+ "stem_txs": 962,
+ "stem_hops_implied": 4.18,
+ "embargo_rate": 0.4543
+}

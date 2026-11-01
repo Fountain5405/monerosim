@@ -1,0 +1,51 @@
+{
+  "archive": "/spinny/readfrom/20261024_monerosim_research_effort/archives/20261026_170301_lean_24_none_h300_k42_w13h_p3_m1_n600_wl70_sr300_ud_s12345",
+  "nodes": 382,
+  "spies": 42,
+  "premise": {
+    "own_txs": 1109,
+    "stemmed": 1106,
+    "in_fluff_epoch": 190,
+    "in_fluff_epoch_stemmed": 190,
+    "in_fluff_epoch_not_stemmed": 0
+  },
+  "mode": {
+    "cues": 46303,
+    "mean_window_in_true_fluff_s": 145.7,
+    "window_s": 630,
+    "window_share_true_fluff": 0.231,
+    "fluff_epochs_with_stems": 2,
+    "of_which_cued": 2,
+    "cue_epoch_recall": 1.0
+  },
+  "attribution": {
+    "oracle_stem_rx": 3,
+    "oracle_precision": 1.0,
+    "oracle_distinct_txs": 3,
+    "oracle_txs_beyond_first_hop": 0,
+    "oracle_users_correct": 1,
+    "attributed_stem_rx": 37,
+    "precision": 0.378,
+    "distinct_txs": 36,
+    "txs_beyond_first_hop": 22,
+    "senders_hit": 12,
+    "senders_hit_classes": {
+      "reachable": 11,
+      "user": 3
+    },
+    "senders_total_classes": {
+      "reachable": 67,
+      "user": 1042
+    },
+    "users_hit_correct": 1,
+    "false_positives": 23
+  },
+  "fluff1": {
+    "txs": 1064,
+    "first_fluffer": {
+      "relay": 956,
+      "sender": 95,
+      "spy": 13
+    }
+  }
+}

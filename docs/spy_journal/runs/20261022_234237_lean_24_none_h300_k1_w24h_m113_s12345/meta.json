@@ -1,0 +1,30 @@
+{
+ "run_id": "20261022_234237_lean_24_none_h300_k1_w24h_m113_s12345",
+ "box": "simbox3",
+ "cell": "lean_24_none_h300_k1_w24h_m113_s12345",
+ "archived_at": "2026-10-22T23:42:38Z",
+ "monerod_sim_sha": "a5481f17097b",
+ "wall": "4h 3m",
+ "exit_code": 1,
+ "min_avail_mb": 10049,
+ "txs_created": 0,
+ "txs_in_blocks": 0,
+ "note": "E18: the 24 h-warmup core cell (no list) on the UNPATCHED binary, TRIPPED by the driver at 03:46 (350 MB free): the summed process memory went from 16.6 GB to 79.9 GB between two 35 s samples at simulated 21.4 h, as the chain reached block 2112 (the RandomX seed change) and every daemon re-derived its cache; no result. Rerun with --sim-fixed-randomx-seed as P7b",
+ "scored_cell": "24/none",
+ "spies": 113,
+ "spy_24s": 1,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": null,
+ "light_out_quarters": [
+  null,
+  null,
+  null,
+  null
+ ],
+ "model_out": 0.0045,
+ "fluff_per_hop": null,
+ "stem_txs": 0,
+ "stem_hops_implied": null,
+ "embargo_rate": null
+}

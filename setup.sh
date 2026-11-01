@@ -58,6 +58,10 @@ while [[ $# -gt 0 ]]; do
             echo "                         monero-sim-peerlist-dump.patch    --peerlist-dump-file (eclipse measurement)"
             echo "                         monero-sim-pop.patch              --sim-publish-or-perish (PoP countermeasure)"
             echo "                         monero-sim-tail-emission.patch    --sim-tail-emission-height (mainnet 0.6 XMR reward)"
+            echo "                         monero-sim-txrelay-log.patch      --sim-log-txrelay (Dandelion++ relay log)"
+            echo "                         monero-sim-subnet-dedup.patch     --sim-subnet-dedup (outbound peer grouping; stock = 24)"
+            echo "                         monero-sim-fixed-randomx-seed.patch --sim-fixed-randomx-seed (no RandomX epoch change at block 2113)"
+            echo "                         monero-sim-stemmable-inbound.patch --sim-stemmable-inbound (tevador MRL #160 stemmable inbound stems) + --sim-stemmable-cidrs"
             echo "                         Built in a worktree; the primary monerod stays vanilla."
             echo "                         Installs ~/.monerosim/bin/monerod-sim and the alias monerod-hf."
             echo "                         --hardfork is accepted as a synonym."
@@ -1231,6 +1235,13 @@ install_sim_monerod() {
     #   patches/monero-sim-peerlist-dump.patch    --peerlist-dump-file (measurement only)
     #   patches/monero-sim-pop.patch              --sim-publish-or-perish (countermeasure sims)
     #   patches/monero-sim-tail-emission.patch    --sim-tail-emission-height (tail emission)
+    #   patches/monero-sim-txrelay-log.patch      --sim-log-txrelay (measurement only)
+    #   patches/monero-sim-subnet-dedup.patch     --sim-subnet-dedup (outbound peer grouping; stock = 24)
+    #   patches/monero-sim-fixed-randomx-seed.patch --sim-fixed-randomx-seed (no RandomX epoch change at block 2113)
+    #   patches/monero-sim-uniform-whitelist-pick.patch --sim-uniform-whitelist-pick (white-list pick uniform, not recency-biased)
+    #   patches/monero-sim-whitelist-candidates.patch   --sim-whitelist-candidates N (candidates per white-list pick; stock 20, 0 = all)
+    #   patches/monero-sim-random-whitelist-candidates.patch --sim-random-whitelist-candidates (the N candidates sampled at random, not the N newest)
+    #   patches/monero-sim-peerlist-limits.patch   --sim-white-peerlist-limit N / --sim-gray-peerlist-limit N (runtime list limits; stock 1000 / 5000)
     # One build serves the fork-schedule, native-mining and eclipse-measurement
     # features; monerod-hf is kept as a symlink alias so the hard fork and
     # eclipse configs that name it keep working.
@@ -1241,6 +1252,16 @@ install_sim_monerod() {
         "$SCRIPT_DIR/patches/monero-sim-peerlist-dump.patch"
         "$SCRIPT_DIR/patches/monero-sim-pop.patch"
         "$SCRIPT_DIR/patches/monero-sim-tail-emission.patch"
+        "$SCRIPT_DIR/patches/monero-sim-txrelay-log.patch"
+        "$SCRIPT_DIR/patches/monero-sim-subnet-dedup.patch"
+        "$SCRIPT_DIR/patches/monero-sim-fixed-randomx-seed.patch"
+        "$SCRIPT_DIR/patches/monero-sim-uniform-whitelist-pick.patch"
+        "$SCRIPT_DIR/patches/monero-sim-whitelist-candidates.patch"
+        "$SCRIPT_DIR/patches/monero-sim-random-whitelist-candidates.patch"
+        "$SCRIPT_DIR/patches/monero-sim-peerlist-limits.patch"
+        "$SCRIPT_DIR/patches/monero-sim-stemmable-inbound.patch"
+        "$SCRIPT_DIR/patches/monero-sim-peerlist-ports-per-host.patch"
+        "$SCRIPT_DIR/patches/monero-sim-id-consistency.patch"
     )
     local p
     for p in "${patches[@]}"; do

@@ -1,0 +1,30 @@
+{
+ "run_id": "20261023_052647_lean_24_none_h300_k21_w13h_p3_m2_n600_s12345",
+ "box": "phantom",
+ "cell": "lean_24_none_h300_k21_w13h_p3_m2_n600_s12345",
+ "archived_at": "2026-10-23T05:27:21Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "2h 37m",
+ "exit_code": 0,
+ "min_avail_mb": 11751,
+ "txs_created": 1010,
+ "txs_in_blocks": 1009,
+ "note": "E21 / P10a: the tail probe (first/last 3 relays of each start order log picks and dump lists), 13 h warmup, seed 12345; 0.1626 vs 0.1662 without the probe",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 21,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.1626,
+ "light_out_quarters": [
+  0.1629,
+  0.1621,
+  0.1639,
+  0.1616
+ ],
+ "model_out": 0.0822,
+ "fluff_per_hop": 0.191,
+ "stem_txs": 1097,
+ "stem_hops_implied": 5.24,
+ "embargo_rate": 0.0
+}

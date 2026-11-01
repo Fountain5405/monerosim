@@ -1,0 +1,45 @@
+network 7.31 GH/s; mining revenue 0.27-0.71 EUR per kH/s-month
+today's fleet address bill: reachable 11-16 kEUR/month; full footprint 81-122 kEUR/month (one IP per entry)
+
+== A. admission price w per node: what the fleet pays (rental), what the honest side needs
+w= 1 kH/s  reachable fleet     2.6 MH/s =  0.04% of network, EUR     11-    21 k/month; honest reachable total 1.9 MH/s, all honest 36-57 MH/s (0.8% of network at the high end)
+w= 1 kH/s  full footprint     20.3 MH/s =  0.28% of network, EUR     81-   162 k/month; honest reachable total 1.9 MH/s, all honest 36-57 MH/s (0.8% of network at the high end)
+w= 3 kH/s  reachable fleet     7.9 MH/s =  0.11% of network, EUR     32-    63 k/month; honest reachable total 5.6 MH/s, all honest 108-171 MH/s (2.3% of network at the high end)
+w= 3 kH/s  full footprint     60.8 MH/s =  0.83% of network, EUR    243-   487 k/month; honest reachable total 5.6 MH/s, all honest 108-171 MH/s (2.3% of network at the high end)
+w=10 kH/s  reachable fleet    26.4 MH/s =  0.36% of network, EUR    106-   212 k/month; honest reachable total 18.5 MH/s, all honest 360-569 MH/s (7.8% of network at the high end)
+w=10 kH/s  full footprint    202.8 MH/s =  2.77% of network, EUR    811-  1622 k/month; honest reachable total 18.5 MH/s, all honest 360-569 MH/s (7.8% of network at the high end)
+w=30 kH/s  reachable fleet    79.3 MH/s =  1.09% of network, EUR    317-   635 k/month; honest reachable total 55.6 MH/s, all honest 1080-1706 MH/s (23.3% of network at the high end)
+w=30 kH/s  full footprint    608.4 MH/s =  8.32% of network, EUR   2434-  4867 k/month; honest reachable total 55.6 MH/s, all honest 1080-1706 MH/s (23.3% of network at the high end)
+
+== B. keep-out: the highest price each attacker budget can still pay (w_max, kH/s per node)
+budget    fleet            rental   farm(gross)  farm(net of mining at 150-400 EUR/XMR)
+    25k   reachable fleet     1.6         7.6         12.4
+    25k   full footprint      0.2         1.0          1.6
+   250k   reachable fleet    15.8        75.6        124.0
+   250k   full footprint      2.1         9.9         16.2
+  2500k   reachable fleet   157.5       756.1       1239.6
+  2500k   full footprint     20.5        98.6        161.7
+honest nodes dropping out at w (assumed): 1 kH/s: 20-40%, 3 kH/s: 50-70%, 10 kH/s: 80-95%, 30 kH/s: 97-100%
+
+== C. the chain-share ceiling: price needed to make the reachable fleet hold x% of the network
+ 1% of network -> w =       28 kH/s per node (~1 rented servers per node)
+ 5% of network -> w =      138 kH/s per node (~5 rented servers per node)
+15% of network -> w =      415 kH/s per node (~14 rented servers per node)
+34% of network -> w =      940 kH/s per node (~31 rented servers per node)
+
+== D. hashrate-weighted selection: slot share = hashrate share; what a share costs the fleet
+share   1%:  0.07 GH/s = 73,103 cores; rental EUR 0.3-0.6 M/month, farm gross 0.07-0.11 M, net of mining 0.02-0.09 M
+share   5%:  0.37 GH/s = 365,514 cores; rental EUR 1.5-2.9 M/month, farm gross 0.37-0.55 M, net of mining 0.11-0.45 M
+share  15%:  1.10 GH/s = 1,096,542 cores; rental EUR 4.4-8.8 M/month, farm gross 1.10-1.64 M, net of mining 0.32-1.35 M
+share  34%:  2.49 GH/s = 2,485,494 cores; rental EUR 9.9-19.9 M/month, farm gross 2.49-3.73 M, net of mining 0.72-3.07 M
+voucher capacity of a 30% pool at w=1 kH/s: 2,193,083 memberships
+
+== E1. inbound beyond a per-/16 quota pays a workshare of D hashes per handshake
+fleet inbound at a seed today: 7 of 173 connections; fan-in harvesters 47 IPs in 31 groups
+D=1e+05: honest node  0.14 cores | lab sweep at 300 s    4200 cores = EUR 16.8-33.6 k/month (60 s sweeps x5) | fan-in harvesters  0.54 cores; attacker/honest ratio 30,240x
+D=1e+06: honest node  1.39 cores | lab sweep at 300 s   42000 cores = EUR 168.0-336.0 k/month (60 s sweeps x5) | fan-in harvesters  5.44 cores; attacker/honest ratio 30,240x
+D=1e+07: honest node 13.89 cores | lab sweep at 300 s  420000 cores = EUR 1680.0-3360.0 k/month (60 s sweeps x5) | fan-in harvesters 54.40 cores; attacker/honest ratio 30,240x
+
+== E2. gray-list entries carry attested work: D_e hashes per ip:port per day; unreachable nodes pay nothing
+honest reachable node spends 0.1 core (8.6e+06 hashes/day): PEG 5,154 entries EUR 2-4 k/month (per-IP pricing would cut it to 1,548 entries, 3.3x); operator 17,636 entries EUR 7-14 k; cumulative footprint 53,892 entries EUR 22-43 k = 0.07% of network; honest reachable total 0.2 MH/s; entries per honest reachable node 29:1
+honest reachable node spends 1.0 core (8.6e+07 hashes/day): PEG 5,154 entries EUR 21-41 k/month (per-IP pricing would cut it to 1,548 entries, 3.3x); operator 17,636 entries EUR 71-141 k; cumulative footprint 53,892 entries EUR 216-431 k = 0.74% of network; honest reachable total 1.9 MH/s; entries per honest reachable node 29:1

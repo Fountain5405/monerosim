@@ -1,0 +1,30 @@
+{
+ "run_id": "20261022_202954_lean_24_none_h300_k1_w6h_p3_m113_s12345",
+ "box": "phantom",
+ "cell": "lean_24_none_h300_k1_w6h_p3_m113_s12345",
+ "archived_at": "2026-10-22T20:29:54Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "1h 59m",
+ "exit_code": 0,
+ "min_avail_mb": 9806,
+ "txs_created": 1067,
+ "txs_in_blocks": 1050,
+ "note": "E16 probe: X1 core with the first/last 3 relays of each start order dumping peer lists and logging net.p2p DEBUG; same seed as E14, share 0.0365 vs 0.0352 (logging does not move it)",
+ "scored_cell": "24/none",
+ "spies": 113,
+ "spy_24s": 1,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0365,
+ "light_out_quarters": [
+  0.0475,
+  0.0384,
+  0.032,
+  0.0289
+ ],
+ "model_out": 0.0045,
+ "fluff_per_hop": 0.199,
+ "stem_txs": 1074,
+ "stem_hops_implied": 5.03,
+ "embargo_rate": 0.0
+}

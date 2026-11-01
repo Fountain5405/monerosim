@@ -1,0 +1,30 @@
+{
+ "run_id": "20261021_122751_lean_legacy_none_h71_k1_s12345",
+ "box": "phantom",
+ "cell": "lean_legacy_none_h71_k1_s12345",
+ "archived_at": "2026-10-21T12:27:51Z",
+ "monerod_sim_sha": "ecaadf741f63",
+ "wall": "43m 11s",
+ "exit_code": 0,
+ "min_avail_mb": 15994,
+ "txs_created": 1056,
+ "txs_in_blocks": 1053,
+ "note": "Lean H=71, 13 spies in 1 /24: the one-spy-slot ceiling (model 0.075)",
+ "scored_cell": "legacy/none",
+ "spies": 13,
+ "spy_24s": 1,
+ "honest_reachable": 71,
+ "honest_reachable_24s": 60,
+ "light_out": 0.061,
+ "light_out_quarters": [
+  null,
+  null,
+  null,
+  null
+ ],
+ "model_out": null,
+ "fluff_per_hop": 0.22,
+ "stem_txs": 1061,
+ "stem_hops_implied": 4.55,
+ "embargo_rate": 0.0
+}

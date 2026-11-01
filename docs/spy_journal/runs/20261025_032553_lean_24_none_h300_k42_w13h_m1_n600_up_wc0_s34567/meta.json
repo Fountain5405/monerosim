@@ -1,0 +1,30 @@
+{
+ "run_id": "20261025_032553_lean_24_none_h300_k42_w13h_m1_n600_up_wc0_s34567",
+ "box": "simbox3",
+ "cell": "lean_24_none_h300_k42_w13h_m1_n600_up_wc0_s34567",
+ "archived_at": "2026-10-25T03:27:00Z",
+ "monerod_sim_sha": "14852a861c75",
+ "wall": "4h 26m",
+ "exit_code": 0,
+ "min_avail_mb": 81032,
+ "txs_created": 1033,
+ "txs_in_blocks": 1026,
+ "note": "P30 (E41): P26 at a third seed (34567) on simbox3's eleven-patch binary (sha 14852a861c75); light 0.1482 = 0.97x this seed's 0.1523 ceiling (243 honest /24s), quarters 0.1481-0.1485 (flat to 0.3%), relays 0.147, users 0.1521; start-order quarters 0.143/0.149/0.143/0.154 (latest 1.08x earliest); sp_r recall 0.146, 39 of 40 exposed; both flag lines in all 382 logs; three seeds 0.1577/0.1557/0.1482, mean 0.1539, spread 0.0095, mean 1.005x the ceiling; wall 4 h 27 m",
+ "scored_cell": "24/none",
+ "spies": 42,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 243,
+ "light_out": 0.1482,
+ "light_out_quarters": [
+  0.1481,
+  0.1485,
+  0.148,
+  0.1483
+ ],
+ "model_out": 0.1523,
+ "fluff_per_hop": 0.192,
+ "stem_txs": 1088,
+ "stem_hops_implied": 5.21,
+ "embargo_rate": 0.0
+}
