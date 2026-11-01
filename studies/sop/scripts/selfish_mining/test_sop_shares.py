@@ -3,7 +3,7 @@ from .claude/campaign7/analysis)."""
 import json
 from pathlib import Path
 
-from scripts.selfish_mining.sop_shares import judged, miner, miner_blocks
+from studies.sop.scripts.selfish_mining.sop_shares import judged, miner, miner_blocks
 
 ID = lambda n: ("%064x" % n)
 

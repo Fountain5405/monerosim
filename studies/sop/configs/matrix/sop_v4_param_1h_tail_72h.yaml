@@ -9,7 +9,7 @@
 # changes every block hash, so this is a fresh draw, not a replay.
 name: sop_v4_param_1h_tail_72h
 seed: 27791
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 72h
 axes:

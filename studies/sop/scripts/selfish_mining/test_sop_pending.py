@@ -1,9 +1,9 @@
-"""Tests for scripts/selfish_mining/sop_pending.py: honest workshares that
+"""Tests for studies/sop/scripts/selfish_mining/sop_pending.py: honest workshares that
 honest-001 had received but that sat in no honest block when an attacker
 branch was revealed (results doc 4.1 hypothesis)."""
 import json
 
-from scripts.selfish_mining.sop_pending import reveal_pending
+from studies.sop.scripts.selfish_mining.sop_pending import reveal_pending
 
 EPOCH_MS = 946684800000
 

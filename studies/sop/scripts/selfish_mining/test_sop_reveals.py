@@ -5,7 +5,7 @@ import json
 import time
 from pathlib import Path
 
-from scripts.selfish_mining.sop_reveals import (bucket, found_ids, node_depths, race_leads,
+from studies.sop.scripts.selfish_mining.sop_reveals import (bucket, found_ids, node_depths, race_leads,
                                   reorg_events, reveal_shapes, run_stats)
 
 ID = lambda n: ("%064x" % n)

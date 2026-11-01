@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Share-or-Perish conformance oracle (docs/20260930_sop_conformance.md).
+"""Share-or-Perish conformance oracle (studies/sop/docs/20260930_sop_conformance.md).
 
 Recomputes every `SIM-SoP-DEC` fork-choice decision from its logged inputs
 only (never from the daemon's own result fields) and flags disagreement.
 Written from MRL #146 and the conventions in the doc above; independent of
-`patches/monero-sim-pop.patch`.
+`studies/sop/patches/monero-sim-pop.patch`.
 
 Usage:
-  python scripts/sop_oracle.py check RUN_DIR [RUN_DIR ...]
+  python studies/sop/scripts/sop_oracle.py check RUN_DIR [RUN_DIR ...]
 """
 from __future__ import annotations
 

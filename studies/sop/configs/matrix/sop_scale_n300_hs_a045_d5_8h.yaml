@@ -1,6 +1,6 @@
 # 2026-10-24: arm re-pointed to the objects give-up (give_up_objects '5'),
 # measured on 12 daemons at 0.209/0.210 over 72 h with 0 h stranded
-# (sop_v4_o5_72h, docs/20261023_sop_scale_n300_smoke.md s3.1). The block-rule
+# (sop_v4_o5_72h, studies/sop/docs/20261023_sop_scale_n300_smoke.md s3.1). The block-rule
 # attacker this spec carried before sat stranded 6.5 of the smoke's 8 h
 # (same doc s2); the 12-daemon reference for the block rule is 0.054.
 # sop_scale_n300_hs_a045_d5_8h (2026-10-21): rung 1 of the SoP scale check. A
@@ -15,21 +15,21 @@
 #      12-daemon cells' setting), the ladder used false, and the perf doc says
 #      true can freeze runs. A freeze shows as sim time not advancing in the
 #      progress log; the fix to try is native_preemption: false in
-#      test_configs/selfish_micro_sop.yaml's general section, then regenerate;
+#      studies/sop/configs/selfish_micro_sop.yaml's general section, then regenerate;
 #   4. whether the share-aware attacker still works with 300 relays between it
 #      and the honest miners: its miner embeds gossiped shares (the remote
 #      count on its "SIM-SoP: embedding ... own, ... remote" log lines,
-#      patches/monero-sim-pop.patch, is > 0) and scripts/sop_oracle.py check
+#      studies/sop/patches/monero-sim-pop.patch, is > 0) and studies/sop/scripts/sop_oracle.py check
 #      reports 0 mismatches on every node that logs decisions.
 #
-# Network: test_configs/selfish_micro_sop.yaml (the 12-daemon base, unchanged
+# Network: studies/sop/configs/selfish_micro_sop.yaml (the 12-daemon base, unchanged
 # miners: attacker 4.5 h/s, honest 2.75 + 2.75, D0 1200) plus 300 daemon-only
 # relays, one started per 10 s from 20 min (the other box's linear start),
 # the last at 4,190 s. 313 hosts on gml_processing/1200_nodes_caida_with_loops.gml.
-# Regenerate the base with scripts/make_sop_scale_base.py (see its header).
+# Regenerate the base with studies/sop/scripts/make_sop_scale_base.py (see its header).
 #
 # Arm = the v4 campaign cell share_sop2_hs_a045_d5 (sop_v4_h10_72h, measured
-# 0.054 over 72 h on 12 daemons; docs/20261022_sop_v4_results.md):
+# 0.054 over 72 h on 12 daemons; studies/sop/docs/20261022_sop_v4_results.md):
 # window_stubborn, reject_aware, embedded_shares, window_rule 20261020,
 # window_objects 32, weigh sop, give_up_depth 5, use_honest_shares true,
 # tip_shares true (the counting attacker; count_own_tip_shares defaults
@@ -45,7 +45,7 @@
 # run concurrently; one scale run alone is the ladder's configuration.
 name: sop_scale_n300_hs_a045_d5_8h
 seed: 27782
-base: test_configs/selfish_micro_sop_scale300.yaml
+base: studies/sop/configs/selfish_micro_sop_scale300.yaml
 parallel: 1
 stop_time: 8h
 axes:

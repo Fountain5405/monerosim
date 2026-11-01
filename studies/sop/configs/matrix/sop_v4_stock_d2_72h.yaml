@@ -1,5 +1,5 @@
 # sop_v4_stock_d2_72h (2026-10-27): the stock network with the race model's
-# best stock attacker, giving up 2 blocks behind (scripts/sop_stock_crossing.py
+# best stock attacker, giving up 2 blocks behind (studies/sop/scripts/sop_stock_crossing.py
 # d=2: crossing 0.365, the headline's stock figure, so far model-only). The
 # validated stock cells (sop_v4_o5_stock_72h) are the same attacker with
 # give-up depth 5, which the model reproduces like for like (0.394 vs 0.398 at
@@ -10,7 +10,7 @@
 # rates 0.216 attacker / 0.209 network.
 name: sop_v4_stock_d2_72h
 seed: 27791
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 72h
 axes:

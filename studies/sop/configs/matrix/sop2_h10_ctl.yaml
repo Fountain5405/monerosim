@@ -1,5 +1,5 @@
 # SoP v2 upgrade-transition controls on the h10 base — first draw of an n=2
-# pair (docs/20260926_sop_h10_rerun.md, reading 5; owner decision 2026-09-26).
+# pair (studies/sop/docs/20260926_sop_h10_rerun.md, reading 5; owner decision 2026-09-26).
 #
 # Question: pop_sop2_h10's honest control under SoP ({0.440, 0.326}) lost 17
 # same-height races in its second draw, all by the honest-strategy attacker,
@@ -27,9 +27,9 @@
 #
 # Second draw: sop2_h10_ctl_rep.yaml (seed 54321).
 #
-#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/sop2_h10_ctl.yaml
+#   venv/bin/python scripts/selfish_matrix.py studies/sop/configs/matrix/sop2_h10_ctl.yaml
 name: sop2_h10_ctl
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 2
 axes:
   attacker:

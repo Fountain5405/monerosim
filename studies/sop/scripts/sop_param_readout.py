@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Second-round readout for sop_v4_param_72h (2026-10-27): per alpha, the sims'
 mean share over seeds next to the race model's prediction for the same knobs
-(data/sop_search/stage3_curve.jsonl, 2000 d x 3 seeds), reveals per 1,000 found
+(studies/sop/data/sop_search/stage3_curve.jsonl, 2000 d x 3 seeds), reveals per 1,000 found
 blocks (model and, with --pool, sims), and the
 sims' crossing of honest mining two ways: linear interpolation of the mean
 (share - alpha) between the two alphas that bracket zero, and a least-squares
@@ -15,7 +15,7 @@ import re
 import statistics as st
 import sys
 
-KNOBS = {  # the spec's knobs per alpha cell (test_configs/matrix/sop_v4_param_72h.yaml)
+KNOBS = {  # the spec's knobs per alpha cell (studies/sop/configs/matrix/sop_v4_param_72h.yaml)
     0.45: dict(G=6, L=1, M=1, R=1, Z=1), 0.46: dict(G=6, L=1, M=1, R=1, Z=1),
     0.47: dict(G=6, L=1, M=1, R=1, Z=1), 0.48: dict(G=8, L=1, M=1, R=1, Z=1),
     0.50: dict(G=20, L=0, M=1, R=3, Z=1),
@@ -75,7 +75,7 @@ def main(argv):
     args = [x for x in argv[1:] if not x.startswith("--pool=")]
     pool = next((x.split("=", 1)[1] for x in argv[1:] if x.startswith("--pool=")), None)
     cells = args[0]
-    model = model_rows(args[1] if len(args) > 1 else "data/sop_search/stage3_curve.jsonl")
+    model = model_rows(args[1] if len(args) > 1 else "studies/sop/data/sop_search/stage3_curve.jsonl")
     sims = sim_cells(cells)
     print("| alpha | knobs | model share | sim shares | sim mean | sim - model | sim - alpha | "
           "reveals per 1,000 found, model / sims | health |")

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """The stock network's selfish-mining crossing in the race model, for the
-comparison with SoP's (docs/20261026_sop_attacker_search.md). The attacker
-is the model's stock stubborn rule (scripts/sop_race_model.py
+comparison with SoP's (studies/sop/docs/20261026_sop_attacker_search.md). The attacker
+is the model's stock stubborn rule (studies/sop/scripts/sop_race_model.py
 stubborn_policy under rule "stock": withhold while unopposed, reveal once
 ahead by a block after an honest block, give up when behind by d blocks),
 swept over d and alpha; the sims measured 0.398 at 0.40 and 0.528 at 0.45
 for the stock network's window_stubborn attacker.
 
-    python scripts/sop_stock_crossing.py --alphas 0.30 0.32 0.34 0.36 0.38 0.40 0.42 \\
-        --d 1 2 3 --days 2000 --seeds 1 2 3 --workers 12 --out data/sop_search/stock_crossing.jsonl
+    python studies/sop/scripts/sop_stock_crossing.py --alphas 0.30 0.32 0.34 0.36 0.38 0.40 0.42 \\
+        --d 1 2 3 --days 2000 --seeds 1 2 3 --workers 12 --out studies/sop/data/sop_search/stock_crossing.jsonl
 
 One JSON line per run (resumable), then the share per (d, alpha) and the
 crossing per d. Never on the control box.
@@ -24,11 +24,11 @@ from multiprocessing import Pool
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-if __name__ == "__main__":   # run as `python scripts/sop_stock_crossing.py`
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+if __name__ == "__main__":   # run as `python studies/sop/scripts/sop_stock_crossing.py`
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from scripts.sop_attacker_search import crossing
-from scripts.sop_race_model import SimConfig, simulate
+from studies.sop.scripts.sop_attacker_search import crossing
+from studies.sop.scripts.sop_race_model import SimConfig, simulate
 
 
 def stock_config(alpha: float, days: float, seed: int, d: int = 2) -> SimConfig:

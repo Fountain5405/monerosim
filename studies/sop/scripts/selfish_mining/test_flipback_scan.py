@@ -1,10 +1,10 @@
-"""Tests for scripts/selfish_mining/flipback_scan.py (ported from
+"""Tests for studies/sop/scripts/selfish_mining/flipback_scan.py (ported from
 .claude/campaign7/flipback_scan.py): per-node reorgs onto the attacker's
 blocks, and whether each is undone within WINDOW_S of sim time."""
 import sys
 from pathlib import Path
 
-from scripts.selfish_mining.flipback_scan import attacker_ids, main
+from studies.sop.scripts.selfish_mining.flipback_scan import attacker_ids, main
 
 ID = lambda n: ("%064x" % n)
 

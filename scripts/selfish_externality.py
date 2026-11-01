@@ -3,7 +3,7 @@
 
 The revenue-share verdicts in selfish_mining_analysis.py answer "did the
 attack pay?". These metrics answer the questions the 2025 Monero literature
-actually turned on (see docs/20260920_selfish_mining_literature.md):
+actually turned on (see studies/sop/docs/20260920_selfish_mining_literature.md):
 
 - Lee & Kim 2025 (Qubic campaign): the attack was mostly UNPROFITABLE yet
   still damaged the network — orphan storms, multi-block reorgs. Metrics:

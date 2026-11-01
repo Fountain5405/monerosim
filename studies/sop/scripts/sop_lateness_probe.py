@@ -15,8 +15,8 @@ log it ("ref", log v2) replay with it.
             the switch), under both n_f rules, and count reverse SWITCHes
 
 Usage:
-  python -m scripts.sop_lateness_probe example
-  python -m scripts.sop_lateness_probe replay RUN_DIR [RUN_DIR ...]
+  python -m studies.sop.scripts.sop_lateness_probe example
+  python -m studies.sop.scripts.sop_lateness_probe replay RUN_DIR [RUN_DIR ...]
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from scripts.sop_oracle import decide, parse_log_line
+from studies.sop.scripts.sop_oracle import decide, parse_log_line
 
 RULES = ("alt", "either")
 

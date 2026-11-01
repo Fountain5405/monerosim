@@ -17,7 +17,7 @@ to close to one. This apparatus runs at gamma~0: a released equal-height tie
 block does not propagate (a reactive attacker publishing through its own
 bridges is always second), so the attacker loses every tie and the
 tie-exploiting variants realize at or below eyal_sirer -- they are built to pay
-off at gamma>0. See docs/20260912_selfish_mining_results.md and the specs under
+off at gamma>0. See studies/sop/docs/20260912_selfish_mining_results.md and the specs under
 docs/superpowers/specs/2026-09-12-selfish-mining-apparatus-design.md (+ -phase2-design.md).
 
 `window_stubborn` attacks Share-or-Perish (SoP): SoP judges a fork subjectively
@@ -40,7 +40,7 @@ rule can strand the attacker: past the window and behind by weight it can
 never reveal, yet its block count keeps pace with honest's (the same
 difficulty, a hashrate ratio of 0.45:0.55), so the honest lead rarely
 reaches 5 blocks -- 17-27 h of each 72 h v4 run at alpha 0.45 were spent
-that way (docs/20261023_sop_scale_n300_smoke.md). Past the window there is no "withhold while
+that way (studies/sop/docs/20261023_sop_scale_n300_smoke.md). Past the window there is no "withhold while
 comfortably ahead" arm (unlike eyal_sirer/lead_stubborn): waiting for honest
 to close in only risks losing the weight lead the attacker already has, and
 the spec's own analysis models revealing at the first opportunity once past
@@ -112,7 +112,7 @@ class SelfishStrategy:
         self.window_rule = window_rule
         self._was_tie = False   # equal_fork_stubborn: set on a tie contest (a == h >= 1)
         self.last_weights = None   # window_stubborn: last branch_weights() result seen
-        # learned (2026-10-25, scripts/sop_rl.py): a policy table over the exact-MDP
+        # learned (2026-10-25, studies/sop/scripts/sop_rl.py): a policy table over the exact-MDP
         # observation, loaded at construction so a bad file fails the run at once
         self.policy = None
         self.policy_meta = None
@@ -120,8 +120,8 @@ class SelfishStrategy:
         self.learned_decisions = self.fallback_decisions = self.clipped_decisions = 0
         self.suppressed_reveals = 0
         self.last_learned = None   # (obs, key, action, stored) of the last learned decision
-        # param_stubborn (2026-10-26, scripts/sop_attacker_search.py): the sim's window_stubborn
-        # noown rule with knobs (scripts/sop_policy.py::param_stubborn; G = give_up_objects), run
+        # param_stubborn (2026-10-26, studies/sop/scripts/sop_attacker_search.py): the sim's window_stubborn
+        # noown rule with knobs (studies/sop/scripts/sop_policy.py::param_stubborn; G = give_up_objects), run
         # through the learned decision path (same observation, reveal gate and counters)
         self.publish_lead, self.reveal_margin = int(publish_lead), int(reveal_margin)
         self.reveal_depth, self.block_deficit, self.hold_shares = int(reveal_depth), int(block_deficit), int(hold_shares)
@@ -138,7 +138,7 @@ class SelfishStrategy:
             path = Path(policy_file)
             if not path.is_absolute():
                 path = Path(__file__).resolve().parents[1] / path
-            from scripts.sop_policy import load_policy
+            from studies.sop.scripts.sop_policy import load_policy
             try:
                 self.policy, self.policy_meta = load_policy(str(path))
             except (FileNotFoundError, ValueError) as e:
@@ -187,14 +187,14 @@ class SelfishStrategy:
 
     @staticmethod
     def observation(a: int, h: int, weights, window: Optional[int] = None) -> tuple:
-        """The exact-MDP state (scripts/sop_mdp.py: a, D, xa, pa, h, xh, ph) from
+        """The exact-MDP state (studies/sop/scripts/sop_mdp.py: a, D, xa, pa, h, xh, ph) from
         the 8-tuple _branch_weights() returns: D = attacker objects - honest
         objects (blocks + embedded shares, in OBJECTS, not weight units;
         honest pending excluded), x = objects past each branch's first block
         capped at the window (32 by default: (K - 1) * w) and both collapsed
         to it once either passes, pa = weights[5] - weights[0], ph =
         weights[6] - weights[7]."""
-        from scripts.sop_policy import WINDOW
+        from studies.sop.scripts.sop_policy import WINDOW
         W = WINDOW if window is None else int(window)
         xa, xh = min(int(weights[3]), W), min(int(weights[4]), W)
         if xa >= W or xh >= W:
@@ -212,7 +212,7 @@ class SelfishStrategy:
         branch; reveal is only released if the strategy's own acceptance test
         passes (past the window and ahead by weight, as window_stubborn), else
         it becomes a hold and is counted as suppressed."""
-        from scripts.sop_policy import (GIVE_UP, HOLD, PUBLISH, REVEAL, ACTION_NAMES, key_of, param_stubborn,
+        from studies.sop.scripts.sop_policy import (GIVE_UP, HOLD, PUBLISH, REVEAL, ACTION_NAMES, key_of, param_stubborn,
                                         sim_stubborn)
         give_up = ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=True, forward_to=None)
         hold = ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)
@@ -340,7 +340,7 @@ class SelfishStrategy:
         The a-h>=2 cash is the winning commit path and is load-bearing: without
         it lead_stubborn only ever advances `fork` by conceding, so it can never
         place a block on the canonical chain (realized share 0.000, attacker
-        orphan 1.000 -- the 2026-09-13 bug, see docs/20260912_selfish_mining_results.md).
+        orphan 1.000 -- the 2026-09-13 bug, see studies/sop/docs/20260912_selfish_mining_results.md).
         The cash requires h > 0: while honest has not moved (h == 0) the attacker
         must keep withholding its secret lead, not reveal it. At gamma~0 the held
         tie never propagates, so lead_stubborn realizes at or below eyal_sirer;

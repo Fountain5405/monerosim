@@ -1,4 +1,4 @@
-"""Tests for scripts/sop_attacker_search.py and sop_policy.param_stubborn: the
+"""Tests for studies/sop/scripts/sop_attacker_search.py and sop_policy.param_stubborn: the
 parametric stubborn family searched in the race model (2026-10-26, the
 experiment after the learned attacker's ladder stopped at step 3)."""
 import json
@@ -6,8 +6,8 @@ import random
 
 import pytest
 
-from scripts import sop_policy as P
-from scripts import sop_attacker_search as S
+from studies.sop.scripts import sop_policy as P
+from studies.sop.scripts import sop_attacker_search as S
 
 W = P.WINDOW
 
@@ -69,7 +69,7 @@ def test_run_key_identifies_a_result_line():
 
 
 def test_kw_table_prints_a_row_per_setting_with_both_crossings(tmp_path, capsys):
-    from scripts import sop_kw_table as T
+    from studies.sop.scripts import sop_kw_table as T
     rows = []
     for K, w in ((2, 8), (3, 16)):
         for a, base, best in ((0.45, 0.30, 0.40), (0.48, 0.44, 0.49), (0.50, 0.57, 0.70)):
@@ -85,7 +85,7 @@ def test_kw_table_prints_a_row_per_setting_with_both_crossings(tmp_path, capsys)
 
 def test_window_follows_the_countermeasure_parameters():
     # the policy's window and the environment's observation cap are (K - 1) * w objects, not the constant 32
-    from scripts import sop_rl as RL
+    from studies.sop.scripts import sop_rl as RL
     env = RL.race_env(0.45, 1, 1, K=4, w=16)
     assert env.window_obs == 48
     assert P.param_stubborn((2, 6, 40, 0, 1, 40, 3), W=48) == P.HOLD

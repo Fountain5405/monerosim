@@ -9,7 +9,7 @@
 # Stock, 48 h per cell (Model B: about 5, 15 and 24 10+ reorgs per canonical day).
 name: deep_hunt_stock
 seed: 13580
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 48h
 axes:

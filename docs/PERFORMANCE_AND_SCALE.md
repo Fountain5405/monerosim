@@ -588,7 +588,7 @@ is a 4 GB file):
 
 ```bash
 systemd-run --user --scope -p MemoryMax=12G -p MemorySwapMax=infinity \
-    ./run_sim.sh --config test_configs/x0/cells/x0_legacy_none_s12345.yaml --bootfast --ksm --no-monitor
+    ./run_sim.sh --config studies/antiproxy/configs/x0/cells/x0_legacy_none_s12345.yaml --bootfast --ksm --no-monitor
 ```
 
 | | Uncapped | 12 GB cap |

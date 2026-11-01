@@ -1,4 +1,4 @@
-"""Tests for analysis/spy/run_register.py: add a run, rebuild the register, annotate without overwriting."""
+"""Tests for studies/antiproxy/analysis/spy/run_register.py: add a run, rebuild the register, annotate without overwriting."""
 import json
 import sys
 from pathlib import Path

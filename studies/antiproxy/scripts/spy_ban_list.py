@@ -19,7 +19,7 @@ so the same config, coverage and seed give the same list. The default, 1.0, list
 every spy /24.
 
 Usage:
-    python3 scripts/spy_ban_list.py <expanded_config.yaml> -o <ban_list.txt> [--prefix spy]
+    python3 studies/antiproxy/scripts/spy_ban_list.py <expanded_config.yaml> -o <ban_list.txt> [--prefix spy]
                                     [--coverage 0.5 --seed 12345]
 """
 
@@ -33,7 +33,7 @@ from pathlib import Path
 
 import yaml
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = Path(__file__).resolve().parents[3]
 MONEROSIM_BIN = REPO / "target" / "release" / "monerosim"
 
 

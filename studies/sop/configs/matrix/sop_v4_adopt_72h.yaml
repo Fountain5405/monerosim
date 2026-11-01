@@ -20,7 +20,7 @@
 # over 72 h in the first k2 cell (the archive was 22 GB and filled phantom).
 name: sop_v4_adopt_72h
 seed: 27791
-base: test_configs/selfish_micro_sop_h4.yaml
+base: studies/sop/configs/selfish_micro_sop_h4.yaml
 parallel: 1
 stop_time: 72h
 axes:

@@ -13,7 +13,7 @@
 # rsynced to tr and reanalyzed there.
 name: sop_v4_o5_noown_72h
 seed: 27791
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 2
 stop_time: 72h
 axes:
@@ -47,7 +47,7 @@ axes:
         daemon_options: {sim-share-or-perish: true}
   alpha:
     # 2026-10-24: noown measured 0.288/0.279 at a045 vs 0.209/0.210 with own
-    # tip shares counted (docs/20261024_sop_o5_grid_results.md): the stronger
+    # tip shares counted (studies/sop/docs/20261024_sop_o5_grid_results.md): the stronger
     # attacker, so the sweep is repeated with it (round 3; a040 first on box81).
     a033:
       attacker: {hashrate: 3.3}

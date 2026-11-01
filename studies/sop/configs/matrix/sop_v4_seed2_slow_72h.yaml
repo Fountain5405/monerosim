@@ -3,7 +3,7 @@
 # s1 cells of sop_v4_slow_72h except the attacker's sample attribute.
 name: sop_v4_seed2_slow_72h
 seed: 27791
-base: test_configs/selfish_micro_sop_slow.yaml
+base: studies/sop/configs/selfish_micro_sop_slow.yaml
 parallel: 1
 stop_time: 72h
 axes:

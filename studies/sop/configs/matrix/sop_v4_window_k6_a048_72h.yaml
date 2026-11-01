@@ -4,14 +4,14 @@
 # block than the model, while its K=2 cells matched (0.546 / 0.493 vs 0.514).
 # At 0.48 the model puts K=6's best attacker at break-even (G=8 R=1: share
 # 0.476, 28.9 reveals per 1,000 found blocks, network orphan rate 0.394;
-# data/sop_search/kw_perish_047.jsonl, perish rule on): if the sims' K=6
+# studies/sop/data/sop_search/kw_perish_047.jsonl, perish rule on): if the sims' K=6
 # excess holds, the attack pays here (about 0.52). Same network, options and
 # attacker as the k6 cells except alpha and the give-up threshold (8 objects,
 # the model's best at 0.48; at 0.47 it scored within 0.002 of G=4). One lane
 # per 16 GB box.
 name: sop_v4_window_k6_a048_72h
 seed: 27791
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 72h
 axes:

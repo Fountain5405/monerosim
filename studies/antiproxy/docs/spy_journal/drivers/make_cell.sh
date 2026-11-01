@@ -6,12 +6,12 @@
 # lean_24_none_h300_k42_w24h_m1_n600_fx_s12345 -> dd1f63eb, phantom's bytes.
 set -u
 PHANTOM_CAL_MD5=e5276ee06c11
-REPO=$(cd "$(dirname "$0")/../../.." && pwd)
+REPO=$(cd "$(dirname "$0")/../../../../.." && pwd)
 cal=$HOME/.monerosim/calibration.json
 [ "$(md5sum "$cal" 2>/dev/null | cut -c1-12)" = "$PHANTOM_CAL_MD5" ] \
   || { echo "make_cell: $cal is not phantom's calibration (md5 $PHANTOM_CAL_MD5); copy it first" >&2; exit 2; }
 cd "$REPO" || exit 1
-out=$(MONEROSIM_CORES=32 venv/bin/python -I test_configs/x0/make_lean.py "$@") || exit $?
+out=$(MONEROSIM_CORES=32 venv/bin/python -I studies/antiproxy/configs/x0/make_lean.py "$@") || exit $?
 echo "$out"
 cell=$(echo "$out" | grep -oE '[^ ]+/cells/[^ ]+\.yaml' | tail -1)
 [ -n "$cell" ] && md5sum "$cell"

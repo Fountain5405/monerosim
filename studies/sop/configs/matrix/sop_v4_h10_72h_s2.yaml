@@ -10,7 +10,7 @@
 # independent sample, not a repetition.
 name: sop_v4_h10_72h_s2
 seed: 27791
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 72h
 axes:

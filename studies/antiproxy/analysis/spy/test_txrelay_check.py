@@ -1,6 +1,6 @@
-"""Tests for analysis/spy/txrelay_check.py on a hand-built 3-node run.
+"""Tests for studies/antiproxy/analysis/spy/txrelay_check.py on a hand-built 3-node run.
 
-Run: python3 -m pytest analysis/spy/test_txrelay_check.py
+Run: python3 -m pytest studies/antiproxy/analysis/spy/test_txrelay_check.py
 """
 import json
 import sys

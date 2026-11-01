@@ -6,7 +6,7 @@
 # Same seed, cells and stop_time as stubborn_h10_rep2; KSM on.
 name: sop_rev2_h10_rep2
 seed: 24680
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 4
 axes:
   arm:

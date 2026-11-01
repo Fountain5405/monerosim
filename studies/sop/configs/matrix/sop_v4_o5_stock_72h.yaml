@@ -14,7 +14,7 @@
 # Runs on phantom (a033, a040) and lithium (a045) through run_lane.py.
 name: sop_v4_o5_stock_72h
 seed: 27791
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 2
 stop_time: 72h
 axes:

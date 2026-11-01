@@ -9,7 +9,7 @@
 # Smoke: both arms at alpha 0.45 for 6 h (Model B: about 6 stock and 1 SoP 10+ reveals).
 name: deep_hunt_smoke
 seed: 13579
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 6h
 axes:

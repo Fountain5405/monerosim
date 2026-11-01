@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Daemon-log health check for fork-choice experiments.
 
-Review 2026-09-25 (docs/20260925_e4_code_data_review.md): the SoP v2 cells
+Review 2026-09-25 (studies/sop/docs/20260925_e4_code_data_review.md): the SoP v2 cells
 "worked" on a binary whose every reorganization threw, and both honest
 controls never forked. Both facts were in the daemon logs and nothing
 looked. This looks, per node:

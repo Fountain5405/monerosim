@@ -3,7 +3,7 @@
 # Same seed, cells and stop_time as stubborn_h10_long_depth; KSM on.
 name: sop_either_h10_long_depth
 seed: 12345
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 2
 stop_time: 240h
 axes:

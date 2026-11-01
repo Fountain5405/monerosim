@@ -1,9 +1,9 @@
-"""Pins on patches/monero-sim-pop.patch. setup.sh builds the patch outside
+"""Pins on studies/sop/patches/monero-sim-pop.patch. setup.sh builds the patch outside
 pytest and no C++ test covers it, so these guard fixes that a regenerated
 patch could silently drop."""
 from pathlib import Path
 
-PATCH = Path(__file__).resolve().parent.parent / "patches" / "monero-sim-pop.patch"
+PATCH = Path(__file__).resolve().parent.parent / "studies" / "sop" / "patches" / "monero-sim-pop.patch"
 
 
 def test_miner_invalidates_the_cached_block_id_on_every_nonce():
@@ -53,7 +53,7 @@ def test_sop_does_not_score_a_peers_height_drop():
 
 
 def test_sop_log_v4_and_window_rule():
-    """MRL #146 2026-10-16/2026-10-20 (docs/20260930_sop_conformance.md, log v4)."""
+    """MRL #146 2026-10-16/2026-10-20 (studies/sop/docs/20260930_sop_conformance.md, log v4)."""
     t = PATCH.read_text()
     assert '{\\"v\\":4' in t
     assert "(m_sim_sop_k - 1) * m_sim_sop_w" in t          # window = (k-1)*w

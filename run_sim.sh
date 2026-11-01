@@ -1278,7 +1278,7 @@ plan_and_launch_shadow() {
         # Many small runs at once (2026-10-04). The plan below gives whole
         # cores to the first runs. When few cores are left it gives a later
         # run fewer workers than it has hosts, and native-mining cells stall
-        # below one worker per host (test_configs/selfish_micro_sop.yaml).
+        # below one worker per host (studies/sop/configs/selfish_micro_sop.yaml).
         # When none are left, it lets the rest pin onto CPUs 0..N-1. With
         # Shadow's pinning off and no mask, Linux spreads every worker of
         # every run over all CPUs. Workers stay as the YAML says: 0 means
@@ -2078,7 +2078,7 @@ archive_daemon_logs() {
     # them was --no-clean plus a manual copy out of /tmp. Land each one beside
     # that node's bitmonero.log; analysis/eclipse/analyze_peerlist_dumps.py
     # reads this layout directly. The Dandelion++ relay logs
-    # (--sim-log-txrelay=txrelay.jsonl, patches/monero-sim-txrelay-log.patch)
+    # (--sim-log-txrelay=txrelay.jsonl, studies/antiproxy/patches/monero-sim-txrelay-log.patch)
     # resolve the same way and are archived the same way.
     # The find is rooted at the monero-* dirs, not at $DAEMON_DATA_BASE: that
     # base is normally this run's own /tmp/monerosim-<run_id>/, but a config

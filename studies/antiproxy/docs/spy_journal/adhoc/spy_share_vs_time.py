@@ -2,7 +2,7 @@
 Usage: python3 -I spy_share_vs_time.py <run_dir>   (run from the repo root)"""
 import sys, re
 from collections import defaultdict
-sys.path.insert(0, "analysis/spy"); sys.path.insert(0, "analysis"); sys.path.insert(0, ".")
+sys.path.insert(0, "studies/antiproxy/analysis/spy"); sys.path.insert(0, "analysis"); sys.path.insert(0, ".")
 import x0_calibration as x
 tm = x.topology_metrics
 run = sys.argv[1]

@@ -10,7 +10,7 @@
 # agreement with Model B's with-shares column; the count can't separate the two.
 name: deep_hunt_sop_hs_a040
 seed: 13682
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 240h
 axes:

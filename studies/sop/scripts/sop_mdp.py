@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """SoP (MRL #146, 2026-10-20 rule) as a Markov decision process.
 
-The transition rules are those of scripts/sop_race_model.py Model B (rule
+The transition rules are those of studies/sop/scripts/sop_race_model.py Model B (rule
 "sop", RULE_PRESETS["20261020"]: either_window, count_honest_pending,
 attacker_embeds, release_depth 0, no ties, no equal_start, no early honest
 shares), restated over a compact state so the states can be counted and the
@@ -74,9 +74,9 @@ Subcommands:
               summary, optionally dumps the policy as JSON.
 
 Examples:
-  venv/bin/python scripts/sop_mdp.py enumerate --alpha 0.45
-  venv/bin/python scripts/sop_mdp.py evaluate --alpha 0.45 --give-up-objects 5 --test-own-pending count
-  venv/bin/python scripts/sop_mdp.py solve --alpha 0.45 --out policy_a045.json
+  venv/bin/python studies/sop/scripts/sop_mdp.py enumerate --alpha 0.45
+  venv/bin/python studies/sop/scripts/sop_mdp.py evaluate --alpha 0.45 --give-up-objects 5 --test-own-pending count
+  venv/bin/python studies/sop/scripts/sop_mdp.py solve --alpha 0.45 --out policy_a045.json
 """
 from __future__ import annotations
 

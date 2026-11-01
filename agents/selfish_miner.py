@@ -25,7 +25,7 @@ Attributes (via --attributes KEY VALUE):
                         "window_stubborn" | "deep_hunt" | "learned" |
                         "param_stubborn"  (default "honest")
     policy_file         learned (2026-10-25): the gzip-JSON policy table
-                        scripts/sop_rl.py trained, a diff against the
+                        studies/sop/scripts/sop_rl.py trained, a diff against the
                         window_stubborn noown rule (relative to the repository
                         root unless absolute); the strategy needs weigh "sop",
                         window_rule "20261020", window_objects 32 and
@@ -35,9 +35,9 @@ Attributes (via --attributes KEY VALUE):
                         (optional); must equal the policy file's training alpha.
     publish_lead, reveal_margin, reveal_depth, block_deficit, hold_shares
                         param_stubborn (2026-10-26): the knobs L, M, R, B, Z of
-                        scripts/sop_policy.py::param_stubborn, the window_stubborn
+                        studies/sop/scripts/sop_policy.py::param_stubborn, the window_stubborn
                         noown rule with knobs searched in the race model
-                        (docs/20261026_sop_attacker_search.md); G is
+                        (studies/sop/docs/20261026_sop_attacker_search.md); G is
                         give_up_objects (required >= 0). Defaults 0/1/1/0/0 are
                         the plain rule.
     bridges             comma-separated bridge agent ids (required)
@@ -66,7 +66,7 @@ Attributes (via --attributes KEY VALUE):
                         (own ones included, whatever count_own_tip_shares
                         says: they are the attacker's work). Needs weigh
                         "sop". The block rule strands the attacker past the
-                        window (docs/20261023_sop_scale_n300_smoke.md).
+                        window (studies/sop/docs/20261023_sop_scale_n300_smoke.md).
     release_depth       deep_hunt: reveal only once the honest branch holds this
                         many blocks past the fork (default 10), so every reveal
                         orphans at least that many honest blocks.
@@ -117,7 +117,7 @@ Attributes (via --attributes KEY VALUE):
                         So its first block after a fork carries the honest
                         shares found on the fork point, and after giving up it
                         restarts level with honest, as tevador's simulated
-                        attacker does (docs/20261019_sop_campaign8_results.md
+                        attacker does (studies/sop/docs/20261019_sop_campaign8_results.md
                         §6). No share fits a private block, since a share fits
                         only a child of the block it was mined on, so none are
                         read while the miner's tip is private. The miner's own

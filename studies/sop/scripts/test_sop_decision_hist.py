@@ -8,7 +8,7 @@ def _learned(ts, obs, action):
 
 
 def test_sim_histograms_tally_a_sim_log_like_the_model():
-    from scripts.sop_decision_hist import sim_histograms
+    from studies.sop.scripts.sop_decision_hist import sim_histograms
     lines = [
         _learned("00:00:00", "(1, 20, 0, 0, 0, 0, 0)", "publish"),
         _learned("01:00:00", "(0, -9, 0, 12, 1, 9, 0)", "hold"),       # race start, pa 12
@@ -38,7 +38,7 @@ def test_sim_histograms_tally_a_sim_log_like_the_model():
 
 
 def test_model_histograms_report_rates_per_found_block():
-    from scripts.sop_decision_hist import histograms
+    from studies.sop.scripts.sop_decision_hist import histograms
     h = histograms(0.47, 5, 1, {"G": 6, "L": 1, "M": 1, "R": 1, "Z": 1})
     assert 3000 < h["found"] < 4200                           # ~720 found blocks a model day
     for k, v in h["per72h"].items():
@@ -46,7 +46,7 @@ def test_model_histograms_report_rates_per_found_block():
 
 
 def test_model_histograms_take_the_window_depth():
-    from scripts.sop_decision_hist import histograms
+    from studies.sop.scripts.sop_decision_hist import histograms
     knobs = {"G": 4, "L": 1, "M": 1, "R": 1, "Z": 1}
     k3 = histograms(0.47, 10, 1, knobs, perish=True)
     k6 = histograms(0.47, 10, 1, knobs, perish=True, K=6, w=16)

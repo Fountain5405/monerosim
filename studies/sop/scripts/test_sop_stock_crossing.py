@@ -1,6 +1,6 @@
-"""Tests for scripts/sop_stock_crossing.py: the stock network's selfish-mining
+"""Tests for studies/sop/scripts/sop_stock_crossing.py: the stock network's selfish-mining
 crossing in the same race model, for the comparison with SoP's."""
-from scripts import sop_stock_crossing as SC
+from studies.sop.scripts import sop_stock_crossing as SC
 
 
 def test_evaluate_stock_runs_the_race_model_without_sop():

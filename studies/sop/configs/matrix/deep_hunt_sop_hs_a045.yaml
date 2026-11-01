@@ -13,7 +13,7 @@
 # the mechanics (honest shares in the first block after a fork, level restarts).
 name: deep_hunt_sop_hs_a045
 seed: 13681
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 72h
 axes:

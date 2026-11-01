@@ -2,7 +2,7 @@
 """Rebuild Dandelion++ ground truth from --sim-log-txrelay logs and check it.
 
 Reads every daemon_logs/<node>/txrelay.jsonl in an archived run
-(docs/TXRELAY_LOG.md), maps peer IPs to agents with
+(studies/antiproxy/docs/TXRELAY_LOG.md), maps peer IPs to agents with
 transaction_registry/agent_registry.json, and for every transaction in
 transaction_registry/transactions.json reports:
 
@@ -18,7 +18,7 @@ transaction_registry/transactions.json reports:
 Plus per-node epoch counts and the share of fluff epochs (stock: 20%).
 
 Usage:
-    python3 analysis/spy/txrelay_check.py <archive_dir> [--json out.json]
+    python3 studies/antiproxy/analysis/spy/txrelay_check.py <archive_dir> [--json out.json]
 """
 
 import argparse

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Paper arithmetic for hashrate-priced P2P membership and hashrate-weighted
 peer selection, against the Monero P2P Observatory's 2026-10-28 counts and
-the 10-27 network difficulty (docs/20261028_hashrate_gating_arithmetic.md).
+the 10-27 network difficulty (studies/antiproxy/docs/20261028_hashrate_gating_arithmetic.md).
 Every unit cost is an assumption stated in ASSUMPTIONS; change them there.
 """
 NET_HS = 877_233_282_455 / 120          # network hashrate, H/s (difficulty / 120 s, 2026-10-27)

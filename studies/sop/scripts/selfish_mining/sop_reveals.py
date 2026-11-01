@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Attacker reveals as Model B counts them (scripts/sop_race_model.py), from a
+"""Attacker reveals as Model B counts them (studies/sop/scripts/sop_race_model.py), from a
 run's logs. On the reference node (honest-001), every successful reorg is
 matched to the main-chain blocks it removed and the blocks it applied. A
 reveal is a reorg whose applied blocks include attacker-found blocks; its
@@ -41,7 +41,7 @@ LINE = re.compile(r'^(2000-01-\d\d \d\d:\d\d:\d\d\.\d{3})\t\[([^\]]*)\]\t[A-Z]+\
 # Real tabs (not a raw string): grep -E reads "\t" as a literal "t".
 PREFILTER = 'BLOCK SUCCESSFULLY ADDED|\tid:\t<|\tHEIGHT [0-9]+, difficulty|REORGANIZE (on height|SUCCESS)'
 FOUND = re.compile(r'^(2000-01-\d\d \d\d:\d\d:\d\d)\.(\d{3}).*Found block <([0-9a-f]{64})>')
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[4]
 
 
 def found_ids(log: Path) -> set:

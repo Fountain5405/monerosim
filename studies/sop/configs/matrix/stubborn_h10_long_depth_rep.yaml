@@ -1,5 +1,5 @@
 # GIVE-UP DEPTH AT ALPHA 0.33 (2026-10-04, owner decision), second seed (54321).
-# Model B (scripts/sop_race_model.py deep, e1b6b9db) says SoP's 10+ block reorg
+# Model B (studies/sop/scripts/sop_race_model.py deep, e1b6b9db) says SoP's 10+ block reorg
 # rate depends steeply on how long the stubborn attacker holds on: at alpha
 # 0.33 about 1 per 2.9 canonical years at d2, 1 per 1.35 at d3, and 1 per 0.43
 # at d5. MRL #146's "about 1 per 3 years" matches only d2. These cells are
@@ -8,10 +8,10 @@
 # question is SoP's deep-reorg rate. 240 h each, on the stale-id-fixed binary
 # (pop patch 2d6499a8).
 #
-#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stubborn_h10_long_depth_rep.yaml
+#   venv/bin/python scripts/selfish_matrix.py studies/sop/configs/matrix/stubborn_h10_long_depth_rep.yaml
 name: stubborn_h10_long_depth_rep
 seed: 54321
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 2
 stop_time: 240h
 axes:

@@ -18,7 +18,7 @@
 # 2026-09-26: the base grafts chain_snapshots/h10 (336 pre-mined blocks whose
 # tail sits at D0 = 120 x 10 h/s = 1,200, this topology's equilibrium) instead
 # of the fixed-difficulty 1800 stopgap, so monerod's real DAA runs from the
-# first mined block (docs/CHAIN_SNAPSHOT.md; docs/20260926_dev_branch_handoff.md
+# first mined block (docs/CHAIN_SNAPSHOT.md; studies/sop/docs/20260926_dev_branch_handoff.md
 # campaign step 1). Every daemon starts at height 336 on the same tip, so
 # the attacker joins at 0 s: there is no genesis ramp left to exploit.
 general:

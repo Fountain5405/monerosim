@@ -432,13 +432,13 @@ outcome.
   commit path* and is load-bearing: without it (the state before the 2026-09-13
   fix) lead_stubborn could only advance `fork` by conceding, so it never placed
   a block on the canonical chain — realized share 0.000, attacker orphan 1.000
-  (see `docs/20260912_selfish_mining_results.md`). At γ≈0 the held tie never
+  (see `studies/sop/docs/20260912_selfish_mining_results.md`). At γ≈0 the held tie never
   propagates, so lead_stubborn realizes at or below `eyal_sirer`; the hold only
   pays at γ>0.
 
 Each variant is one bet that pays only with a network advantage — γ>0, or a
 poorly-synchronized honest network. See
-`docs/20260912_selfish_mining_results.md` for how each actually realized at
+`studies/sop/docs/20260912_selfish_mining_results.md` for how each actually realized at
 γ≈0: trail-stubborn gained (+0.113) via deep reorgs off a fragmented honest
 network; equal-fork ≈ eyal_sirer; lead-stubborn needed the 2026-09-13
 winning-commit-path fix before it could score at all.
@@ -485,7 +485,7 @@ this way is still empirical (the attacker is reactive, so its block starts the
 propagation race late), but the placement lever the text above said was missing
 is now available. Design:
 `docs/superpowers/specs/2026-09-13-per-agent-topology-placement-design.md`;
-phase-3 results land in `docs/20260912_selfish_mining_results.md`.
+phase-3 results land in `studies/sop/docs/20260912_selfish_mining_results.md`.
 
 ### 8.5 Configs, running the experiments, and reading the output
 
@@ -582,7 +582,7 @@ Deferred to increment 3 (design spec §10):
 Phase 2 (§8) measured γ against bridge fan-out. Phases 3 and 4 built and measured
 the two levers that remained. **Both were built, both were measured, and neither
 lifts γ.** Numbers, tie tables and log forensics:
-`docs/20260912_selfish_mining_results.md`.
+`studies/sop/docs/20260912_selfish_mining_results.md`.
 
 ### 9.1 Position — `topology_node` (phase 3)
 
@@ -670,7 +670,7 @@ Monero. It is deliberately not built.
 ## 10. Experiment series (feat/selfish-mining-experiments)
 
 Branch for the post-phase-4 experiment programme. Literature context:
-`docs/20260920_selfish_mining_literature.md` (moneroresearch.info harvest —
+`studies/sop/docs/20260920_selfish_mining_literature.md` (moneroresearch.info harvest —
 the Qubic campaign study independently measured γ ≈ 0.01–0.06 on real Monero,
 validating the structural finding above).
 
@@ -686,7 +686,7 @@ validating the structural finding above).
    conservative policy's profitability crossover in (0.40, 0.45) and found
    MSB over-flagging HONEST miners under heavy attack (their iid null needs
    attack calibration). Numbers and interpretation:
-   `docs/20260921_selfish_release2_results.md`.
+   `studies/sop/docs/20260921_selfish_release2_results.md`.
 2. **Externality/detection metrics (shipped 2026-09-21).**
    `scripts/selfish_externality.py`, rendered as the analysis report's
    "Externality & detection" section: Lee & Kim's per-hour orphan series +
@@ -716,16 +716,16 @@ validating the structural finding above).
    fact in finding 4 of the manuscript index. The composition pays the
    coalition, not the attacker (solo share 0.346, self-orphans 0.309);
    network damage stays severe throughout (orphan 0.52). Full arc:
-   `docs/20260921_selfish_eclipse_results.md`; MSB calibration:
-   `docs/msb_calibration_20260921.md`; manuscript index with the run
-   ledger: `docs/20260922_selfish_mining_manuscript.md`.
+   `studies/sop/docs/20260921_selfish_eclipse_results.md`; MSB calibration:
+   `studies/sop/docs/msb_calibration_20260921.md`; manuscript index with the run
+   ledger: `studies/sop/docs/20260922_selfish_mining_manuscript.md`.
 
 ## 11. Matrix runner: strategy × countermeasure × α (2026-09-22)
 
 `scripts/selfish_matrix.py` turns a matrix spec into paired runs and one
 table — the harness for the countermeasure campaign (planned work item 3 in
-`docs/20260922_selfish_mining_manuscript.md` §8). A spec
-(`test_configs/matrix/*.yaml`) names a **base config** and one **overlay**
+`studies/sop/docs/20260922_selfish_mining_manuscript.md` §8). A spec
+(`studies/sop/configs/matrix/*.yaml`) names a **base config** and one **overlay**
 per axis value; cells are the cartesian product, so every cell in a matrix
 shares seed and network shape and differs only by the axis variables —
 paired comparisons by construction. Spec fields:
@@ -752,7 +752,7 @@ paired comparisons by construction. Spec fields:
 Run it:
 
 ```bash
-venv/bin/python scripts/selfish_matrix.py test_configs/matrix/<spec>.yaml [--dry-run]
+venv/bin/python scripts/selfish_matrix.py studies/sop/configs/matrix/<spec>.yaml [--dry-run]
 ```
 
 Each cell writes its generated config, launches
@@ -771,7 +771,7 @@ Validation: unit tests (`scripts/test_selfish_matrix.py`) cover generation,
 planning, exclusions, the mocked pipeline, resume, failure rows, and table
 rendering; `analyze_run()` was verified behavior-preserving by re-analyzing
 the v13 run (byte-identical report). End-to-end smoke on the real box:
-`test_configs/matrix/pipeline_smoke.yaml` (4 cells × 1 sim-hour; exercises
+`studies/sop/configs/matrix/pipeline_smoke.yaml` (4 cells × 1 sim-hour; exercises
 the daemon_options overlay and the sim-binary preflight with a real
 flag-gated patch).
 
@@ -779,12 +779,12 @@ flag-gated patch).
 
 The countermeasure campaign measures fork-choice-rule defenses as flag-gated
 `monerod-sim` patches, matrix-driven via §11. Sources and build ladder:
-`docs/20260920_selfish_mining_literature.md` Part F (MRL #144/#145/#146),
+`studies/sop/docs/20260920_selfish_mining_literature.md` Part F (MRL #144/#145/#146),
 design + pre-registered predictions:
-`docs/20260922_pop_countermeasure_design.md`.
+`studies/sop/docs/20260922_pop_countermeasure_design.md`.
 
 1. **`--sim-publish-or-perish`** (shipped as
-   `patches/monero-sim-pop.patch`): PoP's weighted fork-resolving policy —
+   `studies/sop/patches/monero-sim-pop.patch`): PoP's weighted fork-resolving policy —
    late blocks (received > `--sim-pop-delay-s` [5] after the first block of
    their height, measured per node in sim-ms) lose chain weight; reorgs
    follow weight with a `--sim-pop-k` [3] longest-chain fail-safe and a
@@ -792,14 +792,14 @@ design + pre-registered predictions:
    deliberately not modeled in this first patch — the +uncles delta is a
    planned measurement. Set on honest agents' `daemon_options` only (the
    attacker's covert bridge keeps stock rules). Pilot:
-   `test_configs/matrix/pop_pilot.yaml`.
+   `studies/sop/configs/matrix/pop_pilot.yaml`.
 2. **`--sim-pop-uncles`** (shipped 2026-09-22, same patch): MRL #144's
    uncle appreciation — miners embed one in-time N−1 sibling uncle id in
    the miner-tx extra nonce; fork choice counts embedded in-time uncles
    (node-local validation). A/B against core isolates the uncle term;
-   pilot spec `test_configs/matrix/pop_uncles_pilot.yaml`.
+   pilot spec `studies/sop/configs/matrix/pop_uncles_pilot.yaml`.
 3. **Share-or-Perish** (implemented; results in
-   `docs/20261007_sop_campaign7_results.md`; MRL #146): workshares at 1/w difficulty,
+   `studies/sop/docs/20261007_sop_campaign7_results.md`; MRL #146): workshares at 1/w difficulty,
    l_b/l_w lateness pair, `version_minor`-serialized share mining.
 4. Lucky transactions (MRL #145): parked — transaction-weighted, and aimed
    at 51% attacks rather than selfish mining.

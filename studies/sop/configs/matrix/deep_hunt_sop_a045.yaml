@@ -9,7 +9,7 @@
 # SoP at alpha 0.45, 72 h (Model B: about 5 10+ reorgs per canonical day).
 name: deep_hunt_sop_a045
 seed: 13581
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 72h
 axes:

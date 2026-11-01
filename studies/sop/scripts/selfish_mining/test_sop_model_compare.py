@@ -1,11 +1,11 @@
-"""Tests for scripts/selfish_mining/sop_model_compare.py (ported from the
+"""Tests for studies/sop/scripts/selfish_mining/sop_model_compare.py (ported from the
 campaign 7 analysis tooling: modelb_shapes, run_one, compare_modelb,
 depth_mc and the per-config depth test)."""
 import json
 
-from scripts.selfish_mining.sop_model_compare import (binom_sf, comparison_tables, depth_by_config,
+from studies.sop.scripts.selfish_mining.sop_model_compare import (binom_sf, comparison_tables, depth_by_config,
                                                       depth_pooled, depth_test, simulate_shapes)
-from scripts.sop_race_model import SimConfig, simulate
+from studies.sop.scripts.sop_race_model import SimConfig, simulate
 
 
 def test_simulate_shapes_agrees_with_sop_race_model_simulate():

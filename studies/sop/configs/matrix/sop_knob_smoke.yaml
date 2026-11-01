@@ -17,7 +17,7 @@
 # 2026-10-30 monerod-sim (lithium; other boxes do not know the flag yet).
 name: sop_knob_smoke
 seed: 27791
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 3h
 axes:

@@ -1,4 +1,4 @@
-# scripts/test_make_sop_scale_base.py
+# studies/sop/scripts/test_make_sop_scale_base.py
 """The scale-base generator: relay names, the linear start schedule, which relays
 keep logs, and that the matrix runner still sees one attacker and all relays."""
 from pathlib import Path
@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from scripts.make_sop_scale_base import BASE, build, relay_lines
+from studies.sop.scripts.make_sop_scale_base import BASE, build, relay_lines
 from scripts.selfish_matrix import _agent_targets
 
 TEXT = BASE.read_text()

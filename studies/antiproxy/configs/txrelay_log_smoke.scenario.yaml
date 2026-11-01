@@ -1,5 +1,5 @@
-# Smoke test for the Dandelion++ relay log (patches/monero-sim-txrelay-log.patch,
-# --sim-log-txrelay; docs/TXRELAY_LOG.md). 34 daemons, all logging, ~1 h of
+# Smoke test for the Dandelion++ relay log (studies/antiproxy/patches/monero-sim-txrelay-log.patch,
+# --sim-log-txrelay; studies/antiproxy/docs/TXRELAY_LOG.md). 34 daemons, all logging, ~1 h of
 # user transactions. Checks that every daemon writes txrelay.jsonl, that stems
 # chain across relays, and that every user tx has a ground-truth origin.
 #
@@ -7,9 +7,9 @@
 # The fallback seeds are declared below so they log too: left to `auto` they run
 # stock monerod, which rejects the flag, and stems sent to them go unrecorded.
 #
-# Check: python3 analysis/spy/txrelay_check.py archived_runs/<run>
+# Check: python3 studies/antiproxy/analysis/spy/txrelay_check.py archived_runs/<run>
 #
-# Expand: python3 scripts/generate_config.py --from test_configs/txrelay_log_smoke.scenario.yaml \
+# Expand: python3 scripts/generate_config.py --from studies/antiproxy/configs/txrelay_log_smoke.scenario.yaml \
 #             -o test_configs/txrelay_log_smoke.yaml
 # Run:    ./run_sim.sh --config test_configs/txrelay_log_smoke.yaml --bootfast
 general:

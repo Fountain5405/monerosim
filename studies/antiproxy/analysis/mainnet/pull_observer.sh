@@ -4,7 +4,7 @@
 # The feed host is discovered from the dashboard definition at run time, so no address is
 # written here. Snapshots go to $DEST/YYYYMMDD/ (default ~/monerosim_local/observer), outside
 # the repo. Only aggregate feeds are pulled: geo_points / fp8 (address-bearing) are left out.
-# Read with docs/spy_journal/adhoc/observer_seed_ratio.py. Cron: 0 6 * * * (UTC) on the control box.
+# Read with studies/antiproxy/docs/spy_journal/adhoc/observer_seed_ratio.py. Cron: 0 6 * * * (UTC) on the control box.
 set -u
 DASH=${OBSERVER_DASH:-https://observer.monerodevs.org/api/dashboards/uid/p2pobs}
 DEST=${1:-$HOME/monerosim_local/observer}

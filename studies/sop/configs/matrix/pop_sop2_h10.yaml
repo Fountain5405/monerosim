@@ -1,9 +1,9 @@
 # SoP v2 re-run on the h10 chain-snapshot base — first draw of an n=2 pair.
-# (docs/20260926_dev_branch_handoff.md campaign step 2;
-#  docs/20260925_e4_code_data_review.md §3 steps 3 and 5.)
+# (studies/sop/docs/20260926_dev_branch_handoff.md campaign step 2;
+#  studies/sop/docs/20260925_e4_code_data_review.md §3 steps 3 and 5.)
 #
 # Cells are IDENTICAL to pop_sop2 (strategy x countermeasure, stock pairs on
-# the same base). What changes is the base: test_configs/selfish_micro_sop.yaml
+# the same base). What changes is the base: studies/sop/configs/selfish_micro_sop.yaml
 # now grafts chain_snapshots/h10 (1535 pre-mined blocks at D0 = 120 x 10 h/s =
 # 1200, the equilibrium for this topology) instead of `fixed-difficulty: 1800`,
 # so monerod's real difficulty algorithm runs from the first mined block and
@@ -15,7 +15,7 @@
 # The stock cells double as the fixed-base stock baselines review §3 step 5
 # asks for (n >= 2 before any "lead-2 out-earns ES" claim).
 #
-# Second draw: test_configs/matrix/pop_sop2_h10_rep.yaml (same cells, new
+# Second draw: studies/sop/configs/matrix/pop_sop2_h10_rep.yaml (same cells, new
 # matrix name so the runner does not resume, and — unlike the earlier *_rep
 # specs, which re-used seed 12345 and relied on native-preemption timing for
 # the second draw — its own simulation seed, so topology sampling and timing
@@ -25,12 +25,12 @@
 # add_new_block exceptions). A control cell that never forked proves nothing
 # about fork choice; check forks_seen before reading share numbers.
 #
-#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/pop_sop2_h10.yaml
+#   venv/bin/python scripts/selfish_matrix.py studies/sop/configs/matrix/pop_sop2_h10.yaml
 #
 # parallel: 6 sized for the 64-core / 251 GB dev box (~12 GB and a few cores
 # per 6 h micro cell); the _rep matrix runs concurrently for 12 cells at once.
 name: pop_sop2_h10
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 6
 axes:
   strategy:

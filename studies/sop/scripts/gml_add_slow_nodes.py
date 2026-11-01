@@ -10,9 +10,9 @@ and is joined to the anchor by one edge in each direction at the requested
 latency (the directed graph needs both). Everything else is left byte for
 byte as it was, so the base cells and the slow cells share the topology.
 
-    python3 scripts/gml_add_slow_nodes.py \
+    python3 studies/sop/scripts/gml_add_slow_nodes.py \
         gml_processing/1200_nodes_caida_with_loops.gml \
-        gml_processing/1200_nodes_caida_slow_links.gml --anchor 0 \
+        studies/sop/data/gml/1200_nodes_caida_slow_links.gml --anchor 0 \
         --latency-ms 3000 10000 30000
 
 prints the id of each node added (first = max existing id + 1).

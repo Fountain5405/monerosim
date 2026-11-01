@@ -1,10 +1,10 @@
-# scripts/test_gml_add_slow_nodes.py
+# studies/sop/scripts/test_gml_add_slow_nodes.py
 """The slow-link derivation of a Shadow GML graph: new nodes hang off an
 anchor node by one high-latency edge each (both directions), so a host pinned
 there with `topology_node` reaches everything through that link."""
 import re
 
-from scripts.gml_add_slow_nodes import add_slow_nodes, parse_records
+from studies.sop.scripts.gml_add_slow_nodes import add_slow_nodes, parse_records
 
 TINY = """graph [
   directed 1
@@ -80,7 +80,7 @@ def test_unknown_anchor_is_an_error():
 def test_linked_node_joins_several_anchors():
     """A hop node that closes a detour: one new node with an edge each way to
     every anchor given, so a relay chain can leave the hub and come back."""
-    from scripts.gml_add_slow_nodes import add_linked_node
+    from studies.sop.scripts.gml_add_slow_nodes import add_linked_node
     out = add_linked_node(TINY, links=[(0, 1500), (1, 1500)])
     nodes, edges = parse_records(out)
     assert [n["id"] for n in nodes] == ["0", "1", "2"]

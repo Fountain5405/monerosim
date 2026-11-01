@@ -13,7 +13,7 @@
 # share loss, these cells land near the model.
 name: sop_v4_window_k6_1h_72h
 seed: 27791
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 72h
 axes:

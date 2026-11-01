@@ -2,17 +2,17 @@
 """Parametric stubborn attackers against Share-or-Perish in the race model.
 
 After the learned attacker's ladder stopped at step 3
-(docs/20261026_sop_learned_attacker.md), the next lower bound on what SoP
+(studies/sop/docs/20261026_sop_learned_attacker.md), the next lower bound on what SoP
 concedes comes from the strongest HAND-WRITTEN rule we can find:
-scripts/sop_policy.py::param_stubborn, the sim's window_stubborn noown rule
+studies/sop/scripts/sop_policy.py::param_stubborn, the sim's window_stubborn noown rule
 with six knobs (G give-up objects, L publish lead, M reveal margin, R reveal
 depth, B block deficit, Z hold without blocks), evaluated on the race model
 with the sims' settings (sop_rl.race_env: rule 20261020_noown, honest shares,
 objects-deficit cap 200).
 
-    python scripts/sop_attacker_search.py --alphas 0.45 0.48 0.50 --days 1000 \\
+    python studies/sop/scripts/sop_attacker_search.py --alphas 0.45 0.48 0.50 --days 1000 \\
         --seeds 1 2 --workers 20 --grid "G=3,5,8,12,20,40 Z=0,1" \\
-        --out data/sop_search/stage1.jsonl
+        --out studies/sop/data/sop_search/stage1.jsonl
 
 Appends one JSON line per finished run (resumable: runs already in the file
 are skipped), then prints the best combos per alpha and, for every combo run
@@ -31,12 +31,12 @@ from multiprocessing import Pool
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
-if __name__ == "__main__":   # run as `python scripts/sop_attacker_search.py`
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+if __name__ == "__main__":   # run as `python studies/sop/scripts/sop_attacker_search.py`
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from scripts.sop_policy import param_stubborn
-from scripts.sop_race_model import K_DEFAULT, W_DEFAULT
-from scripts.sop_rl import legal_fallback, race_env, rollout
+from studies.sop.scripts.sop_policy import param_stubborn
+from studies.sop.scripts.sop_race_model import K_DEFAULT, W_DEFAULT
+from studies.sop.scripts.sop_rl import legal_fallback, race_env, rollout
 
 KNOBS = ("G", "L", "M", "R", "B", "Z")
 

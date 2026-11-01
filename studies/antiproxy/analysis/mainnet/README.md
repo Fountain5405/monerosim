@@ -80,7 +80,7 @@ mkdir -p "$OUT/poll"
 
 systemd-run --user --unit monerosim-mainnet-poll \
   --description "monerosim mainnet RPC poller" \
-  /path/to/venv/bin/python3 analysis/mainnet/poll_node.py \
+  /path/to/venv/bin/python3 studies/antiproxy/analysis/mainnet/poll_node.py \
   --rpc http://192.168.1.76:12345 --out "$OUT/poll" \
   --interval 60 --peerlist-interval 600 --duration 7d
 
@@ -95,16 +95,16 @@ systemctl --user stop monerosim-mainnet-poll
 Run the crawl and enrichment once, any time during (or after) the poll week:
 
 ```bash
-python3 analysis/mainnet/crawl.py --seed-rpc http://192.168.1.76:12345 \
+python3 studies/antiproxy/analysis/mainnet/crawl.py --seed-rpc http://192.168.1.76:12345 \
   --out "$OUT/crawl" --max-nodes 20000 --concurrency 48 --timeout 8
-python3 analysis/mainnet/enrich_asn.py --in "$OUT/crawl/nodes.jsonl" \
+python3 studies/antiproxy/analysis/mainnet/enrich_asn.py --in "$OUT/crawl/nodes.jsonl" \
   --out "$OUT/crawl/asn.jsonl"
 ```
 
 Then summarize:
 
 ```bash
-python3 analysis/mainnet/summarize.py --crawl "$OUT/crawl" --poll "$OUT/poll" \
+python3 studies/antiproxy/analysis/mainnet/summarize.py --crawl "$OUT/crawl" --poll "$OUT/poll" \
   --fetch-ban-list "$OUT" --asn "$OUT/crawl/asn.jsonl" --out "$OUT/report.md"
 ```
 
@@ -172,5 +172,5 @@ observer.monerodevs.org (a Grafana dashboard on three hardcoded mainnet seeds) p
 JSON feeds its panels read. `pull_observer.sh [dest]` discovers the feed host from the
 dashboard definition and snapshots the aggregate feeds into `~/monerosim_local/observer/<date>/`
 (a daily cron on the control box; address-bearing feeds are skipped). Read with
-`docs/spy_journal/adhoc/observer_seed_ratio.py <date-dir>` (the seeds' fleet share of white list
+`studies/antiproxy/docs/spy_journal/adhoc/observer_seed_ratio.py <date-dir>` (the seeds' fleet share of white list
 vs outbound — OQ8's mainnet check). Snapshots stay outside the repo like all mainnet data.

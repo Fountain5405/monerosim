@@ -26,8 +26,8 @@ reward (a duplicate cannot change the optimum); the LP uses legal actions only.
 
 Runs on a lane box with its own venv (numpy, scipy, pymdptoolbox), never on
 the control box:
-  venv/bin/python scripts/sop_mdp_crosscheck.py sop --alpha 0.45 --a-max 3 --h-max 3 --p-max 16 --d-max 40 --deficit 12 --bound upper
-  venv/bin/python scripts/sop_mdp_crosscheck.py btc --alpha 0.35 --gamma 0 --T 95
+  venv/bin/python studies/sop/scripts/sop_mdp_crosscheck.py sop --alpha 0.45 --a-max 3 --h-max 3 --p-max 16 --d-max 40 --deficit 12 --bound upper
+  venv/bin/python studies/sop/scripts/sop_mdp_crosscheck.py btc --alpha 0.35 --gamma 0 --T 95
 """
 from __future__ import annotations
 

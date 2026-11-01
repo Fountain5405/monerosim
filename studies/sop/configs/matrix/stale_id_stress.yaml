@@ -21,11 +21,11 @@
 #
 # Seeds keep the base config: they relay shares but are not flagged.
 #
-#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stale_id_stress.yaml
+#   venv/bin/python scripts/selfish_matrix.py studies/sop/configs/matrix/stale_id_stress.yaml
 # (second run: add --fresh, since the first run leaves the cell's marker)
 name: stale_id_stress
 seed: 12345
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 2h
 axes:

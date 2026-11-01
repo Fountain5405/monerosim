@@ -7,7 +7,7 @@ log, shadow.data/hosts/attacker-miner/bash.*.stdout. Under the block-depth
 give-up the attacker spends such stretches mining a private branch it can
 neither reveal (past the window, behind by weight) nor abandon (honest never
 leads by give_up_depth blocks); every block mined there is orphaned. See
-docs/20261023_sop_scale_n300_smoke.md.
+studies/sop/docs/20261023_sop_scale_n300_smoke.md.
 
 usage: sop_stuck_time.py [--gap H] RUN_DIR [RUN_DIR ...]
 """

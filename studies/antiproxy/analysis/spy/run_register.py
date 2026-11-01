@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Run register for the spy-node experiments (docs/SPY_EXPERIMENT_JOURNAL.md).
+"""Run register for the spy-node experiments (studies/antiproxy/docs/SPY_EXPERIMENT_JOURNAL.md).
 
 An archived run is ~12 GB, sits on whichever box ran it, and gets pruned. `add` keeps what defines and
-scores it, a few tens of KB, under docs/spy_journal/runs/<run_id>/:
+scores it, a few tens of KB, under studies/antiproxy/docs/spy_journal/runs/<run_id>/:
 
   input_config.yaml      the exact cell that ran
   binary_provenance.txt  monerod-sim hash and the patches it was built from
@@ -29,9 +29,9 @@ import sys
 import tempfile
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]
-JOURNAL = REPO / "docs" / "SPY_EXPERIMENT_JOURNAL.md"
-RUNS = REPO / "docs" / "spy_journal" / "runs"
+REPO = Path(__file__).resolve().parents[4]
+JOURNAL = REPO / "studies" / "antiproxy" / "docs" / "SPY_EXPERIMENT_JOURNAL.md"
+RUNS = REPO / "studies" / "antiproxy" / "docs" / "spy_journal" / "runs"
 START, END = "<!-- register:start -->", "<!-- register:end -->"
 COPY = ["input_config.yaml", "binary_provenance.txt", "x0_calibration.txt", "x0_calibration.json"]
 
@@ -48,7 +48,7 @@ def scoring(run_dir):
         return json.loads(saved.read_text())[0]
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp, "r.json")
-        r = subprocess.run([sys.executable, "-I", str(REPO / "analysis/spy/x0_calibration.py"), str(run_dir),
+        r = subprocess.run([sys.executable, "-I", str(REPO / "studies/antiproxy/analysis/spy/x0_calibration.py"), str(run_dir),
                             "--json", str(out)], capture_output=True, text=True)
         return json.loads(out.read_text())[0] if r.returncode == 0 and out.exists() else None
 

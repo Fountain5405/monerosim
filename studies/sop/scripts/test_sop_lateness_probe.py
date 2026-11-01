@@ -1,8 +1,8 @@
-"""Tests for scripts/sop_lateness_probe.py and sop_oracle.decide's nf_rule."""
+"""Tests for studies/sop/scripts/sop_lateness_probe.py and sop_oracle.decide's nf_rule."""
 import pytest
 
-from scripts.sop_lateness_probe import both_ways, example_race, reverse
-from scripts.sop_oracle import decide
+from studies.sop.scripts.sop_lateness_probe import both_ways, example_race, reverse
+from studies.sop.scripts.sop_oracle import decide
 
 UNIT = 1216 // 16
 

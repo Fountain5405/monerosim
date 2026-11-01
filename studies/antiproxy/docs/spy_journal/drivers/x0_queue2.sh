@@ -1,8 +1,8 @@
 #!/bin/bash
 # Sequential queue of X0 cells. Usage: x0_queue.sh <queue-file>
-# Each non-comment line is a cell name (test_configs/x0/cells/<name>.yaml) or a path to a
+# Each non-comment line is a cell name (studies/antiproxy/configs/x0/cells/<name>.yaml) or a path to a
 # scenario yaml. The first line is popped and run under a RAM/swap/disk guard, then scored
-# with analysis/spy/x0_calibration.py; the next one starts. Stops on any failure or trip.
+# with studies/antiproxy/analysis/spy/x0_calibration.py; the next one starts. Stops on any failure or trip.
 # Swap growth beyond the allowance only trips the guard when free RAM is also under 6 GB (benign cold-page swapping otherwise).
 # Edit the queue file while it runs: it is re-read before each cell.
 # Per-line options after the cell: swapmax=<MB> allows that much swap growth (default 1500) and, if > 1500,
@@ -41,7 +41,7 @@ PY
   swapmax=1500
   for o in $opts; do case $o in swapmax=*) swapmax=${o#swapmax=};; esac; done
   if [[ "$item" == */* ]]; then cfg=$item; name=$(basename "$item" .yaml)
-  else cfg=$REPO/test_configs/x0/cells/$item.yaml; name=$item; fi
+  else cfg=$REPO/studies/antiproxy/configs/x0/cells/$item.yaml; name=$item; fi
 
   if pgrep -x shadow > /dev/null; then ev "FAIL $name: another Shadow is running"; exit 1; fi
   a=$(avail)
@@ -84,7 +84,7 @@ PY
   minav=$(awk -F, 'NR>1 && $12!=""{if(m==""||$12+0<m)m=$12+0}END{print m}' "$RUN/memory_samples.csv" 2>/dev/null)
   rep="n/a"
   if [ -n "$RUN" ] && [ -d "$RUN" ]; then
-    "$REPO/venv/bin/python" "$REPO/analysis/spy/x0_calibration.py" "$RUN" --json "$RUN/x0_calibration.json" \
+    "$REPO/venv/bin/python" "$REPO/studies/antiproxy/analysis/spy/x0_calibration.py" "$RUN" --json "$RUN/x0_calibration.json" \
         > "$RUN/x0_calibration.txt" 2>&1
     share=$(awk '$1=="light"{print $3}' "$RUN/x0_calibration.txt")
     fluff=$(grep -oP 'fluff per hop \K[0-9.]+' "$RUN/x0_calibration.txt" | head -1)

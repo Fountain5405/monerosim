@@ -80,7 +80,7 @@ disallow_untyped_defs = false
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["agents", "scripts", "tests"]
+testpaths = ["agents", "scripts", "tests", "studies"]
 python_files = "test_*.py"
 addopts = "--verbose --tb=short"
 markers = ["slow: long-running checks (minutes); run with -m slow on a lane box"]

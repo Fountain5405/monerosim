@@ -1,8 +1,8 @@
-"""The numpy-free part of the learned SoP attacker (scripts/sop_rl.py):
+"""The numpy-free part of the learned SoP attacker (studies/sop/scripts/sop_rl.py):
 what agents/selfish_strategy.py needs at decision time inside a Shadow run,
 where the lane boxes' venvs have no numpy. sop_rl re-exports these.
 
-Observation (scripts/sop_mdp.py State): (a, D, xa, pa, h, xh, ph).
+Observation (studies/sop/scripts/sop_mdp.py State): (a, D, xa, pa, h, xh, ph).
 Policy file: gzip JSON {"meta": {...}, "key_clip": {"d", "p", "d_bin", "p_bin"},
 "fallback": "sim_stubborn", "policy": {"a,D,xa,pa,h,xh,ph": action name}},
 holding only the keys where the learned action differs from sim_stubborn.
@@ -17,7 +17,7 @@ from typing import Dict, Tuple
 Obs = Tuple[int, int, int, int, int, int, int]
 HOLD, PUBLISH, REVEAL, GIVE_UP = 0, 1, 2, 3
 ACTION_NAMES = ["hold", "publish", "reveal", "give_up"]
-WINDOW = 32   # either_window: K - w objects past a branch's first block (scripts/sop_mdp.py)
+WINDOW = 32   # either_window: K - w objects past a branch's first block (studies/sop/scripts/sop_mdp.py)
 
 
 def key_of(obs: Obs, d_clip: int = 128, p_clip: int = 48, d_bin: int = 1, p_bin: int = 1) -> Obs:
@@ -54,7 +54,7 @@ def sim_stubborn(obs: Obs, G: int = 5) -> int:
 
 def param_stubborn(obs: Obs, G: int = 5, L: int = 0, M: int = 1, R: int = 1, B: int = 0, Z: int = 0,
                    W: int = WINDOW) -> int:
-    """sim_stubborn with knobs (2026-10-26, scripts/sop_attacker_search.py):
+    """sim_stubborn with knobs (2026-10-26, studies/sop/scripts/sop_attacker_search.py):
     G the objects give-up; L publish an unopposed lead of L blocks (0: never,
     hold as the sim's rule does); M reveal only with a margin of M objects
     over the honest branch (1: as soon as the network accepts); R reveal only

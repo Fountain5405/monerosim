@@ -1,4 +1,4 @@
-# Check for --sim-subnet-dedup (patches/monero-sim-subnet-dedup.patch): 40
+# Check for --sim-subnet-dedup (studies/antiproxy/patches/monero-sim-subnet-dedup.patch): 40
 # reachable relays and 12 spies packed into one /24 (topology_node 1190). Run
 # once per mode by changing `sim-subnet-dedup` under daemon_defaults:
 #   24      stock: at most one candidate per /24, so at most one spy per node
@@ -11,9 +11,9 @@
 # Two miners only because Dynamic peer mode bootstraps every node from the
 # miners; no transactions. Only outbound peer choice is measured.
 #
-# Check: python3 analysis/spy/subnet_dedup_check.py archived_runs/<run>
+# Check: python3 studies/antiproxy/analysis/spy/subnet_dedup_check.py archived_runs/<run>
 #
-# Expand: python3 scripts/generate_config.py --from test_configs/subnet_dedup_check.scenario.yaml \
+# Expand: python3 scripts/generate_config.py --from studies/antiproxy/configs/subnet_dedup_check.scenario.yaml \
 #             -o test_configs/subnet_dedup_check.yaml
 # Run:    ./run_sim.sh --config test_configs/subnet_dedup_check.yaml --bootfast
 general:

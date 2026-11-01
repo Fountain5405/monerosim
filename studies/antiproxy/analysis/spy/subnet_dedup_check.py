@@ -6,10 +6,10 @@ per --window snapshot over the activity window, counts each honest node's
 outbound peers that are spies (agent ids starting with `spy`). Reports the
 spy share of outbound slots, the share of node-snapshots with at least one
 spy, and the histogram of spies per node-snapshot.
-test_configs/subnet_dedup_check.scenario.yaml is the matching run.
+studies/antiproxy/configs/subnet_dedup_check.scenario.yaml is the matching run.
 
 Usage:
-    python3 analysis/spy/subnet_dedup_check.py <archive_dir> [<archive_dir> ...] [--window 600]
+    python3 studies/antiproxy/analysis/spy/subnet_dedup_check.py <archive_dir> [<archive_dir> ...] [--window 600]
 """
 
 import argparse
@@ -18,6 +18,7 @@ from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "analysis"))  # topology_metrics.py (core)
 import topology_metrics  # noqa: E402
 
 

@@ -20,7 +20,7 @@ Per run this reports:
   the rejected branch and so shows it to honest nodes; a bridge that runs the
   countermeasure rejects it and never announces it, so this view reads ~0
   there while the attacker still strands
-  (docs/20260926_exact_uncles_and_sop_controls.md §6);
+  (studies/sop/docs/20260926_exact_uncles_and_sop_controls.md §6);
 - the bridge's deepest reorganization;
 - for a reject_aware attacker (2026-09-29), its concessions from its own log:
   count, largest pop, and pops after a commit the bridge later dropped (the

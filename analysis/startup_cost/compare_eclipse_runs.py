@@ -6,7 +6,7 @@ Reads memory_samples.csv (wall vs sim time) and eclipse_metrics.jsonl (target
 relay-4000) from each run dir; for a live run the metrics come from
 /tmp/monerosim-<run_id>/shared/. Phase boundaries are this config's: monerod
 starts end at sim 1.3 h, attackers start at 14.0-17.45 h, stop at 50 h.
-Used for docs/20261006_bootfast_eclipse_reproduction.md.
+Used for studies/eclipse/docs/20261006_bootfast_eclipse_reproduction.md.
 """
 import csv, json, os, sys
 

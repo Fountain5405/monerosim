@@ -7,7 +7,7 @@
 # 0.436 with two). 12 daemons: fits a 16 GB box.
 name: sop_v4_param_1h_72h
 seed: 27791
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 72h
 axes:

@@ -2,17 +2,17 @@
 # countermeasure cells that are NOT excluded from stubborn_h10 at a045, d2 --
 # share_sop2 and block_stock -- 2 h. Checks, before the 24-cell launch:
 #   - SIM-SoP-DEC lines are present in every SoP daemon's log, and
-#     `venv/bin/python scripts/sop_oracle.py check <run dirs>` exits 0;
+#     `venv/bin/python studies/sop/scripts/sop_oracle.py check <run dirs>` exits 0;
 #   - honest blocks embed remote shares ("SIM-SoP: embedding N workshares
 #     (X own, Y remote)"), N ~ 15;
 #   - window_stubborn's reveal lines carry weight= / honest_weight= (share_sop2:
 #     weighed by SoP; block_stock: weighed by plain difficulty);
 #   - no "Failed to push ex-main" on any SoP node;
 #   - the stock cell's attacker reveals by difficulty, not by share weight.
-#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stubborn_h10_smoke.yaml
+#   venv/bin/python scripts/selfish_matrix.py studies/sop/configs/matrix/stubborn_h10_smoke.yaml
 name: stubborn_h10_smoke
 seed: 12345
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 2
 stop_time: 2h
 axes:

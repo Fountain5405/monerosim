@@ -12,7 +12,7 @@
 # Falsifier: honest-control orphaning > 2x stock means l_w mis-signs.
 # The `exact` axis value re-measures the uncle-header variant with the
 # FIXED parser (its bonus was inert in every prior run — the tx-tree-hash
-# defect, docs/20260923_sop_design.md step 2), same cells as pop_exact.
+# defect, studies/sop/docs/20260923_sop_design.md step 2), same cells as pop_exact.
 # Topology: relays run monerod-sim under `sop` (a vanilla relay drops the
 # workshare notify); the attacker's covert bridge stays stock by design.
 name: pop_sop

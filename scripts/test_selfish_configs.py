@@ -132,7 +132,7 @@ def test_pop_pilot_matrix_spec():
     # The PoP pilot flags HONEST miners only (honest-network deployment; the
     # attacker's covert bridge keeps stock rules). docs/20260922_pop_
     # countermeasure_design.md pre-registers the predictions.
-    with open("test_configs/matrix/pop_pilot.yaml") as f:
+    with open("studies/sop/configs/matrix/pop_pilot.yaml") as f:
         spec = yaml.safe_load(f)
     pop = spec["axes"]["countermeasure"]["pop"]
     assert set(pop) == {"honest"}, "PoP must not reach the attacker or its bridge"
@@ -154,9 +154,9 @@ def test_replication_specs_mirror_their_originals(rep, orig):
     # name: the runner resumes per matrix name (a reused name would skip
     # every cell and "replicate" nothing), and a drifted overlay would
     # silently measure a different point while wearing the old label.
-    with open(f"test_configs/matrix/{rep}.yaml") as f:
+    with open(f"studies/sop/configs/matrix/{rep}.yaml") as f:
         r = yaml.safe_load(f)
-    with open(f"test_configs/matrix/{orig}.yaml") as f:
+    with open(f"studies/sop/configs/matrix/{orig}.yaml") as f:
         o = yaml.safe_load(f)
     assert r["name"] == rep != o["name"]
     assert r["base"] == o["base"]

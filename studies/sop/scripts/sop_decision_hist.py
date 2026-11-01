@@ -9,7 +9,7 @@ without blocks, publishes and race starts, per 72 h and per 1,000 found
 blocks. Compare the model with a sim per found block only: the model's 72 h
 is 2,160 found blocks, a sim's 72 h holds 1.4-1.6x that.
 
-    python scripts/sop_decision_hist.py --alpha 0.47 --days 72h-equivalents ... --knobs "G=6 L=1 M=1 R=1 Z=1"
+    python studies/sop/scripts/sop_decision_hist.py --alpha 0.47 --days 72h-equivalents ... --knobs "G=6 L=1 M=1 R=1 Z=1"
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 if __name__ == "__main__":
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 
 
@@ -33,8 +33,8 @@ def q(vals):
 
 def histograms(alpha: float, days: float, seed: int, knobs: dict, perish: bool = False,
                K: int | None = None, w: int | None = None) -> dict:
-    from scripts.sop_policy import ACTION_NAMES, GIVE_UP, PUBLISH, REVEAL, param_stubborn
-    from scripts.sop_rl import legal_fallback, race_env   # numpy: the model side only
+    from studies.sop.scripts.sop_policy import ACTION_NAMES, GIVE_UP, PUBLISH, REVEAL, param_stubborn
+    from studies.sop.scripts.sop_rl import legal_fallback, race_env   # numpy: the model side only
     env = race_env(alpha, days, seed, K=K, w=w, perish=perish)   # K, w: race_env's defaults 3, 16
     W = env.window_obs
     acts0, acts1 = Counter(), Counter()

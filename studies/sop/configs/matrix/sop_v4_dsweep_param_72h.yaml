@@ -10,7 +10,7 @@
 # sim-sop-delay-s on every SoP daemon (test pins it).
 name: sop_v4_dsweep_param_72h
 seed: 27791
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 72h
 axes:

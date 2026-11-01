@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Spy-side origin estimators, scored against ground truth (spy plan I3).
 
-docs/20261018_spy_node_defenses.md §5.2. The spies' view is what their own
---sim-log-txrelay logs record (docs/TXRELAY_LOG.md): every `rx` event at a spy
+studies/antiproxy/docs/20261018_spy_node_defenses.md §5.2. The spies' view is what their own
+--sim-log-txrelay logs record (studies/antiproxy/docs/TXRELAY_LOG.md): every `rx` event at a spy
 node, i.e. which peer IP sent which tx, when, and with which stem/fluff flag.
 Spies must therefore run monerod-sim with the flag (variant R). Ground truth:
 transaction_registry/transactions.json (sender), shadow_agents.yaml
@@ -44,7 +44,7 @@ rule), or those matched by --spies (comma-separated fnmatch globs), which lets
 an existing run be re-scored with some honest relays posing as spies.
 
 Usage:
-    python3 analysis/spy/spy_estimators.py <archive_dir> [--spies 'relay-00[1-5]']
+    python3 studies/antiproxy/analysis/spy/spy_estimators.py <archive_dir> [--spies 'relay-00[1-5]']
         [--busy-min 5] [--window 600] [--bootstrap 1000] [--json out.json]
 """
 
@@ -61,6 +61,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "analysis"))  # topology_metrics.py (core)
 import txrelay_check  # noqa: E402
 import topology_metrics  # noqa: E402
 
@@ -99,7 +100,7 @@ def spy_observations(logs, spies, ip_map):
     """{tx: [(t, sender_agent, fluff), ...]} from the spies' rx events, sorted.
 
     Senders are resolved by IP; receipts from unknown IPs are dropped. A spy
-    logs a fluff only on its first receipt (docs/TXRELAY_LOG.md), so the
+    logs a fluff only on its first receipt (studies/antiproxy/docs/TXRELAY_LOG.md), so the
     earliest fluff across the fleet is still exact.
     """
     obs = defaultdict(list)
@@ -388,7 +389,7 @@ def main(argv=None):
         return 1
     if not r["spies_logging"]:
         print("No spy has a txrelay.jsonl: run spies on monerod-sim with "
-              "sim-log-txrelay (docs/TXRELAY_LOG.md)", file=sys.stderr)
+              "sim-log-txrelay (studies/antiproxy/docs/TXRELAY_LOG.md)", file=sys.stderr)
         return 1
     print(render(r))
     if args.json:

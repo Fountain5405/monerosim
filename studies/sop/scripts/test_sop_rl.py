@@ -1,11 +1,11 @@
-"""Tests for scripts/sop_rl.py (the learned SoP attacker; plan
-docs/superpowers/plans/2026-10-25-sop-rl-attacker.md)."""
+"""Tests for studies/sop/scripts/sop_rl.py (the learned SoP attacker; plan
+studies/sop/docs/superpowers/plans/2026-10-25-sop-rl-attacker.md)."""
 import random
 
 import pytest
 
-from scripts import sop_mdp as M
-from scripts import sop_rl as RL
+from studies.sop.scripts import sop_mdp as M
+from studies.sop.scripts import sop_rl as RL
 
 
 def test_mdp_env_follows_event_then_actions():
@@ -40,7 +40,7 @@ def test_sim_stubborn_rule():
 
 def test_race_env_stubborn_reproduces_the_calibration_number():
     env = RL.race_env(0.45, days=2000, seed=1)
-    from scripts.sop_race_model import stubborn_policy
+    from studies.sop.scripts.sop_race_model import stubborn_policy
     r = RL.rollout(env, lambda o, legal: stubborn_policy(env), env.n_objects)
     assert abs(r["share"] - 0.2806) < 0.003     # hunt --honest-shares, 20261020_noown, o5, seed 1
 
@@ -86,7 +86,7 @@ def test_race_returns_carry_a_reveal_back_to_the_first_hold_in_one_pass(race_ret
 
 
 def test_train_finds_publish_at_cap_when_window_is_unreachable():
-    # 3/3/40/12/12 cannot reach the window (docs/20261025_sop_mdp_notes.md): the exact
+    # 3/3/40/12/12 cannot reach the window (studies/sop/docs/20261025_sop_mdp_notes.md): the exact
     # optimum is honest mining, 0.4500, reached by publishing at a == 3 and giving up otherwise.
     caps = M.Caps(3, 3, 40, 12, 12)
     env = RL.MdpEnv(0.45, caps)
@@ -289,13 +289,13 @@ def test_cli_train_and_eval_smoke(tmp_path):
     import subprocess
     import sys
     out = tmp_path / "p.json.gz"
-    subprocess.run([sys.executable, "scripts/sop_rl.py", "train", "--alpha", "0.45", "--env", "mdp",
+    subprocess.run([sys.executable, "studies/sop/scripts/sop_rl.py", "train", "--alpha", "0.45", "--env", "mdp",
                     "--a-max", "3", "--h-max", "3", "--d-max", "40", "--p-max", "12", "--deficit", "12",
                     "--budget", "200000", "--days-eval", "2", "--d-bin", "2", "--p-bin", "2",
                     "--returns", "race", "--n-min", "4", "--lr", "0.1", "--out", str(out)], check=True)
     _, meta = RL.load_policy(str(out))
     assert meta["key_clip"]["p_bin"] == 2 and meta["returns"] == "race" and meta["n_min"] == 4 and meta["lr"] == 0.1
-    r = subprocess.run([sys.executable, "scripts/sop_rl.py", "eval", "--policy", str(out), "--alpha", "0.45",
+    r = subprocess.run([sys.executable, "studies/sop/scripts/sop_rl.py", "eval", "--policy", str(out), "--alpha", "0.45",
                         "--env", "mdp", "--a-max", "3", "--h-max", "3", "--d-max", "40", "--p-max", "12",
                         "--deficit", "12", "--days", "2", "--seeds", "1"], check=True, capture_output=True, text=True)
     assert "share" in r.stdout and "sim_stubborn" in r.stdout

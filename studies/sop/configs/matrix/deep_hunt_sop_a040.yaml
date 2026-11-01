@@ -9,7 +9,7 @@
 # SoP at alpha 0.40, 240 h (Model B: about 0.3 per canonical day, so about 3 expected).
 name: deep_hunt_sop_a040
 seed: 13582
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 240h
 axes:

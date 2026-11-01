@@ -16,7 +16,7 @@ import argparse
 import sys
 from concurrent.futures import ProcessPoolExecutor
 
-from scripts.sop_race_model import SimConfig, simulate
+from studies.sop.scripts.sop_race_model import SimConfig, simulate
 
 VARIANTS = [
     ('base', dict()),

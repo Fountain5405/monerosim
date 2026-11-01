@@ -1,6 +1,6 @@
-"""Tests for analysis/spy/spy_estimators.py on hand-built observations.
+"""Tests for studies/antiproxy/analysis/spy/spy_estimators.py on hand-built observations.
 
-Run: python3 -m pytest analysis/spy/test_spy_estimators.py
+Run: python3 -m pytest studies/antiproxy/analysis/spy/test_spy_estimators.py
 """
 import sys
 from pathlib import Path

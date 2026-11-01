@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """A learned attacker for Share-or-Perish (MRL #146, 2026-10-20 rule).
 
-Design: docs/superpowers/specs/2026-10-25-sop-rl-attacker-design.md. The
+Design: studies/sop/docs/superpowers/specs/2026-10-25-sop-rl-attacker-design.md. The
 hand-written window_stubborn attacker is a floor on what SoP concedes; the
-exact solver (scripts/sop_mdp.py) cannot reach faithful block caps. This
+exact solver (studies/sop/scripts/sop_mdp.py) cannot reach faithful block caps. This
 module trains a tabular policy by reinforcement learning against the race
-model (scripts/sop_race_model.py SopEnv, the sims' noown settings) over the
+model (studies/sop/scripts/sop_race_model.py SopEnv, the sims' noown settings) over the
 exact-MDP observation (a, D, xa, pa, h, xh, ph), and exports it as a diff
 against the sim's own stubborn rule so agents/selfish_strategy.py can run it.
 
@@ -26,12 +26,12 @@ import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
-if __name__ == "__main__":   # run as `python scripts/sop_rl.py`: make `scripts.` importable
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+if __name__ == "__main__":   # run as `python studies/sop/scripts/sop_rl.py`: make `scripts.` importable
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from scripts import sop_mdp as M
-from scripts.sop_policy import HOLD, PUBLISH, REVEAL, GIVE_UP, Obs, key_of, load_policy, sim_stubborn  # noqa: F401 (re-exported)
-from scripts.sop_race_model import FAR_CAP, RULE_PRESETS, SimConfig, SopEnv
+from studies.sop.scripts import sop_mdp as M
+from studies.sop.scripts.sop_policy import HOLD, PUBLISH, REVEAL, GIVE_UP, Obs, key_of, load_policy, sim_stubborn  # noqa: F401 (re-exported)
+from studies.sop.scripts.sop_race_model import FAR_CAP, RULE_PRESETS, SimConfig, SopEnv
 
 assert (HOLD, PUBLISH, REVEAL, GIVE_UP) == (M.HOLD, M.PUBLISH, M.REVEAL, M.GIVE_UP)
 
@@ -101,7 +101,7 @@ def race_env(alpha: float, days: float, seed: int, cap_blocks: int = 0,
     window is (K - 1) * w = 32 objects). perish: honest pending shares perish
     when the attacker publishes (SimConfig.honest_perish_on_publish). Returned already
     reset with `seed`."""
-    from scripts.sop_race_model import K_DEFAULT, W_DEFAULT
+    from studies.sop.scripts.sop_race_model import K_DEFAULT, W_DEFAULT
     K = K_DEFAULT if K is None else int(K)
     w = W_DEFAULT if w is None else int(w)
     cfg = SimConfig(alpha=alpha, d=1, rule="sop", attacker_embeds=True, days=days, seed=seed,

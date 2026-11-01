@@ -1,6 +1,6 @@
-"""Tests for analysis/mainnet/*.py. No network access.
+"""Tests for studies/antiproxy/analysis/mainnet/*.py. No network access.
 
-Fixtures in analysis/mainnet/fixtures/ are one real get_info / get_connections
+Fixtures in studies/antiproxy/analysis/mainnet/fixtures/ are one real get_info / get_connections
 / get_peer_list response captured from the live mainnet node given in the
 task, with peer IPs anonymised to 10.x addresses.
 """
@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 from agents import levin_lib as L  # noqa: E402
 
 MAINNET_DIR = Path(__file__).resolve().parent

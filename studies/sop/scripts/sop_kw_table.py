@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Per (K, w) of the countermeasure: the best attacker share per alpha, the
 sim's rule's share, and the crossing where the best attacker's share passes
-alpha, from a sop_attacker_search.py results file (data/sop_search/kw_sweep.jsonl).
+alpha, from a sop_attacker_search.py results file (studies/sop/data/sop_search/kw_sweep.jsonl).
 
-    python scripts/sop_kw_table.py [kw_sweep.jsonl]
+    python studies/sop/scripts/sop_kw_table.py [kw_sweep.jsonl]
 """
 from __future__ import annotations
 
@@ -12,14 +12,14 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-from scripts.sop_attacker_search import crossing
+from studies.sop.scripts.sop_attacker_search import crossing
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
-    path = Path(argv[0]) if argv else ROOT / "data" / "sop_search" / "kw_sweep.jsonl"
+    path = Path(argv[0]) if argv else ROOT / "studies" / "sop" / "data" / "sop_search" / "kw_sweep.jsonl"
     rows = [json.loads(l) for l in open(path) if l.strip()]
     # (K, w, combo, alpha) -> shares
     by = defaultdict(list)

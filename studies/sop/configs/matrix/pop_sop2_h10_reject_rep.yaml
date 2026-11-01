@@ -14,11 +14,11 @@
 # h10 preset, whose tip difficulty was 9.8 % under D0 (results doc §7); they
 # also pair with pop_exact_h10_reject.
 #
-#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/pop_sop2_h10_reject_rep.yaml
+#   venv/bin/python scripts/selfish_matrix.py studies/sop/configs/matrix/pop_sop2_h10_reject_rep.yaml
 #   venv/bin/python scripts/attacker_stranding.py pop_sop2_h10_reject_rep pop_sop2_h10_fbridge_rep
 name: pop_sop2_h10_reject_rep
 seed: 54321
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 2
 axes:
   strategy:

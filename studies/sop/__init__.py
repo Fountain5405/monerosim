@@ -1,0 +1,1 @@
+"""Share-or-Perish study."""

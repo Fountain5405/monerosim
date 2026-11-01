@@ -5,7 +5,7 @@ seed's outbound connections — mainnet's version of the lab's "x the
 ceiling" multiplier (E27 2.2x untrimmed, E45 1.06x trimmed).
 
 Input: a directory holding the observatory's feeds as pulled by
-analysis/mainnet/pull_observer.sh (seed_fleet_hist.json: per seed, every
+studies/antiproxy/analysis/mainnet/pull_observer.sh (seed_fleet_hist.json: per seed, every
 ~10 min, <seed>_white_{d,p,all} / <seed>_out_{d,p,all} / _gray_ / _in_ in
 percent, d = definitive fingerprint, p = pattern member;
 outbound_share_hist.json: adversary share of live outbound per seed;

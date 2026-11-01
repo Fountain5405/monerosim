@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Model B (scripts/sop_race_model.py simulate()) vs the sim's logged reveals.
+"""Model B (studies/sop/scripts/sop_race_model.py simulate()) vs the sim's logged reveals.
 
 simulate_shapes() is simulate() copied line for line with the same RNG draws,
 plus instrumentation: shares found vs embedded per side, and the shape of
@@ -37,11 +37,11 @@ from collections import Counter
 from pathlib import Path
 from statistics import mean
 
-# Allow `python scripts/selfish_mining/sop_model_compare.py` (no -m): put the
+# Allow `python studies/sop/scripts/selfish_mining/sop_model_compare.py` (no -m): put the
 # repo root on sys.path so `scripts.*` resolves, same mechanism as
 # scripts/selfish_matrix.py's sys.path.append, generalized (no hard-coded path).
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from scripts.sop_race_model import SECONDS_PER_DAY, SimConfig, T_BLOCK_S, simulate
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+from studies.sop.scripts.sop_race_model import SECONDS_PER_DAY, SimConfig, T_BLOCK_S, simulate
 
 CONFIGS = [('stock d2', 'block_stock_a033_d2', 'stock_d2'),
            ('SoP d2', 'share_sop2_a033_d2', 'sop_d2'),
@@ -51,7 +51,7 @@ KS = (3, 5, 7, 10)
 
 
 def simulate_shapes(cfg: SimConfig):
-    """simulate() (scripts/sop_race_model.py), copied line for line with the
+    """simulate() (studies/sop/scripts/sop_race_model.py), copied line for line with the
     same RNG draws, plus instrumentation."""
     rng = random.Random(cfg.seed)
     rate = cfg.w / T_BLOCK_S

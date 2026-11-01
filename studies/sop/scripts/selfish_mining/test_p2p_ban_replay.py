@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from scripts.selfish_mining.p2p_ban_replay import group_drops, replay
+from studies.sop.scripts.selfish_mining.p2p_ban_replay import group_drops, replay
 
 PEER_IP = "10.0.0.5"
 PEER_PORT = "18080"

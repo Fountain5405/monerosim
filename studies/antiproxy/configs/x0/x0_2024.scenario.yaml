@@ -1,14 +1,14 @@
-# X0: calibrate the lab (docs/20261018_spy_node_defenses.md §5.3). The mainnet
+# X0: calibrate the lab (studies/antiproxy/docs/20261018_spy_node_defenses.md §5.3). The mainnet
 # replica (mainnet_replica.scenario.yaml) scaled to ~400 honest daemons for a
 # 32 GB box, with spies at the 2025 share, every daemon on monerod-sim logging relays.
 #
-# Cells, made by test_configs/x0/make_cells.sh from the two markers below:
+# Cells, made by studies/antiproxy/configs/x0/make_cells.sh from the two markers below:
 #   peer selection   legacy (v0.18.4.2, before #9939) | 24 (stock /24 dedup)
 #                    <- `sim-subnet-dedup` under daemon_defaults
 #   ban list         none | on half of each honest class
 #                    <- the `ban-list: @BANLIST@` lines (cells without the list
 #                       drop them; the list is the spies' /24s, from
-#                       scripts/spy_ban_list.py)
+#                       studies/antiproxy/scripts/spy_ban_list.py)
 #
 # Ratios kept (the plan's I5 rule: say which ones):
 #   - class shares as in the replica: 5 miner hubs, 12% medium, 2% observers,
@@ -39,14 +39,14 @@
 # never dialed in, yet they were in peerlists. A spy that dials honest nodes
 # excludes itself from those nodes' outbound picks (its /24 joins their
 # connected subnets), and one that dials nobody is in nobody's peerlist
-# (test_configs/subnet_dedup_check.scenario.yaml). How spies reach peerlists is
+# (studies/antiproxy/configs/subnet_dedup_check.scenario.yaml). How spies reach peerlists is
 # the calibration knob if the targets miss: variant R does not poison
 # peerlists the way the 2024 proxies did.
 #
 # Targets (X0): spy share of honest outbound slots ~0.15 (legacy, no list),
 # ~0.07 (legacy, list), ~70% lower with /24 dedup; stem length geometric with
 # mean ~5; the embargo-timer rate. Pass: each within 1.5x, or a written reason.
-# Check: python3 analysis/spy/x0_calibration.py archived_runs/<run>
+# Check: python3 studies/antiproxy/analysis/spy/x0_calibration.py archived_runs/<run>
 general:
   stop_time: 8h
   simulation_seed: 12345

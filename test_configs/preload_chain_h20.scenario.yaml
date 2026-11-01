@@ -13,10 +13,10 @@
 #
 # Sibling of test_configs/preload_chain.scenario.yaml (the "h50" generator,
 # sized for the 50 h/s mainnet replica). The selfish campaign base
-# (test_configs/selfish_micro_sop.yaml, consumed by test_configs/matrix/
+# (studies/sop/configs/selfish_micro_sop.yaml, consumed by studies/sop/configs/matrix/
 # pop_sop2.yaml) mines 3 + 3 h/s honest + 4 h/s attacker = 10 h/s, so its
 # equilibrium difficulty is D0 = 120 x 10 = 1,200. Grafting h50 there means
-# 600 s blocks (docs/20260926_dev_branch_handoff.md); this preset lands the
+# 600 s blocks (studies/sop/docs/20260926_dev_branch_handoff.md); this preset lands the
 # campaign at its own D0 so the first mined block is a ~120 s block and the
 # fixed-difficulty stopgap in the base can be dropped.
 #
@@ -26,7 +26,7 @@
 # plus a ~2.4 h stretch where this generator delivered ~6.5 of its 10 h/s.
 # Its tail median looked fine (1173) but the block after the tip got 1083
 # (-9.8 %), and every consumer ran ~10 % fast
-# (docs/20260926_exact_uncles_and_sop_controls.md, block-time note). At 32h
+# (studies/sop/docs/20260926_exact_uncles_and_sop_controls.md, block-time note). At 32h
 # the tip's window is 720 post-ramp blocks with the 60/60 outlier cut, so
 # D_next is ~D0 within the DAA's own ~4 % spread. `chain_snapshot.py export`
 # now computes D_next at the tip exactly and refuses anything > 5 % off D0;

@@ -7,10 +7,10 @@
 # carries sim-sop-rejudge-displaced. Second draw of an n=2 pair (first:
 # stubborn_h10_rejudge.yaml, seed 12345).
 #
-#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stubborn_h10_rejudge_rep.yaml
+#   venv/bin/python scripts/selfish_matrix.py studies/sop/configs/matrix/stubborn_h10_rejudge_rep.yaml
 name: stubborn_h10_rejudge_rep
 seed: 54321
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 2
 axes:
   arm:

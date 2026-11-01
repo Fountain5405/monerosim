@@ -8,7 +8,7 @@
 # 20261020_noown, 2000 d, +honest shares): 0.094.
 name: sop_v4_noown_72h_s2
 seed: 27791
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 72h
 axes:

@@ -26,7 +26,7 @@
 # the faithful real-Monero shape — and paired `stock` cells on the same
 # base measure the same conditions without the countermeasure.
 name: pop_sop2
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 2
 axes:
   strategy:

@@ -1,4 +1,4 @@
-"""Tests for scripts/spy_ban_list.py: which spy /24s a partial-coverage list names."""
+"""Tests for studies/antiproxy/scripts/spy_ban_list.py: which spy /24s a partial-coverage list names."""
 import sys
 from pathlib import Path
 

@@ -1,12 +1,12 @@
 # sop_v4_h10_72h (2026-10-21): first campaign on the MRL #146 2026-10-20 rule
-# (log v4, docs/superpowers/specs/2026-10-21-sop-rev20261020-design.md), 72 h.
+# (log v4, studies/sop/docs/superpowers/specs/2026-10-21-sop-rev20261020-design.md), 72 h.
 # Arm of sop_v4_smoke. "hs" = attacker uses the honest shares; "built" = none.
 # Both keep tip_shares (the attacker's own shares). Only four cells run, in this
 # order: a033 built d2, a045 hs d5, a040 hs d2, a045 hs d2. Total hashrate 10 h/s
 # in every alpha cell (a033: 3.3 + 2 x 3.35).
 name: sop_v4_h10_72h
 seed: 27791
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 72h
 axes:

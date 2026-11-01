@@ -34,10 +34,10 @@
 # 2026-09-30) -- the depth sweep only makes sense where the attacker can
 # actually accrue a window via shares.
 #
-#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stubborn_h10_rep.yaml
+#   venv/bin/python scripts/selfish_matrix.py studies/sop/configs/matrix/stubborn_h10_rep.yaml
 name: stubborn_h10_rep
 seed: 54321
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 4
 axes:
   arm:

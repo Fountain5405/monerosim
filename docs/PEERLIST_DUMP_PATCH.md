@@ -20,7 +20,7 @@ how we *read* the target's state, not how the target *behaves*.
 ## Status: VERIFIED WORKING (2026-09-16)
 
 Implemented and confirmed on the fast repro
-(`test_configs/eclipse_socketbuf_verify.scenario.yaml`, 54 hosts, ~3 min sim).
+(`studies/eclipse/configs/eclipse_socketbuf_verify.scenario.yaml`, 54 hosts, ~3 min sim).
 The patched monerod (flag-gated; now vendored as
 `patches/monero-sim-peerlist-dump.patch` and built into `monerod-hf` by
 `./setup.sh --hardfork`, base version unchanged v0.18.5.1) wrote `<relay-4000 data-dir>/fake/peerlist_dump.jsonl`:
@@ -94,7 +94,7 @@ need the per-entry breakdown. That per-entry list is the one thing we cannot get
 `get_peer_list` returns the full list, but under Shadow the response is
 truncated/stalled every time the list is large. This was reproduced
 deterministically (54-host smoke, gray driven to the 5000 cap in ~3.5 min sim;
-`test_configs/eclipse_socketbuf_verify.scenario.yaml`) and diagnosed in two
+`studies/eclipse/configs/eclipse_socketbuf_verify.scenario.yaml`) and diagnosed in two
 rounds (full detail in the basement copy `investigation/20260916_problem.txt`, EMPIRICAL UPDATE #1 and #2):
 
 - **Symptom:** small responses (≤ ~54 KB) succeed; any response over a fixed
@@ -245,7 +245,7 @@ the raw lists and analyse offline.)
   (classifies each snapshot's entries against the run's `agent_registry.json`
   to produce B and OR).
 - Verify against the fast repro
-  (`test_configs/eclipse_socketbuf_verify.scenario.yaml`, gray → 5000 in
+  (`studies/eclipse/configs/eclipse_socketbuf_verify.scenario.yaml`, gray → 5000 in
   ~3.5 min sim): the dump file should contain full 5000-entry snapshots with no
   truncation, while `get_peer_list` over RPC still fails — confirming the file
   path is immune to the Shadow limit.

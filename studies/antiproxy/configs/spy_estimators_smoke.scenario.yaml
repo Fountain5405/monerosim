@@ -1,5 +1,5 @@
-# Smoke test for the spy-side estimators (analysis/spy/spy_estimators.py, spy
-# plan I3; docs/20261018_spy_node_defenses.md §5.2). Like
+# Smoke test for the spy-side estimators (studies/antiproxy/analysis/spy/spy_estimators.py, spy
+# plan I3; studies/antiproxy/docs/20261018_spy_node_defenses.md §5.2). Like
 # txrelay_log_smoke.scenario.yaml, every daemon logs relays, plus 6 variant-R
 # spies (logging monerod-sim, reachable) and mostly unreachable users, so the
 # stem-predecessor + reachability estimator has unreachable senders to find.
@@ -8,9 +8,9 @@
 # Expected: sp_r precision for unreachable senders near 1 and recall near
 # their spies' stem share; combined recall above sp's.
 #
-# Check:  python3 analysis/spy/spy_estimators.py archived_runs/<run>
+# Check:  python3 studies/antiproxy/analysis/spy/spy_estimators.py archived_runs/<run>
 #
-# Expand: python3 scripts/generate_config.py --from test_configs/spy_estimators_smoke.scenario.yaml \
+# Expand: python3 scripts/generate_config.py --from studies/antiproxy/configs/spy_estimators_smoke.scenario.yaml \
 #             -o test_configs/spy_estimators_smoke.yaml
 # Run:    ./run_sim.sh --config test_configs/spy_estimators_smoke.yaml --bootfast
 general:

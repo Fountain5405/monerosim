@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""scripts/sop_race_model.py: probability/race models for MRL #146 ("Share or
+"""studies/sop/scripts/sop_race_model.py: probability/race models for MRL #146 ("Share or
 Perish") Security section claims, and a Monte Carlo of our window_stubborn
 attacker.
 
@@ -292,7 +292,7 @@ class SimConfig:
     count_attacker_pending: bool = False  # MRL #146 2026-10-20: the attacker's own shares on its
                                           # tip count for it under the objective score (it publishes
                                           # them at the reveal)
-    cap_blocks: int = 0                   # scripts/sop_mdp.py truncation (2026-10-25): once either
+    cap_blocks: int = 0                   # studies/sop/scripts/sop_mdp.py truncation (2026-10-25): once either
                                           # side holds this many blocks since the fork the attacker is
                                           # forced to act: publish if honest has none, reveal if the
                                           # network accepts, else give up. 0 = no cap (Model B).
@@ -376,15 +376,15 @@ class SimStats:
 # Step API (2026-10-25): the Model B loop as an environment an attacker policy
 # drives one object at a time. simulate() below runs it with stubborn_policy
 # and reproduces the pre-refactor loop bit for bit (scripts/test_sop_race_model
-# PINNED). Used by scripts/sop_rl.py to train a policy; design in
-# docs/superpowers/specs/2026-10-25-sop-rl-attacker-design.md.
+# PINNED). Used by studies/sop/scripts/sop_rl.py to train a policy; design in
+# studies/sop/docs/superpowers/specs/2026-10-25-sop-rl-attacker-design.md.
 # ---------------------------------------------------------------------------
 
-HOLD, PUBLISH, REVEAL, GIVE_UP = 0, 1, 2, 3        # same values as scripts/sop_mdp.py
+HOLD, PUBLISH, REVEAL, GIVE_UP = 0, 1, 2, 3        # same values as studies/sop/scripts/sop_mdp.py
 ACTION_NAMES = ["hold", "publish", "reveal", "give_up"]
 WINDOW_OBS = K_DEFAULT * W_DEFAULT - W_DEFAULT     # 32: the observation's window-counter cap
 FAR_CAP = 200        # the d_cap / deficit_cap a learned policy's environment uses (sop_rl.race_env)
-Obs = Tuple[int, int, int, int, int, int, int]     # a, D, xa, pa, h, xh, ph (scripts/sop_mdp.py State)
+Obs = Tuple[int, int, int, int, int, int, int]     # a, D, xa, pa, h, xh, ph (studies/sop/scripts/sop_mdp.py State)
 
 
 def observation(att_blocks: List[int], hon_blocks: List[int], att_pending: int, hon_pending: int,

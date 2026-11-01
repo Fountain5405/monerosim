@@ -2,11 +2,11 @@
 """Sims versus the race model, per alpha (2026-10-26, experiment 4 of the
 post-ladder plan): the 72 h cells' JSONs (matrix_runs/<spec>/cells/*.json:
 share, attacker_orphan_rate, network_orphan_rate, canonical_blocks) against
-the model's baseline rows (data/sop_search/baseline.jsonl, the sim's own
+the model's baseline rows (studies/sop/data/sop_search/baseline.jsonl, the sim's own
 rule through sop_attacker_search.evaluate: share, att_orphan_rate,
 net_orphan_rate, reveals per 2000 d). Reads JSON only; no simulation.
 
-    python scripts/sop_fidelity_audit.py [spec] [baseline.jsonl]
+    python studies/sop/scripts/sop_fidelity_audit.py [spec] [baseline.jsonl]
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def load_cells(spec: str):
@@ -49,7 +49,7 @@ def mean(rows, key):
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     spec = argv[0] if argv else "sop_v4_o5_noown_72h"
-    base = Path(argv[1]) if len(argv) > 1 else ROOT / "data" / "sop_search" / "baseline.jsonl"
+    base = Path(argv[1]) if len(argv) > 1 else ROOT / "studies" / "sop" / "data" / "sop_search" / "baseline.jsonl"
     cells, model = load_cells(spec), load_model(base)
     print(f"{spec} (sims, 72 h cells) vs race model (sim_stubborn, {base.name})")
     print(f"{'alpha':>5} | {'share':>7} {'att_orph':>8} {'net_orph':>8} {'blocks':>6} n | "

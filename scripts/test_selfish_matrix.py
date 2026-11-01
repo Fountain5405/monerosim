@@ -415,7 +415,7 @@ REPO = Path(__file__).resolve().parent.parent
 
 def _plan_and_build(spec_name):
     from scripts.selfish_matrix import load_spec
-    spec = load_spec(REPO / "test_configs" / "matrix" / f"{spec_name}.yaml")
+    spec = load_spec(REPO / "studies" / "sop" / "configs" / "matrix" / f"{spec_name}.yaml")
     return spec, {cell: build_config(spec, overlays) for cell, _values, overlays in plan_cells(spec)}
 
 
@@ -723,7 +723,7 @@ def test_every_matrix_cell_builds_its_attackers_strategy():
     on every tick of the run, and the attacker never published."""
     from agents.selfish_miner import SelfishMinerAgent
     from agents.selfish_strategy import SelfishStrategy
-    specs = sorted((REPO / "test_configs" / "matrix").glob("*.yaml"))
+    specs = sorted((REPO / "studies" / "sop" / "configs" / "matrix").glob("*.yaml"))
     built, bad = 0, []
     for path in specs:
         _, cfgs = _plan_and_build(path.stem)
@@ -843,7 +843,7 @@ def test_banlog_specs_add_net_cn_debug_to_the_long_depth_d5_cell():
 def test_banfix_specs_equal_the_banlog_specs():
     """stubborn_h10_banfix{,_rep,_rep2} (2026-10-07, plan agreed 2026-10-06):
     the banlog cells again on monerod-sim with the SoP height-drop guard
-    (hit_score in patches/monero-sim-pop.patch). Only the binary changes:
+    (hit_score in studies/sop/patches/monero-sim-pop.patch). Only the binary changes:
     same seeds, same net.cn:DEBUG, so the logs still show every height-drop
     hit and would show any scored drop or ban. Each spec builds exactly its
     banlog spec's cells."""
@@ -865,7 +865,7 @@ def test_run_sim_cmd_passes_ksm_and_bootfast():
 
 def _load_spec(name):
     from scripts.selfish_matrix import load_spec
-    return load_spec(REPO / "test_configs" / "matrix" / name)
+    return load_spec(REPO / "studies" / "sop" / "configs" / "matrix" / name)
 
 
 def _cells(spec):
@@ -895,9 +895,9 @@ def test_slow_base_differs_from_the_micro_base_only_in_the_graph():
     of 1.5 s relay hops (relay-chain-1..7 on nodes 1206..1212, each peering
     only with the previous) and honest-002 eclipsed behind it; every link's
     round trip stays under monerod's 5 s P2P timeouts."""
-    base = yaml.safe_load((REPO / "test_configs/selfish_micro_sop.yaml").read_text())
-    slow = yaml.safe_load((REPO / "test_configs/selfish_micro_sop_slow.yaml").read_text())
-    assert slow["network"]["path"] == "gml_processing/1200_nodes_caida_slow_links.gml"
+    base = yaml.safe_load((REPO / "studies/sop/configs/selfish_micro_sop.yaml").read_text())
+    slow = yaml.safe_load((REPO / "studies/sop/configs/selfish_micro_sop_slow.yaml").read_text())
+    assert slow["network"]["path"] == "studies/sop/data/gml/1200_nodes_caida_slow_links.gml"
     ag = slow["agents"]
     for k in range(1, 8):
         r = ag[f"relay-chain-{k}"]
@@ -979,8 +979,8 @@ def test_gamma_base_is_the_slow_base_plus_a_second_bridge_and_the_pins():
     relay-slow-2 and -3 extend that into a 6 s detour when a cell chains them,
     the attacker sits on node 1203 beside honest-002 and bridge 1, 0.5 s from
     node 0 where honest-001 and bridge 2 are. Nothing else differs."""
-    slow = _strip_chain(yaml.safe_load((REPO / "test_configs/selfish_micro_sop_slow.yaml").read_text()))
-    g = yaml.safe_load((REPO / "test_configs/selfish_micro_sop_gamma.yaml").read_text())
+    slow = _strip_chain(yaml.safe_load((REPO / "studies/sop/configs/selfish_micro_sop_slow.yaml").read_text()))
+    g = yaml.safe_load((REPO / "studies/sop/configs/selfish_micro_sop_gamma.yaml").read_text())
     ag = g["agents"]
     att = ag["attacker-miner"]
     assert att["attributes"]["bridges"] == "attacker-bridge,attacker-bridge-2"

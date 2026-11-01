@@ -2,7 +2,7 @@
 
 Ground-truth log of how each daemon receives and relays transactions:
 Dandelion++ stems, fluffs, epochs and stem peers. It is infrastructure item I1
-of the spy-node test plan (`docs/20261018_spy_node_defenses.md` §5.2). Stock
+of the spy-node test plan (`studies/antiproxy/docs/20261018_spy_node_defenses.md` §5.2). Stock
 monerod logs only `Received NOTIFY_NEW_TRANSACTIONS (N txes)`, without the
 stem/fluff flag, the peer or the hashes, so stem paths and each node's stem
 peers can't be rebuilt from `bitmonero.log`.
@@ -11,7 +11,7 @@ Measurement only: the patch changes no relay decision.
 
 ## Turning it on
 
-The flag is added by `patches/monero-sim-txrelay-log.patch`, built into
+The flag is added by `studies/antiproxy/patches/monero-sim-txrelay-log.patch`, built into
 `monerod-sim` by `./setup.sh --sim-binary`. Pass it per agent group:
 
 ```yaml
@@ -30,7 +30,7 @@ stock monerod, which rejects it. Declare the seeds on `monerod-sim` with the
 flag instead (`docs/SCENARIO_FORMAT.md`, "Choosing a seed's binary"). They are
 well connected and often stem peers: in the smoke run with stock seeds, 113 of
 226 stem paths ended at a seed and went unrecorded.
-Example: `test_configs/txrelay_log_smoke.scenario.yaml`.
+Example: `studies/antiproxy/configs/txrelay_log_smoke.scenario.yaml`.
 
 ## Format
 
@@ -57,7 +57,7 @@ logging them all would multiply the file by the peer count.
 
 ## Checking a run
 
-`analysis/spy/txrelay_check.py <archive_dir>` rebuilds every transaction's
+`studies/antiproxy/analysis/spy/txrelay_check.py <archive_dir>` rebuilds every transaction's
 origin and stem path and reports how the paths ended. Smoke run 2026-10-19
 (`archived_runs/20261019_195616_txrelay_smoke2`; 34 daemons, all logging, 225 txs, 7 min wall):
 

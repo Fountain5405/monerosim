@@ -17,7 +17,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scripts.selfish_mining.flipback_scan import attacker_ids
+from studies.sop.scripts.selfish_mining.flipback_scan import attacker_ids
 
 TS = re.compile(r'^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)\.(\d{3})\t')
 EPOCH_MS = 946684800000          # 2000-01-01 00:00:00 UTC, the sim clock

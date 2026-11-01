@@ -1,13 +1,13 @@
 # sop_v4_param_6h (2026-10-26): the 6 h smoke cell for the PARAM_STUBBORN
 # attacker (strategy param_stubborn: the window_stubborn noown rule with the
-# knobs found by the race-model search, docs/20261026_sop_attacker_search.md),
+# knobs found by the race-model search, studies/sop/docs/20261026_sop_attacker_search.md),
 # at alpha 0.50 where the gain over the sim's rule is largest. Before the
 # 72 h cells (sop_v4_param_72h): grep the attacker log for
 # `param_stubborn: G=.. L=..`, reveals, rejected reveals and the `learned:`
 # counter lines; compare the share's direction with the model's prediction.
 name: sop_v4_param_6h
 seed: 27791
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 6h
 axes:

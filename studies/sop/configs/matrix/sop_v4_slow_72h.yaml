@@ -14,7 +14,7 @@
 # them mining: ~12 GB, a 16 GB box.
 name: sop_v4_slow_72h
 seed: 27791
-base: test_configs/selfish_micro_sop_slow.yaml
+base: studies/sop/configs/selfish_micro_sop_slow.yaml
 parallel: 1
 stop_time: 72h
 axes:

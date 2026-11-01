@@ -3,7 +3,7 @@
 # Identical to the s1 cells except the attacker's sample attribute.
 name: sop_v4_seed2_adopt_72h
 seed: 27791
-base: test_configs/selfish_micro_sop_h4.yaml
+base: studies/sop/configs/selfish_micro_sop_h4.yaml
 parallel: 1
 stop_time: 72h
 axes:

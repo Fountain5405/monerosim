@@ -8,7 +8,7 @@
 # except the hashrates (test pins it). 14 daemons, 5 mining: phantom / lithium.
 name: sop_v4_adopt_lowalpha_72h
 seed: 27791
-base: test_configs/selfish_micro_sop_h4.yaml
+base: studies/sop/configs/selfish_micro_sop_h4.yaml
 parallel: 1
 stop_time: 72h
 axes:

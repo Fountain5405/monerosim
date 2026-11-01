@@ -13,7 +13,7 @@
 # (lithium / phantom). test_adopt_nodrop_differs_from_k2_only_in_the_scoring pins it.
 name: sop_v4_adopt_nodrop_72h
 seed: 27791
-base: test_configs/selfish_micro_sop_h4.yaml
+base: studies/sop/configs/selfish_micro_sop_h4.yaml
 parallel: 1
 stop_time: 72h
 axes:

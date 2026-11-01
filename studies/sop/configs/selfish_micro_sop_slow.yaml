@@ -1,5 +1,5 @@
 # selfish_micro_sop_slow.yaml (2026-10-28, v2): selfish_micro_sop.yaml on the
-# slow-link graph (gml_processing/1200_nodes_caida_slow_links.gml) with a
+# slow-link graph (studies/sop/data/gml/1200_nodes_caida_slow_links.gml) with a
 # chain of seven eclipsed relays, relay-chain-1..7 on nodes 1206..1212, each
 # 1.5 s from the previous and the first 1.5 s from node 0, wired as a chain
 # (relay-chain-i peers only with relay-chain-(i-1); relay-chain-1 dials two
@@ -15,7 +15,7 @@
 # 2026-09-26: the base grafts chain_snapshots/h10 (336 pre-mined blocks whose
 # tail sits at D0 = 120 x 10 h/s = 1,200, this topology's equilibrium) instead
 # of the fixed-difficulty 1800 stopgap, so monerod's real DAA runs from the
-# first mined block (docs/CHAIN_SNAPSHOT.md; docs/20260926_dev_branch_handoff.md
+# first mined block (docs/CHAIN_SNAPSHOT.md; studies/sop/docs/20260926_dev_branch_handoff.md
 # campaign step 1). Every daemon starts at height 336 on the same tip, so
 # the attacker joins at 0 s: there is no genesis ramp left to exploit.
 general:
@@ -55,7 +55,7 @@ general:
   wallet_defaults:
     log-level: 1
 network:
-  path: gml_processing/1200_nodes_caida_slow_links.gml
+  path: studies/sop/data/gml/1200_nodes_caida_slow_links.gml
   peer_mode: Dynamic
 agents:
   honest-001:

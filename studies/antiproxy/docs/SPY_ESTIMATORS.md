@@ -1,9 +1,9 @@
-# Spy-side origin estimators (`analysis/spy/spy_estimators.py`)
+# Spy-side origin estimators (`studies/antiproxy/analysis/spy/spy_estimators.py`)
 
 Scores what a spy fleet can infer about transaction origins against ground
 truth, by sender reachability. It is infrastructure item I3 of the spy-node
-test plan (`docs/20261018_spy_node_defenses.md` §5.2) and builds on the relay
-log (I1, `docs/TXRELAY_LOG.md`).
+test plan (`studies/antiproxy/docs/20261018_spy_node_defenses.md` §5.2) and builds on the relay
+log (I1, `studies/antiproxy/docs/TXRELAY_LOG.md`).
 
 ## What a run needs
 
@@ -12,16 +12,16 @@ log (I1, `docs/TXRELAY_LOG.md`).
   with which stem/fluff flag. Spies are the agents whose id starts with `spy`,
   or those matched by `--spies`.
 - **Honest nodes logging too**, for p_stem and the first-hop ceiling. Declare
-  the fallback seeds on `monerod-sim` as well (`docs/TXRELAY_LOG.md`).
+  the fallback seeds on `monerod-sim` as well (`studies/antiproxy/docs/TXRELAY_LOG.md`).
 - **Unreachable senders**, via `reachable_fraction` or `reachable_by_role`.
   Reachability is read from `shadow_agents.yaml`: a non-empty
   `blocked_inbound_ports` means unreachable. It stands in for the spy's
   ping-back test.
 
-Example: `test_configs/spy_estimators_smoke.scenario.yaml`.
+Example: `studies/antiproxy/configs/spy_estimators_smoke.scenario.yaml`.
 
 ```
-python3 analysis/spy/spy_estimators.py archived_runs/<run> [--spies 'relay-00[1-5]']
+python3 studies/antiproxy/analysis/spy/spy_estimators.py archived_runs/<run> [--spies 'relay-00[1-5]']
     [--busy-min 5] [--window 600] [--bootstrap 1000] [--json out.json]
 ```
 

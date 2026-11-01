@@ -15,7 +15,7 @@
 > undirected) is superseded and `eclipse_nyx_full.scenario.yaml` now points at
 > the new file.
 >
-> Verified with `test_configs/eclipse_ipalloc_5k_smoke.scenario.yaml` (51 hosts
+> Verified with `studies/eclipse/configs/eclipse_ipalloc_5k_smoke.scenario.yaml` (51 hosts
 > on the new 5k GML, 32 of them on AS ≥ 1200): every host got a distinct /24,
 > the reserved-range grep below matched nothing, and Shadow started with
 > `processes failed: 0`, ran its full 8 sim-min to "Shadow completed successfully"
@@ -97,7 +97,7 @@ outbound peers into 12 distinct /24s) — is capped at ~1,200.
 
 ## Where the eclipse work stands (paused)
 - Committed configs that DEPEND on this fix:
-  `test_configs/eclipse_nyx_full.scenario.yaml` (2,211 hosts, points at the 5k
+  `studies/eclipse/configs/eclipse_nyx_full.scenario.yaml` (2,211 hosts, points at the 5k
   GML — will not run until the allocator/GML is fixed, OR until a hand-built GML
   pins the 1,000 attackers to AS 0–999 and shares AS 1000–1199 across benign).
 - Configs that already WORK on the 1,200-node GML (no fix needed):

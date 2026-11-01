@@ -1,4 +1,4 @@
-"""Tests for scripts/sop_mdp.py: transition pieces against the race model's
+"""Tests for studies/sop/scripts/sop_mdp.py: transition pieces against the race model's
 rules, vectorised code against the scalar spec, and the stubborn-policy chain
 against a Monte Carlo run of sop_race_model.simulate with the same rules."""
 import os
@@ -206,7 +206,7 @@ def _walk_mc(alpha, x, paths=20000, horizon=4000, seed=7):
 
 @pytest.mark.parametrize("x", [-3, 0, 2])
 def test_award_tables_match_the_walk_monte_carlo(x):
-    from scripts.sop_mdp import award_tables
+    from studies.sop.scripts.sop_mdp import award_tables
     alpha = 0.4
     lo, hi = -40, 40
     p_ret, g = award_tables(alpha, lo, hi)
@@ -216,7 +216,7 @@ def test_award_tables_match_the_walk_monte_carlo(x):
 
 
 def test_award_tables_closed_forms():
-    from scripts.sop_mdp import award_tables
+    from studies.sop.scripts.sop_mdp import award_tables
     alpha = 0.45
     q = alpha / (1 - alpha)
     p_ret, g = award_tables(alpha, -30, 30)
@@ -229,7 +229,7 @@ def test_award_tables_closed_forms():
 def test_upper_bound_solve_dominates_lower_bound_and_honest_on_small_caps():
     """SSZ 2016 Proposition 3 in SoP form: the over-paying MDP's share is at
     least the under-paying one's and at least honest mining's."""
-    from scripts.sop_mdp import Caps, Compact, enumerate_keys
+    from studies.sop.scripts.sop_mdp import Caps, Compact, enumerate_keys
     caps = Caps(a_max=2, h_max=2, d_max=24, p_max=6, deficit=12)
     keys = enumerate_keys(caps, False)
     lower, _ = Compact(keys, caps, False).share(0.45, optimise=True, tol=1e-4)
@@ -248,7 +248,7 @@ def test_upper_bound_solve_dominates_lower_bound_and_honest_on_small_caps():
 def test_upper_bound_at_half_hashrate_is_the_trivial_bound(capsys):
     """At alpha >= 0.5 the object walk is not transient, the award is infinite
     and the only valid upper bound is 1: the CLI says so instead of crashing."""
-    from scripts.sop_mdp import main
+    from studies.sop.scripts.sop_mdp import main
     rc = main(["solve", "--alpha", "0.5", "--bound", "upper", "--a-max", "2", "--h-max", "2",
                "--d-max", "16", "--p-max", "4", "--deficit", "8"])
     out = capsys.readouterr().out

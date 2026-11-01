@@ -8,7 +8,7 @@ a peer-selection rule where peers churn: a rule that draws stale entries shows u
 and slower slot filling, not as spy share.
 
 Usage:
-    venv/bin/python -I analysis/spy/churn_cost.py <archive> [--slots 12] [--window 300] [--json out.json]
+    venv/bin/python -I studies/antiproxy/analysis/spy/churn_cost.py <archive> [--slots 12] [--window 300] [--json out.json]
 
 "Full outbound set": the first time after a session's start when the distinct OUT peers seen in
 the trailing --window seconds of log lines reach --slots (the same connection tokens
@@ -27,6 +27,7 @@ from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "analysis"))  # topology_metrics.py (core)
 import topology_metrics  # noqa: E402
 
 BANNER = re.compile(r"Monero '[^']+' \(v[0-9.]+")

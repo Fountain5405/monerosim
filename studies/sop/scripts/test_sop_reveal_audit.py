@@ -1,4 +1,4 @@
-from scripts import sop_reveal_audit as ra
+from studies.sop.scripts import sop_reveal_audit as ra
 
 H = "2000-01-01 01:00:00,000 - attacker-miner - SelfishMinerAgent[attacker-miner] - INFO - param_stubborn: "
 

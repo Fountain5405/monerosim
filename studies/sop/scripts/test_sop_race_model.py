@@ -1,8 +1,8 @@
-# scripts/test_sop_race_model.py
+# studies/sop/scripts/test_sop_race_model.py
 import math
 import random
 
-from scripts.sop_race_model import (
+from studies.sop.scripts.sop_race_model import (
     K_DEFAULT, W_DEFAULT, RaceResult, SimConfig, a1_race_to_k,
     a2_strategy2_objects, a3_strategy2_formula, binom_sf_ge, objects_per_day,
     reg_incomplete_beta, run_model_a, RULE_PRESETS, simulate, simulate_race_to_k,
@@ -96,7 +96,7 @@ def _run_events(events, alpha, w, d, rule, attacker_embeds, K_objects=48):
     """Feed an explicit list of (is_attacker, is_block) events through the
     same decision logic as simulate(), without relying on RNG. Returns a
     SimStats-like dict for assertions."""
-    from scripts.sop_race_model import SimStats
+    from studies.sop.scripts.sop_race_model import SimStats
     stats = SimStats(sim_days=1.0)
     hon_blocks, att_blocks = [], []
     hon_pending = att_pending = 0
@@ -224,7 +224,7 @@ def test_exact_reorg_depth_matches_a_brute_force_sum():
     # E[j | attacker reaches K first] by direct enumeration of the
     # negative-binomial terms, for a small K.
     from math import comb
-    from scripts.sop_race_model import exact_reorg_blocks_given_win
+    from studies.sop.scripts.sop_race_model import exact_reorg_blocks_given_win
     alpha, K, w = 0.4, 5, 1
     terms = [comb(K - 1 + j, j) * alpha ** K * (1 - alpha) ** j for j in range(K)]
     expected = sum(j * t for j, t in enumerate(terms)) / sum(terms)
@@ -234,7 +234,7 @@ def test_exact_reorg_depth_matches_a_brute_force_sum():
 def test_rucknium_strategy2_in_objects_gives_tevadors_ten_days_as_the_even_odds_horizon():
     # MRL #146: "once per 10 days" at alpha = 0.33, from Rucknium's Strategy 2
     # (50 % success horizon) with z = k*w = 48 work objects.
-    from scripts.sop_race_model import a3_strategy2_formula, days_to_even_odds
+    from studies.sop.scripts.sop_race_model import a3_strategy2_formula, days_to_even_odds
     r = a3_strategy2_formula(0.33, 48, objects_per_z_unit=1.0)
     assert r.p_success < 0.0006
     assert 9.5 < days_to_even_odds(r.expected_days_between_successes) < 10.1
@@ -246,7 +246,7 @@ def test_per_day_rates_use_canonical_days_like_a_retargeting_chain():
     third of all blocks are orphaned at alpha 0.33, so per-day rates over
     fixed-rate days came out ~1.45x too low (the 240 h sim run, 2026-10-03:
     difficulty fell 32 % and ~1050 blocks a day were found)."""
-    from scripts.sop_race_model import SimStats
+    from studies.sop.scripts.sop_race_model import SimStats
     s = SimStats(sim_days=10.0, reveals=4, reorg_depths=[10, 12, 1, 1],
                  att_final_blocks=1200, hon_final_blocks=2400, att_orphaned_blocks=400)
     assert math.isclose(s.canonical_days, 5.0)          # 3600 canonical blocks / 720
@@ -265,7 +265,7 @@ def test_simulate_orphans_shrink_canonical_days():
 
 
 def test_variant_fields_default_to_the_original_model():
-    from scripts.sop_race_model import SimConfig, simulate
+    from studies.sop.scripts.sop_race_model import SimConfig, simulate
     base = dict(alpha=0.33, d=2, rule='sop', attacker_embeds=True, days=30, seed=3)
     a = simulate(SimConfig(**base))
     b = simulate(SimConfig(**base, count_honest_pending=False, give_up_objects=-1))
@@ -275,7 +275,7 @@ def test_variant_fields_default_to_the_original_model():
 def test_counting_honest_pending_shares_removes_reveals_and_keeps_accounting():
     """2026-10-08: honest shares found but in no block did not count against
     the attacker; counting them must cut the reveal rate sharply."""
-    from scripts.sop_race_model import SimConfig, simulate
+    from studies.sop.scripts.sop_race_model import SimConfig, simulate
     base = dict(alpha=0.33, d=2, rule='sop', attacker_embeds=True, days=60, seed=5)
     plain = simulate(SimConfig(**base))
     counted = simulate(SimConfig(**base, count_honest_pending=True))
@@ -284,7 +284,7 @@ def test_counting_honest_pending_shares_removes_reveals_and_keeps_accounting():
 
 
 def test_object_giveup_variant_runs_and_gives_up_earlier_when_stricter():
-    from scripts.sop_race_model import SimConfig, simulate
+    from studies.sop.scripts.sop_race_model import SimConfig, simulate
     base = dict(alpha=0.33, d=2, rule='sop', attacker_embeds=True, days=60, seed=5, count_honest_pending=True)
     loose = simulate(SimConfig(**base, give_up_objects=48))
     strict = simulate(SimConfig(**base, give_up_objects=5))
@@ -296,7 +296,7 @@ def test_object_giveup_variant_runs_and_gives_up_earlier_when_stricter():
 def test_release_depth_zero_and_one_match_the_original_model():
     """deep_hunt (2026-10-19): a reveal already needs h >= 1, so
     release_depth 1 must change nothing, and 0 is the default."""
-    from scripts.sop_race_model import SimConfig, simulate
+    from studies.sop.scripts.sop_race_model import SimConfig, simulate
     base = dict(alpha=0.40, d=2, rule='sop', attacker_embeds=True, days=30, seed=7)
 
     def key(s):
@@ -306,7 +306,7 @@ def test_release_depth_zero_and_one_match_the_original_model():
 
 
 def test_release_depth_makes_every_reveal_at_least_that_deep():
-    from scripts.sop_race_model import SimConfig, simulate
+    from studies.sop.scripts.sop_race_model import SimConfig, simulate
     for rule, embeds in (("stock", False), ("sop", True)):
         s = simulate(SimConfig(alpha=0.45, d=3, rule=rule, attacker_embeds=embeds, days=100, seed=11,
                                release_depth=10))
@@ -317,7 +317,7 @@ def test_release_depth_makes_every_reveal_at_least_that_deep():
 
 def test_release_depth_with_object_giveup_runs():
     # tevador's deep-reorg attacker: give up once honest is 5 objects ahead.
-    from scripts.sop_race_model import SimConfig, simulate
+    from studies.sop.scripts.sop_race_model import SimConfig, simulate
     s = simulate(SimConfig(alpha=0.45, d=2, rule='sop', attacker_embeds=True, days=60, seed=5,
                            give_up_objects=5, release_depth=10))
     assert all(d >= 10 for d in s.reorg_depths)
@@ -325,7 +325,7 @@ def test_release_depth_with_object_giveup_runs():
 
 
 def test_hunt_subcommand_prints_a_table(capsys):
-    from scripts.sop_race_model import main
+    from studies.sop.scripts.sop_race_model import main
     assert main(["hunt", "--alphas", "0.45", "--rules", "stock", "sop", "--give-ups", "d2", "o5",
                  "--days", "10", "--seed", "3"]) == 0
     out = capsys.readouterr().out
@@ -354,7 +354,7 @@ def _ev(attacker, block):
 
 
 def _run_scripted(monkeypatch, values, n_objects, **cfg):
-    from scripts import sop_race_model as m
+    from studies.sop.scripts import sop_race_model as m
     monkeypatch.setattr(m.random, "Random", lambda seed: _Scripted(values))
     base = dict(alpha=0.4, d=10, rule="sop", attacker_embeds=True, seed=1, release_depth=1)
     base.update(cfg)
@@ -413,7 +413,7 @@ def test_tie_win_prob_wins_or_ends_the_attack_on_an_exact_tie(monkeypatch):
 
 
 def test_tevador_switches_default_off():
-    from scripts.sop_race_model import SimConfig, simulate
+    from studies.sop.scripts.sop_race_model import SimConfig, simulate
     base = dict(alpha=0.40, d=2, rule="sop", attacker_embeds=True, days=30, seed=7, give_up_objects=5)
     a = simulate(SimConfig(**base))
     b = simulate(SimConfig(**base, equal_start=False, early_honest_shares=False, either_window=False,
@@ -423,7 +423,7 @@ def test_tevador_switches_default_off():
 
 
 def test_reconcile_subcommand_prints_each_step(capsys):
-    from scripts.sop_race_model import main
+    from studies.sop.scripts.sop_race_model import main
     assert main(["reconcile", "--days", "5", "--seed", "1"]) == 0
     out = capsys.readouterr().out
     assert "| Model B" in out and "(= tevador)" in out
@@ -449,7 +449,7 @@ def test_positional_shares_drop_an_honest_share_whose_position_the_attacker_hold
 
 def test_positional_shares_need_equal_start():
     import pytest
-    from scripts.sop_race_model import SimConfig, simulate
+    from studies.sop.scripts.sop_race_model import SimConfig, simulate
     with pytest.raises(ValueError):
         simulate(SimConfig(alpha=0.3, d=1, rule="sop", attacker_embeds=True, days=1, seed=1,
                            positional_shares=True))
@@ -457,7 +457,7 @@ def test_positional_shares_need_equal_start():
 
 
 def test_hunt_honest_shares_flag_sets_the_slot_rule_switches_on_sop_rows(monkeypatch, capsys):
-    from scripts import sop_race_model as m
+    from studies.sop.scripts import sop_race_model as m
     seen = []
     real = m.simulate
 
@@ -478,7 +478,7 @@ def test_hunt_honest_shares_flag_sets_the_slot_rule_switches_on_sop_rows(monkeyp
 
 def test_sweep_honest_shares_adds_a_share_aware_sop_row(monkeypatch, capsys):
     import importlib
-    srm = importlib.import_module("scripts.sop_race_model")
+    srm = importlib.import_module("studies.sop.scripts.sop_race_model")
     seen = []
 
     def spy(cfg):
@@ -587,7 +587,7 @@ def test_simulate_results_are_pinned_across_the_step_api_refactor():
 
 
 def test_step_api_with_stubborn_policy_equals_simulate():
-    from scripts.sop_race_model import SopEnv, stubborn_policy
+    from studies.sop.scripts.sop_race_model import SopEnv, stubborn_policy
     for row in PINNED:
         cfg = _cfg_from(row)
         env = SopEnv(cfg)
@@ -598,7 +598,7 @@ def test_step_api_with_stubborn_policy_equals_simulate():
 
 
 def test_observation_matches_sop_mdp_definition():
-    from scripts.sop_race_model import observation
+    from studies.sop.scripts.sop_race_model import observation
     assert observation([], [], 0, 0) == (0, 0, 0, 0, 0, 0, 0)
     assert observation([3], [], 2, 5) == (1, 4, 0, 2, 0, 0, 5)          # D = 1+3; x skips the first block
     assert observation([3, 1], [0], 0, 0) == (2, 6 - 1, 2, 0, 1, 0, 0)   # xa = 1+1
@@ -608,7 +608,7 @@ def test_observation_matches_sop_mdp_definition():
 
 def test_env_legal_mask_and_illegal_action_raises():
     import pytest
-    from scripts.sop_race_model import SopEnv, HOLD, PUBLISH, REVEAL, GIVE_UP
+    from studies.sop.scripts.sop_race_model import SopEnv, HOLD, PUBLISH, REVEAL, GIVE_UP
     env = SopEnv(SimConfig(alpha=0.45, d=1, rule="sop", attacker_embeds=True, days=1, seed=1,
                            give_up_objects=5, **RULE_PRESETS["20261020_noown"]))
     env.reset(1)
@@ -622,8 +622,8 @@ def test_env_legal_mask_and_illegal_action_raises():
 def test_honest_pending_shares_perish_when_the_attacker_publishes_only_with_the_flag():
     # 2026-10-27: the sims' honest blocks carry ~10 objects at a race start, the model's 18:
     # the model kept honest shares mined on the old tip across an attacker's publish.
-    from scripts.sop_rl import race_env
-    from scripts.sop_race_model import GIVE_UP, HOLD, PUBLISH
+    from studies.sop.scripts.sop_rl import race_env
+    from studies.sop.scripts.sop_race_model import GIVE_UP, HOLD, PUBLISH
     for perish in (True, False):
         env = race_env(0.47, 200, seed=3, perish=perish)
         o, checked = env.obs(), 0

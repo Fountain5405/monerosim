@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """X0 calibration report: does the lab reproduce measured spy exposure?
 
-docs/20261018_spy_node_defenses.md §5.3 X0; cells from
-test_configs/x0/make_cells.sh. For one archived run, over the activity window:
+studies/antiproxy/docs/20261018_spy_node_defenses.md §5.3 X0; cells from
+studies/antiproxy/configs/x0/make_cells.sh. For one archived run, over the activity window:
 
   - spy share of honest outbound and inbound slots, per --window snapshot of
     the bitmonero.log connection tokens (analysis/topology_metrics.py), split
     by class, by always-on (observer) nodes, and by ban-list adopters
     (`--ban-list` in the host's args) versus non-adopters;
   - stem length and how stems ended, from the relay logs
-    (analysis/spy/txrelay_check.py), and the embargo-timer rate: the share of
+    (studies/antiproxy/analysis/spy/txrelay_check.py), and the embargo-timer rate: the share of
     txs whose stem ended because a holder's timer fired.
 
 Targets (pass: within 1.5x): outbound share ~0.15 with legacy selection and no
@@ -18,8 +18,8 @@ with /24 dedup (#9939's simulation); stem hops geometric with mean ~5. Compare
 cells with --compare, which prints one row per run.
 
 Usage:
-    python3 analysis/spy/x0_calibration.py <archive_dir> [--window 300]
-    python3 analysis/spy/x0_calibration.py --compare <archive_dir> ... [--json out.json]
+    python3 studies/antiproxy/analysis/spy/x0_calibration.py <archive_dir> [--window 300]
+    python3 studies/antiproxy/analysis/spy/x0_calibration.py --compare <archive_dir> ... [--json out.json]
 """
 
 import argparse
@@ -32,6 +32,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "analysis"))  # topology_metrics.py (core)
 import txrelay_check  # noqa: E402
 import topology_metrics  # noqa: E402
 
@@ -66,7 +67,7 @@ def subnet_model(run_dir, out_peers=12, trials=2000, seed=1):
       none    each IP is a candidate and nothing is skipped.
     That is the whole model: no list dynamics, no inbound-connection skip, and every
     spy is assumed to be in every peer list. It is the reference the measured shares
-    are read against (docs/X0_CALIBRATION.md, "Scaling the /24 cells"), not a fit.
+    are read against (studies/antiproxy/docs/X0_CALIBRATION.md, "Scaling the /24 cells"), not a fit.
     The cap matters: k spy subnets can fill at most k of a node's slots, so one dense
     spy /24 gives at most one, however many spies it holds.
     """

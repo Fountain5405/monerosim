@@ -1,4 +1,4 @@
-# SoP step-2 smoke (docs/20260923_sop_design.md): workshare gossip across
+# SoP step-2 smoke (studies/sop/docs/20260923_sop_design.md): workshare gossip across
 # a mixed network. Two miners capture + send (sim-sop-w 16); two relays run
 # monerod-sim WITHOUT the flag and must still pool + forward — the handler
 # is deliberately not flag-gated (forwarding nodes cannot opt out of gossip;

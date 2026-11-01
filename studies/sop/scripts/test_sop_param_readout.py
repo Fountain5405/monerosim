@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from scripts import sop_param_readout as rd
+from studies.sop.scripts import sop_param_readout as rd
 
 
 def test_fit_crossing_recovers_the_zero_of_a_line():

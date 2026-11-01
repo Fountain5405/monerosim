@@ -34,7 +34,7 @@
 #            --no-monitor --no-clean --no-archive
 #   3. Export any one miner's chain (they should all match — same seed, same
 #      D0) — find its data dir under $DAEMON_DATA_BASE (run_sim.sh prints it;
-#      see docs/eclipse_reproduction.md's --no-clean table for the pattern):
+#      see studies/eclipse/docs/eclipse_reproduction.md's --no-clean table for the pattern):
 #        venv/bin/python scripts/chain_snapshot.py export \
 #            --data-dir "$DAEMON_DATA_BASE/monero-miner-001" \
 #            --out chain_snapshots/h50/ --total-hashrate 50 --d0 6000 \

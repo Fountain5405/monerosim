@@ -1279,7 +1279,7 @@ def test_tip_shares_wait_for_bridge_tip(make_miner):
     assert len(m.bridge_rpc.submitted) == 2                  # delivered once
 
 
-# ---- learned strategy plumbing (docs/superpowers/plans/2026-10-25-sop-rl-attacker.md, Task 5) ----
+# ---- learned strategy plumbing (studies/sop/docs/superpowers/plans/2026-10-25-sop-rl-attacker.md, Task 5) ----
 
 def test_branch_weights_eighth_field_is_honest_objects_without_pending():
     """Same fork as test_window_stubborn_reveal_is_logged (attacker 2 blocks,

@@ -1,5 +1,5 @@
 # TAIL EMISSION copy (2026-10-20) of deep_hunt_sop_hs_a045: same cells, base
-# test_configs/selfish_micro_sop_tail.yaml (tail subsidy from block 995 on
+# studies/sop/configs/selfish_micro_sop_tail.yaml (tail subsidy from block 995 on
 # every node), new name and seed. Revenue here is counted in canonical blocks and
 # the configs carry no transactions, so results should match standard emission;
 # these runs check that.
@@ -18,7 +18,7 @@
 # the mechanics (honest shares in the first block after a fork, level restarts).
 name: deep_hunt_sop_hs_tail_a045
 seed: 14681
-base: test_configs/selfish_micro_sop_tail.yaml
+base: studies/sop/configs/selfish_micro_sop_tail.yaml
 parallel: 1
 stop_time: 72h
 axes:

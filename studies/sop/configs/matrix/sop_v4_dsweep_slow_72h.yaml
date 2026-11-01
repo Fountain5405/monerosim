@@ -9,7 +9,7 @@
 # (test_dsweep_specs_differ_from_their_d5_cells_only_in_the_delay pins it).
 name: sop_v4_dsweep_slow_72h
 seed: 27791
-base: test_configs/selfish_micro_sop_slow.yaml
+base: studies/sop/configs/selfish_micro_sop_slow.yaml
 parallel: 1
 stop_time: 72h
 axes:

@@ -1,12 +1,12 @@
-"""scripts/sop_oracle.py: the nine hand-worked cases and log/CLI plumbing.
+"""studies/sop/scripts/sop_oracle.py: the nine hand-worked cases and log/CLI plumbing.
 
-docs/20260930_sop_conformance.md: diff = 1216 everywhere, unit = 76,
+studies/sop/docs/20260930_sop_conformance.md: diff = 1216 everywhere, unit = 76,
 h0 = 994, hf = 1000, k = 3, w = 16 (k*w = 48), d_ms = 5000, unless a case
 overrides one of these.
 """
 import json
 
-from scripts.sop_oracle import check_log, compare, decide, main, parse_log_line, pool_count
+from studies.sop.scripts.sop_oracle import check_log, compare, decide, main, parse_log_line, pool_count
 
 DIFF = "1216"
 UNIT = 76

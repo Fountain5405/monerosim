@@ -1,5 +1,5 @@
 # Eclipse composition, v4 MECHANICS VALIDATION in the majority regime
-# (docs/20260921_selfish_eclipse_results.md "v4 design directions").
+# (studies/sop/docs/20260921_selfish_eclipse_results.md "v4 design directions").
 # Attacker 4 h/s + ONE 6 h/s victim on the island vs 5 h/s free honest:
 # alpha_eff = 10/15 = 0.667 — the island branch outruns honest by
 # construction, so if the extension-only mirror/pull plumbing is sound the

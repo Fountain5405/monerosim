@@ -1,4 +1,4 @@
-from scripts.sop_reveal_variants import main
+from studies.sop.scripts.sop_reveal_variants import main
 
 
 def test_variants_table_has_one_row_per_variant(capsys):

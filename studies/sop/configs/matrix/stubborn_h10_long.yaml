@@ -5,10 +5,10 @@
 # excluded against stock; block excluded against sop2), one alpha, one depth.
 # First draw of an n=2 pair (second: stubborn_h10_long_rep.yaml, seed 54321).
 #
-#   venv/bin/python scripts/selfish_matrix.py test_configs/matrix/stubborn_h10_long.yaml
+#   venv/bin/python scripts/selfish_matrix.py studies/sop/configs/matrix/stubborn_h10_long.yaml
 name: stubborn_h10_long
 seed: 12345
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 2
 stop_time: 240h
 axes:

@@ -1,5 +1,5 @@
 # Selfish-mining alpha-sweep, CONSERVATIVE release (release_lead: 2)
-# (docs/20260921_selfish_release2_results.md). 6 + 5 = 11 honest vs 9 attacker -> alpha = 0.45.
+# (studies/sop/docs/20260921_selfish_release2_results.md). 6 + 5 = 11 honest vs 9 attacker -> alpha = 0.45.
 # Identical to test_configs/selfish_sweep/alpha_0450.yaml except the
 # release_lead attribute, so each point compares directly against the
 # archived ES sweep at the same alpha. Theory at gamma=0 (Lee-Kim Eq.2 / ES):

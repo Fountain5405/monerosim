@@ -1,6 +1,6 @@
 # 2026-10-24: arm re-pointed to the objects give-up (give_up_objects '5'),
 # measured on 12 daemons at 0.209/0.210 over 72 h with 0 h stranded
-# (sop_v4_o5_72h, docs/20261023_sop_scale_n300_smoke.md s3.1). The block-rule
+# (sop_v4_o5_72h, studies/sop/docs/20261023_sop_scale_n300_smoke.md s3.1). The block-rule
 # attacker this spec carried before sat stranded 6.5 of the smoke's 8 h
 # (same doc s2); the 12-daemon reference for the block rule is 0.054.
 # sop_scale_n1000_hs_a045_d5_72h (2026-10-21): does the share-aware
@@ -9,7 +9,7 @@
 # Updated 2026-10-23 to the v4 attacker (window_rule 20261020,
 # window_objects 32, tip_shares true) so it matches the v4 campaign cell
 # share_sop2_hs_a045_d5, which measured 0.054 over 72 h on 12 daemons
-# (docs/20261022_sop_v4_results.md); the old-rule numbers quoted below are
+# (studies/sop/docs/20261022_sop_v4_results.md); the old-rule numbers quoted below are
 # historical (v3 build, the 2026-10-15 text).
 #
 # Why this cell. On the 12-daemon network it came out above break-even in all
@@ -32,7 +32,7 @@
 # Read it against the 12-node cells by share, gamma, network_orphan_rate and
 # the reveals stats (sop_reveals.py), and treat one 72 h draw as one draw.
 #
-# Network: test_configs/selfish_micro_sop.yaml plus 1,000 daemon-only relays,
+# Network: studies/sop/configs/selfish_micro_sop.yaml plus 1,000 daemon-only relays,
 # one started per 10 s from 20 min (the linear start from
 # docs/PERFORMANCE_AND_SCALE.md; the last relay at 11,190 s = 3.1 h). 1,013
 # hosts on gml_processing/1200_nodes_caida_with_loops.gml (1,200 positions; the
@@ -41,7 +41,7 @@
 # 3.1 h (about 4% of the blocks) run while the relays are still joining;
 # bootstrap_end_time stays 10 m as in the 12-node cells (the ladder's 4 h
 # covered its whole ramp). Regenerate the base with
-# scripts/make_sop_scale_base.py.
+# studies/sop/scripts/make_sop_scale_base.py.
 # 20 of the 1,000 relays log at monitor level for the oracle; the rest at 0.
 #
 # Run it only after the n300 smoke (sop_scale_n300_hs_a045_d5_8h.yaml) has
@@ -54,15 +54,15 @@
 #
 # CPU: takes every free physical core; run it alone (see the n300 header).
 #
-# After it: scripts/sop_oracle.py check <run>; sum the "SIM-SoP: embedding ... own,
-# ... remote" log lines per node (patches/monero-sim-pop.patch): the attacker
+# After it: studies/sop/scripts/sop_oracle.py check <run>; sum the "SIM-SoP: embedding ... own,
+# ... remote" log lines per node (studies/sop/patches/monero-sim-pop.patch): the attacker
 # miner's remote total must be > 0, and each honest node's remote total must not
 # exceed the other honest miner's own total (else an attacker share leaked; the
-# 12-node runs sit about 2% below it); scripts/selfish_mining/sop_reveals.py
-# stats; python -m scripts.sop_lateness_probe replay.
+# 12-node runs sit about 2% below it); studies/sop/scripts/selfish_mining/sop_reveals.py
+# stats; python -m studies.sop.scripts.sop_lateness_probe replay.
 name: sop_scale_n1000_hs_a045_d5_72h
 seed: 27781
-base: test_configs/selfish_micro_sop_scale1000.yaml
+base: studies/sop/configs/selfish_micro_sop_scale1000.yaml
 parallel: 1
 stop_time: 72h
 axes:

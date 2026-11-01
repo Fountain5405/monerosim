@@ -10,7 +10,7 @@
 # 2000 d, +honest shares): revenue share 0.094 (0.105 with own pending).
 name: sop_v4_noown_72h
 seed: 27791
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 1
 stop_time: 72h
 axes:

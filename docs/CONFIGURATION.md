@@ -126,7 +126,7 @@ Sometimes the runs together need more workers than the box has cores, e.g.
 20+ native-mining cells of 13 hosts on a 32-core box. Then the plan above
 cannot give every run its own cores:
 - a later run gets fewer workers than it has hosts, and native-mining cells
-  stall below one worker per host (`test_configs/selfish_micro_sop.yaml`);
+  stall below one worker per host (`studies/sop/configs/selfish_micro_sop.yaml`);
 - the runs after it get no cores at all and pin onto CPUs 0..N-1.
 
 Set `MONEROSIM_SHADOW_CPU_PINNING=0` in the environment of `run_sim.sh`.

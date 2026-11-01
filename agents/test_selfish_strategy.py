@@ -562,7 +562,7 @@ def test_give_up_objects_then_reveals_when_past_window_and_heavier():
     assert d.release_to == 102 and d.release_from == 100 and s.fork == 103
 
 
-# ---- learned strategy (docs/superpowers/plans/2026-10-25-sop-rl-attacker.md, Task 5) ----
+# ---- learned strategy (studies/sop/docs/superpowers/plans/2026-10-25-sop-rl-attacker.md, Task 5) ----
 
 def _policy_file(tmp_path, entries, alpha=0.45, key_clip=None):
     import gzip
@@ -588,7 +588,7 @@ def test_learned_keys_through_the_policy_files_pending_bins(tmp_path):
     assert s.last_learned[0] == (1, 2, 32, 5, 1, 32, 1) and s.last_learned[1] == (1, 2, 32, 2, 1, 32, 0)
 
 
-# ---- param_stubborn strategy (docs/20261026_sop_attacker_search.md, the searched family in the sim) ----
+# ---- param_stubborn strategy (studies/sop/docs/20261026_sop_attacker_search.md, the searched family in the sim) ----
 
 def test_param_stubborn_strategy_follows_the_knobs():
     # hold_shares 1: a pending-shares-only branch (a = 0) against an honest block is held, not given up
@@ -637,7 +637,7 @@ def test_learned_requires_a_loadable_policy_file(tmp_path):
 
 
 def test_learned_observation_matches_sop_mdp():
-    from scripts import sop_mdp as M
+    from studies.sop.scripts import sop_mdp as M
     # fork at 100; attacker 2 blocks (3 and 1 embedded shares), 2 pending; honest 1 block (0 shares), 5 pending
     w = (6, 6, 1, 2, 0, 8, 6, 1)
     assert SelfishStrategy.observation(2, 1, w) == (2, 5, 2, 2, 1, 0, 5)

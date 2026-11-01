@@ -1,13 +1,13 @@
 # X0: calibrating the spy lab
 
 Infrastructure and preset for experiment X0 of the spy-node test plan
-(`docs/20261018_spy_node_defenses.md` §5.3). X0 asks whether the replica
+(`studies/antiproxy/docs/20261018_spy_node_defenses.md` §5.3). X0 asks whether the replica
 reproduces measured spy exposure before any defense is tested on it. This
 covers part of I4 (`--sim-subnet-dedup`) and the 2024 preset of I5. The
-relay log (I1, `docs/TXRELAY_LOG.md`) and the estimators (I3,
-`docs/SPY_ESTIMATORS.md`) come first.
+relay log (I1, `studies/antiproxy/docs/TXRELAY_LOG.md`) and the estimators (I3,
+`studies/antiproxy/docs/SPY_ESTIMATORS.md`) come first.
 
-## `--sim-subnet-dedup` (patches/monero-sim-subnet-dedup.patch)
+## `--sim-subnet-dedup` (studies/antiproxy/patches/monero-sim-subnet-dedup.patch)
 
 This selects how monerod groups outbound candidates. It is built into
 `monerod-sim` by `./setup.sh --sim-binary` as the eighth patch.
@@ -29,11 +29,11 @@ by weighting candidates per IP instead of per /24, which is the core of what
 #9939 changed. On mainnet, /16s are shared, so the old rule also excluded
 honest neighbours, which it can't do here.
 
-### Check (test_configs/subnet_dedup_check.scenario.yaml)
+### Check (studies/antiproxy/configs/subnet_dedup_check.scenario.yaml)
 
 The check network had 40 reachable relays, 2 miners and 6 seeds, plus 12
 spies in one /24. Each mode ran for 2 h of sim at two seeds, measured over
-the second hour in 10-minute windows with `analysis/spy/subnet_dedup_check.py`.
+the second hour in 10-minute windows with `studies/antiproxy/analysis/spy/subnet_dedup_check.py`.
 
 | Mode | Spy share of honest outbound | Honest nodes with >= 1 spy | Spies per node |
 |---|---|---|---|
@@ -58,7 +58,7 @@ honest node gets the spy /24 among its connected subnets. This matches 2024,
 when the banned IPs almost never dialed in (Rucknium) yet were in peer lists.
 The proxies of the time also poisoned peer lists, which variant R does not.
 
-## The 2024 preset (test_configs/x0/x0_2024.scenario.yaml)
+## The 2024 preset (studies/antiproxy/configs/x0/x0_2024.scenario.yaml)
 
 The mainnet replica is scaled to about 400 honest daemons so it fits a 32 GB
 box: 457 agents, of which 455 are daemons.
@@ -106,15 +106,15 @@ relays 5 s apart; at ~5x real time that starts ~100 monerods in a minute, their
 Linear, the second pilot's free RAM stayed above 8.8 GB through the relay
 boot.
 
-## Cells (test_configs/x0/make_cells.sh)
+## Cells (studies/antiproxy/configs/x0/make_cells.sh)
 
 The cells are peer selection {`legacy`, `24`} × ban list {none, half} × seeds
 {12345, 23456, 34567}, 12 runs in all. For each seed, `make_cells.sh` writes
-the expanded configs and `banlist_s<seed>.txt` into `test_configs/x0/cells/`.
+the expanded configs and `banlist_s<seed>.txt` into `studies/antiproxy/configs/x0/cells/`.
 That directory is ignored by git, because the configs hold this machine's
 absolute ban-list path.
 
-**The ban list.** `scripts/spy_ban_list.py` dry-generates the config into a
+**The ban list.** `studies/antiproxy/scripts/spy_ban_list.py` dry-generates the config into a
 scratch directory, reads the spies' IPs, and writes their /24s. Placement
 doesn't depend on the seed: all three seeds gave the same 6 /24s.
 - **Adopters.** Half of each honest class: 24 medium, 40 users, 130 relays
@@ -123,16 +123,16 @@ doesn't depend on the seed: all three seeds gave the same 6 /24s.
   non-adopting infrastructure would.
 
 ```
-test_configs/x0/make_cells.sh
-./run_sim.sh --config test_configs/x0/cells/x0_legacy_none_s12345.yaml --bootfast --ksm
-python3 analysis/spy/x0_calibration.py archived_runs/<run>
-python3 analysis/spy/x0_calibration.py --compare archived_runs/<run> ...
+studies/antiproxy/configs/x0/make_cells.sh
+./run_sim.sh --config studies/antiproxy/configs/x0/cells/x0_legacy_none_s12345.yaml --bootfast --ksm
+python3 studies/antiproxy/analysis/spy/x0_calibration.py archived_runs/<run>
+python3 studies/antiproxy/analysis/spy/x0_calibration.py --compare archived_runs/<run> ...
 ```
 
 **Prerequisite.** The cells need `monerod-sim` built from this branch, which
 adds the relay-log and subnet-dedup patches (`./setup.sh --sim-binary`).
 
-## The report (analysis/spy/x0_calibration.py)
+## The report (studies/antiproxy/analysis/spy/x0_calibration.py)
 
 - **Slot shares.** The spy share of honest outbound and inbound slots, per
   5-minute window over the activity window. It is split by class, for the
@@ -182,7 +182,7 @@ stems fit Dandelion++: 0.191 fluff per hop (stock 0.2), so the implied
 uncensored mean is 5.2 hops. 12.5% of stems end in a loop (8.6% in the
 48-spy run). The 12-spy layout is the X0 baseline for the remaining cells.
 
-## Scaling the /24 cells (test_configs/x0/make_lean.py)
+## Scaling the /24 cells (studies/antiproxy/configs/x0/make_lean.py)
 
 **The gap.** The X0 cell puts 6 spy /24s against 69 honest reachable /24s.
 The model below puts stock dedup at 0.083 against 0.137 for `legacy`: 40%

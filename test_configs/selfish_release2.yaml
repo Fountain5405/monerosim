@@ -1,4 +1,4 @@
-# Selfish-mining release-lead experiment (docs/20260920_selfish_mining_literature.md).
+# Selfish-mining release-lead experiment (studies/sop/docs/20260920_selfish_mining_literature.md).
 # Identical to selfish_micro.yaml (alpha = 0.4, single bridge => gamma ~= 0, seed
 # 12345) except the attacker cashes its private chain out at lead 2 instead of
 # lead 1: `release_lead: 2` is the conservative release policy Qubic actually

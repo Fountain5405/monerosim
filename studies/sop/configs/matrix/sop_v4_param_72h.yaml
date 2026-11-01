@@ -2,7 +2,7 @@
 # param_stubborn: the window_stubborn noown rule with the knobs G give-up
 # objects, L publish lead, M reveal margin, R reveal depth, B block deficit,
 # Z hold shares, found by the race-model search in
-# docs/20261026_sop_attacker_search.md) on the sop_v4_o5_noown_72h network
+# studies/sop/docs/20261026_sop_attacker_search.md) on the sop_v4_o5_noown_72h network
 # and attacker settings. Validation cells only (owner 2026-10-25: sims are
 # for calibration and validation): the best knobs per alpha at 0.48 and
 # 0.50, two draws each, compared with the model's prediction for the same
@@ -10,7 +10,7 @@
 # run names do not collide. Smoke first: sop_v4_param_6h.
 name: sop_v4_param_72h
 seed: 27791
-base: test_configs/selfish_micro_sop.yaml
+base: studies/sop/configs/selfish_micro_sop.yaml
 parallel: 2
 stop_time: 72h
 axes:
