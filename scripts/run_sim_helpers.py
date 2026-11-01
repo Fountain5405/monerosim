@@ -213,11 +213,31 @@ def read_patch_series(path: Path = PATCH_SERIES) -> list[dict]:
     return rows
 
 
-# Options that only a patched monerod understands: every flag a series patch
-# adds. Key = the daemon_options key a config sets; value = the string that
-# must appear in `monerod --help`.
-SIM_FLAG_OPTIONS = {flag[2:]: flag[2:]
-                    for row in read_patch_series() for flag in row['flags']}
+_SIM_FLAG_OPTIONS: dict[str, str] | None = None
+
+
+def sim_flag_options() -> dict[str, str]:
+    """Options that only a patched monerod understands: every flag a series
+    patch adds. Key = the daemon_options key a config sets; value = the string
+    that must appear in `monerod --help`.
+
+    Read from patches/series on first use, not at import: a missing or
+    malformed series then breaks only the checks that need it, not every
+    helper run_sim.sh calls (mem-sample, cpu-plan, write-summary-report, ...).
+    """
+    global _SIM_FLAG_OPTIONS
+    if _SIM_FLAG_OPTIONS is None:
+        _SIM_FLAG_OPTIONS = {flag[2:]: flag[2:]
+                             for row in read_patch_series() for flag in row['flags']}
+    return _SIM_FLAG_OPTIONS
+
+
+def __getattr__(name: str):
+    # `from scripts.run_sim_helpers import SIM_FLAG_OPTIONS` keeps working,
+    # and still reads the series only when it is first asked for.
+    if name == 'SIM_FLAG_OPTIONS':
+        return sim_flag_options()
+    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
 
 
 def sim_provenance_mismatch(binary: str, series: Path = PATCH_SERIES) -> str | None:
@@ -299,7 +319,7 @@ def daemon_capabilities(config_path: str) -> list[dict]:
             continue  # the cuprate pin gate owns those
         opts = dict(defaults)
         opts.update(spec.get('daemon_options', {}) or {})
-        flags = {flag for key, flag in SIM_FLAG_OPTIONS.items() if key in opts}
+        flags = {flag for key, flag in sim_flag_options().items() if key in opts}
         # Native mining REPLACES a miner's daemon with monerod-sim regardless of
         # what the config says (src/agent/user_agents.rs), so probe that binary
         # rather than the one the config names. "Miner" means exactly what the

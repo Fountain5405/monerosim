@@ -771,7 +771,7 @@ Validation: unit tests (`scripts/test_selfish_matrix.py`) cover generation,
 planning, exclusions, the mocked pipeline, resume, failure rows, and table
 rendering; `analyze_run()` was verified behavior-preserving by re-analyzing
 the v13 run (byte-identical report). End-to-end smoke on the real box:
-`studies/sop/configs/matrix/pipeline_smoke.yaml` (4 cells × 1 sim-hour; exercises
+`test_configs/matrix/pipeline_smoke.yaml` (4 cells × 1 sim-hour; exercises
 the daemon_options overlay and the sim-binary preflight with a real
 flag-gated patch).
 

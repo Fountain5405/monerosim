@@ -6,7 +6,7 @@ import random
 
 import pytest
 
-from studies.sop.scripts import sop_policy as P
+from scripts import sop_policy as P
 from studies.sop.scripts import sop_attacker_search as S
 
 W = P.WINDOW

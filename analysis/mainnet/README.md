@@ -80,7 +80,7 @@ mkdir -p "$OUT/poll"
 
 systemd-run --user --unit monerosim-mainnet-poll \
   --description "monerosim mainnet RPC poller" \
-  /path/to/venv/bin/python3 studies/antiproxy/analysis/mainnet/poll_node.py \
+  /path/to/venv/bin/python3 analysis/mainnet/poll_node.py \
   --rpc http://192.168.1.76:12345 --out "$OUT/poll" \
   --interval 60 --peerlist-interval 600 --duration 7d
 
@@ -95,16 +95,16 @@ systemctl --user stop monerosim-mainnet-poll
 Run the crawl and enrichment once, any time during (or after) the poll week:
 
 ```bash
-python3 studies/antiproxy/analysis/mainnet/crawl.py --seed-rpc http://192.168.1.76:12345 \
+python3 analysis/mainnet/crawl.py --seed-rpc http://192.168.1.76:12345 \
   --out "$OUT/crawl" --max-nodes 20000 --concurrency 48 --timeout 8
-python3 studies/antiproxy/analysis/mainnet/enrich_asn.py --in "$OUT/crawl/nodes.jsonl" \
+python3 analysis/mainnet/enrich_asn.py --in "$OUT/crawl/nodes.jsonl" \
   --out "$OUT/crawl/asn.jsonl"
 ```
 
 Then summarize:
 
 ```bash
-python3 studies/antiproxy/analysis/mainnet/summarize.py --crawl "$OUT/crawl" --poll "$OUT/poll" \
+python3 analysis/mainnet/summarize.py --crawl "$OUT/crawl" --poll "$OUT/poll" \
   --fetch-ban-list "$OUT" --asn "$OUT/crawl/asn.jsonl" --out "$OUT/report.md"
 ```
 
@@ -118,9 +118,9 @@ unchanged list is written as `{ts, unchanged, hash}`), plus
 logs at INFO or above (`--log-level 0,net.p2p:INFO`); without it
 `dials-YYYYMMDD.jsonl` simply stays empty. `--dial-regex` overrides the match.
 
-`collect_monitors.sh <hosts-file> [dest-root]` (hosts file lines:
+`studies/antiproxy/analysis/mainnet/collect_monitors.sh <hosts-file> [dest-root]` (hosts file lines:
 `<name> <ssh-target> <remote-dir>`) pulls them with rsync to
-`~/monerosim_local/monitors/<name>/`. `monitor_series.py <dir> --spy-cidrs FILE
+`~/monerosim_local/monitors/<name>/`. `studies/antiproxy/analysis/mainnet/monitor_series.py <dir> --spy-cidrs FILE
 [--csv ...] [--json ...]` turns a monitor directory into address-free series
 and a summary. Raw monitor data holds mainnet addresses and never enters the
 repo.
@@ -164,12 +164,13 @@ repo.
 `test_mainnet_tools.py` (pytest, no network) exercises parsers and summaries
 against fixtures in `fixtures/` — including one real `get_info` /
 `get_connections` / `/get_peer_list` response captured from the live node,
-with peer IPs anonymised to `10.x` addresses.
+with peer IPs anonymised to `10.x` addresses. `studies/antiproxy/analysis/mainnet/test_monitor_series.py`
+covers the antiproxy study's `monitor_series.py`.
 
 ## Observatory feeds
 
 observer.monerodevs.org (a Grafana dashboard on three hardcoded mainnet seeds) publishes the
-JSON feeds its panels read. `pull_observer.sh [dest]` discovers the feed host from the
+JSON feeds its panels read. `studies/antiproxy/analysis/mainnet/pull_observer.sh [dest]` discovers the feed host from the
 dashboard definition and snapshots the aggregate feeds into `~/monerosim_local/observer/<date>/`
 (a daily cron on the control box; address-bearing feeds are skipped). Read with
 `studies/antiproxy/docs/spy_journal/adhoc/observer_seed_ratio.py <date-dir>` (the seeds' fleet share of white list

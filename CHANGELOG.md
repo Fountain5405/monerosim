@@ -15,15 +15,20 @@
     configs (`selfish_micro_sop*`, `selfish_n40_sop`, `sop_*`, `pop_*`,
     `dev_snapshot_sop_smoke`, `selfish_long`, `selfish_micro_honest`) are now
     in `studies/sop/configs/`, and `data/` is now `studies/sop/data/`.
-  - `scripts/sop_*.py`, `scripts/selfish_mining/`, `make_sop_scale_base.py`
+  - `scripts/sop_*.py` (except `sop_policy.py` and `sop_health_check.py`,
+    which core uses), `scripts/selfish_mining/`, `make_sop_scale_base.py`
     and `gml_add_slow_nodes.py` are now in `studies/sop/scripts/`. Their
     modules changed with them: `scripts.sop_rl` is now
     `studies.sop.scripts.sop_rl`; run them as
     `python3 -m studies.sop.scripts.<name>` from the repo root.
+    `test_configs/matrix/pipeline_smoke.yaml`, the matrix runner's own smoke,
+    stays.
   - `test_configs/x0/` is now `studies/antiproxy/configs/x0/`;
-    `analysis/spy/` and `analysis/mainnet/` are now in
-    `studies/antiproxy/analysis/`; `docs/spy_journal/` is now
-    `studies/antiproxy/docs/spy_journal/`.
+    `analysis/spy/` is now `studies/antiproxy/analysis/spy/`;
+    `docs/spy_journal/` is now `studies/antiproxy/docs/spy_journal/`.
+    `analysis/mainnet/` stays, except the study's monitor tools
+    (`collect_monitors.sh`, `monitor_series.py`, `pull_observer.sh`), now in
+    `studies/antiproxy/analysis/mainnet/`.
   - `test_configs/eclipse_*.scenario.yaml` are now in `studies/eclipse/configs/`.
   - Agents did not move. `agents.selfish_miner`, `agents.selfish_bridge`,
     `agents.eclipse_*` and `agents.spy_*` keep their module names, so configs
@@ -39,7 +44,9 @@
   `update.sh` used to rebuild `monerod-sim` from only 2 patches and with other
   cmake flags; it now builds what `setup.sh` builds. Rebuild with
   `./setup.sh --sim-binary`.
-- **`run_sim.sh` refuses a mismatched `monerod-sim`.** When a config needs
+- **BREAKING: `run_sim.sh` refuses a mismatched `monerod-sim`.** Every
+  existing install fails this check until rebuilt with
+  `./setup.sh --sim-binary`. When a config needs
   `monerod-sim` (or its `monerod-hf` alias), the patches recorded in
   `~/.monerosim/bin/monerod-sim.provenance` must match `patches/series`, by
   sha256 and order. `MONEROSIM_SKIP_PROVENANCE_CHECK=1` runs it anyway. A
@@ -49,7 +56,11 @@
   when they did).
 - **`CLAUDE.md` files are tracked.** There is a root `CLAUDE.md`, and each
   study has its own `CLAUDE.md` and a `STATUS.md`, the one place its current
-  findings are stated. `CLAUDE.local.md` stays local.
+  findings are stated. `CLAUDE.local.md` stays local. **Before pulling this
+  into a checkout that has its own (ignored) `CLAUDE.md`, rename it:
+  `mv CLAUDE.md CLAUDE.local.md`** (and the same for any
+  `studies/*/CLAUDE.md`). Git replaces an ignored file with the tracked one on
+  pull or checkout, without a warning.
 
 ### Fixed
 

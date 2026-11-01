@@ -33,7 +33,7 @@ def q(vals):
 
 def histograms(alpha: float, days: float, seed: int, knobs: dict, perish: bool = False,
                K: int | None = None, w: int | None = None) -> dict:
-    from studies.sop.scripts.sop_policy import ACTION_NAMES, GIVE_UP, PUBLISH, REVEAL, param_stubborn
+    from scripts.sop_policy import ACTION_NAMES, GIVE_UP, PUBLISH, REVEAL, param_stubborn
     from studies.sop.scripts.sop_rl import legal_fallback, race_env   # numpy: the model side only
     env = race_env(alpha, days, seed, K=K, w=w, perish=perish)   # K, w: race_env's defaults 3, 16
     W = env.window_obs

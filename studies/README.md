@@ -20,28 +20,33 @@ under a study is importable from the repository root, for example
 ## What stays in core
 
 A file belongs to the study that changes it. Code that core or several studies
-use, and that no study changes, stays in core. These core files are the ones
-the studies lean on most:
+use stays in core, and so does a file the rule does not settle (core uses it
+and a study changes it). These core files are the ones the studies lean on
+most:
 
-- `agents/selfish_miner.py`, `selfish_strategy.py`, `selfish_bridge.py`: the
-  selfish-mining apparatus. Core's Rust code and golden tests load these.
-- `agents/eclipse_*.py`, `agents/spy_proxy.py`, `agents/spy_refresh.py`: the
-  agent library stays in one place.
+- `agents/`: every agent, including the ones a study changes. Core's Rust code
+  and golden tests load the selfish-mining agents (`selfish_miner.py`,
+  `selfish_strategy.py`, `selfish_bridge.py`), a core test names
+  `agents.eclipse_fakepeer`, and the x0 generator emits `agents.spy_refresh`.
+- `scripts/sop_policy.py`: written and changed by SoP, but core's
+  `agents/selfish_strategy.py` imports it for the `learned` and
+  `param_stubborn` strategies.
 - `scripts/selfish_matrix.py`, `scripts/sop_health_check.py`,
   `scripts/selfish_mining_analysis.py` and `scripts/honest_chain_from_log.py`:
-  the matrix runner and its checks.
-- `analysis/eclipse/` (used by a core test and the peer-list-dump docs) and
-  `analysis/topology_metrics.py`.
+  the matrix runner and its checks; `test_configs/matrix/pipeline_smoke.yaml`
+  is the runner's own end-to-end smoke.
+- `analysis/eclipse/` (used by a core test and the peer-list-dump docs),
+  `analysis/topology_metrics.py`, and `analysis/mainnet/` (the mainnet
+  observation tools; the antiproxy study's monitor tools are in
+  `antiproxy/analysis/mainnet/`).
 - The core patches in `patches/`, and every patch's place in `patches/series`.
 
 ## Where core still uses study files
 
-These are exceptions to "core does not depend on studies", left as they were
-by the reorganization. Each is a follow-up for its study:
+The move left these core tests reading study files (before it, both sides
+were in core). Each is a follow-up for its study: move the test into the
+study, or the file back to core.
 
-- `agents/selfish_strategy.py` imports `studies.sop.scripts.sop_policy` (lazily,
-  for the `learned` and `param_stubborn` strategies), and
-  `agents/test_selfish_strategy.py` imports `studies.sop.scripts.sop_mdp`.
 - `scripts/test_selfish_matrix.py` and `scripts/test_selfish_configs.py` read
   SoP's matrix specs and base configs in `sop/configs/`.
 - `scripts/test_monero_sim_patch.py` pins `sop/patches/monero-sim-pop.patch`.

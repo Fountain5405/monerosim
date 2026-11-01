@@ -35,7 +35,7 @@ from pathlib import Path
 
 import requests
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from agents import levin_lib as L  # noqa: E402
 
 DEFAULT_P2P_PORT = 18080

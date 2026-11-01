@@ -127,7 +127,7 @@ build is a loud error rather than silently absent dumps. The dump analyser is
 
 **What the large runs cost.** The paper-scale and full-scale Nyx scenarios are
 not laptop-sized. Measured: ~0.28 GB of *available* memory per relay, which puts
-the 2,211-host runs at **~620 GB** (`test_configs/eclipse_nyx_full.scenario.yaml`;
+the 2,211-host runs at **~620 GB** (`studies/eclipse/configs/eclipse_nyx_full.scenario.yaml`;
 the per-host figure comes from the 963-host run in
 `gml_processing/AS_IP_ALLOCATION_NOTE.md`), and **~13 h of wall clock for a 12 h
 sim** (commit `a6d2f261`, the 2,211-host run). A run at this scale monopolises the
@@ -141,15 +141,15 @@ documented number.
 
 ```bash
 # 1. Expand a scenario (run_sim.sh does NOT auto-expand .scenario.yaml here)
-python -m scripts.scenario_parser test_configs/eclipse_birth.scenario.yaml \
-    -o test_configs/eclipse_birth.expanded.yaml
+python -m scripts.scenario_parser studies/eclipse/configs/eclipse_birth.scenario.yaml \
+    -o studies/eclipse/configs/eclipse_birth.expanded.yaml
 
 # 2. Run it (one at a time; the box is shared). With archiving on (the
 #    default) the sidecars land in archived_runs/<run_id>/: eclipse_metrics.jsonl
 #    at the run root, eclipse_probe's raw_probe/ under shared/. The older
 #    --no-clean --no-archive recipe still works and keeps them in the per-run
 #    /tmp shared dir instead (--no-archive without --no-clean deletes them).
-./run_sim.sh --config test_configs/eclipse_birth.expanded.yaml \
+./run_sim.sh --config studies/eclipse/configs/eclipse_birth.expanded.yaml \
     --no-build --no-monitor
 
 # 3. Analyse (finds the run's metrics from the run_sim stdout log, prints the
@@ -182,7 +182,7 @@ python analysis/eclipse/analyze_peerlist_dumps.py /tmp/monerosim-<run_id>
 Archiving of the dumps was added 2026-09-20; runs archived before then kept
 only `bitmonero.log`, so their dumps exist only in preserved raw-data trees.
 
-## Scenarios (`test_configs/eclipse_*.scenario.yaml`)
+## Scenarios (`studies/eclipse/configs/eclipse_*.scenario.yaml`)
 
 | Scenario | Purpose |
 |----------|---------|

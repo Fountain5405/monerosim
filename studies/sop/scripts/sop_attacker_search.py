@@ -4,7 +4,7 @@
 After the learned attacker's ladder stopped at step 3
 (studies/sop/docs/20261026_sop_learned_attacker.md), the next lower bound on what SoP
 concedes comes from the strongest HAND-WRITTEN rule we can find:
-studies/sop/scripts/sop_policy.py::param_stubborn, the sim's window_stubborn noown rule
+scripts/sop_policy.py::param_stubborn, the sim's window_stubborn noown rule
 with six knobs (G give-up objects, L publish lead, M reveal margin, R reveal
 depth, B block deficit, Z hold without blocks), evaluated on the race model
 with the sims' settings (sop_rl.race_env: rule 20261020_noown, honest shares,
@@ -34,7 +34,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 if __name__ == "__main__":   # run as `python studies/sop/scripts/sop_attacker_search.py`
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from studies.sop.scripts.sop_policy import param_stubborn
+from scripts.sop_policy import param_stubborn
 from studies.sop.scripts.sop_race_model import K_DEFAULT, W_DEFAULT
 from studies.sop.scripts.sop_rl import legal_fallback, race_env, rollout
 

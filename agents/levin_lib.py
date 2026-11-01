@@ -310,7 +310,7 @@ def connect(ip, port, timeout=20):
 
 
 # ---- initiator helpers (dial OUT and read a typed response) --------------
-# Used by studies/antiproxy/analysis/mainnet/crawl.py to act as a normal client: send a request
+# Used by analysis/mainnet/crawl.py to act as a normal client: send a request
 # bucket and decode the response's portable-storage payload with parse().
 def send_request(sock, command, section, expect_response=True):
     payload = serialize(section)

@@ -14,8 +14,8 @@
 # Check: python3 studies/antiproxy/analysis/spy/subnet_dedup_check.py archived_runs/<run>
 #
 # Expand: python3 scripts/generate_config.py --from studies/antiproxy/configs/subnet_dedup_check.scenario.yaml \
-#             -o test_configs/subnet_dedup_check.yaml
-# Run:    ./run_sim.sh --config test_configs/subnet_dedup_check.yaml --bootfast
+#             -o studies/antiproxy/configs/subnet_dedup_check.yaml
+# Run:    ./run_sim.sh --config studies/antiproxy/configs/subnet_dedup_check.yaml --bootfast
 general:
   stop_time: 2h
   simulation_seed: 12345

@@ -1,13 +1,13 @@
 # SoP study: status
 
-Status as of 2026-11-01; paths are relative to this folder. The study is
+Status as of 2026-11-01; paths are relative to the repository root. The study is
 active, but the owner paused new
 experiments on 2026-10-31 until the repository reorganization lands. Nothing
 runs or is queued on any machine.
 
 The question: does Share-or-Perish (MRL #146) raise the hashrate a selfish
 miner needs to profit, and what does it cost honest miners? The full write-up,
-with evidence, is `docs/20261026_sop_attacker_search.md`, items 1-11.
+with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11.
 
 ## Current findings
 
@@ -41,13 +41,13 @@ with evidence, is `docs/20261026_sop_attacker_search.md`, items 1-11.
 ## Superseded docs
 
 Each of the study's dated docs starts with a status line. Superseded:
-`docs/20260923_sop_design.md`, `docs/20260925_e4_code_data_review.md` (its SoP
-numbers), `docs/20260926_dev_branch_handoff.md`, `docs/20260926_sop_h10_rerun.md`,
-`docs/20260926_exact_uncles_and_sop_controls.md` §2,
-`docs/20261007_sop_campaign7_results.md`, `docs/20261019_sop_campaign8_results.md`,
-`docs/20261022_sop_v4_results.md` and `docs/20261028_mrl_status.md`. SoP
-findings 9 and 10 in `docs/20260922_selfish_mining_manuscript.md` are
-superseded too. `docs/review/20261008_review_report.md` is the independent
+`studies/sop/docs/20260923_sop_design.md`, `studies/sop/docs/20260925_e4_code_data_review.md` (its SoP
+numbers), `studies/sop/docs/20260926_dev_branch_handoff.md`, `studies/sop/docs/20260926_sop_h10_rerun.md`,
+`studies/sop/docs/20260926_exact_uncles_and_sop_controls.md` §2,
+`studies/sop/docs/20261007_sop_campaign7_results.md`, `studies/sop/docs/20261019_sop_campaign8_results.md`,
+`studies/sop/docs/20261022_sop_v4_results.md` and `studies/sop/docs/20261028_mrl_status.md`. SoP
+findings 9 and 10 in `studies/sop/docs/20260922_selfish_mining_manuscript.md` are
+superseded too. `studies/sop/docs/review/20261008_review_report.md` is the independent
 review of campaign 7 (2026-10-08), with its prompt next to it; both are
 historical.
 
@@ -69,6 +69,6 @@ historical.
   race-model counting changes (`b9242908`, `316bb786`) and the matrix-runner
   overlays (`96a9aede`).
 - `monerod-sim` is built from `patches/series` (15 patches). SoP's PoP patch
-  (`patches/monero-sim-pop.patch`, sha256 `3f321bde...`, the 10-30 build with
+  (`studies/sop/patches/monero-sim-pop.patch`, sha256 `3f321bde...`, the 10-30 build with
   `--sim-sop-seen-at-notify` and `--sim-no-drop-score`) is the fifth.
   `SWITCHOVER.md` says which boxes need a rebuild.

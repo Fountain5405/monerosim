@@ -40,6 +40,8 @@ that uses the simulator lives in `studies/`. The repository is public.
 - **No long-lived branches.** Commit to main, or to a short branch merged
   within a day. Never rewrite pushed commits (no rebase, squash, amend or
   force-push): result docs cite commit hashes.
+- **Commits carry only the owner's identity** (Fountain5405) as author and
+  committer: no `Co-Authored-By:` or other attribution lines.
 - **Never edit or pull in a checkout a campaign is running from.** Agents that
   start late import code at their own start time. Run campaigns from a pinned
   worktree: `git worktree add ../runs/<campaign> <sha>`.

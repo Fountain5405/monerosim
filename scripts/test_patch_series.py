@@ -5,6 +5,7 @@ read it; these tests keep them from growing their own lists again.
 """
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 from scripts.run_sim_helpers import SIM_FLAG_OPTIONS, read_patch_series
@@ -70,3 +71,23 @@ def test_setup_help_prints_the_series():
     for r in read_patch_series():
         assert Path(r["path"]).name in out
     assert "vote bypass" not in out
+
+
+def test_helpers_import_without_a_series(tmp_path):
+    """A missing or malformed patches/series breaks only the checks that read
+    it, not every helper run_sim.sh calls: the series is read on first use."""
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts" / "run_sim_helpers.py").write_text(
+        (REPO / "scripts" / "run_sim_helpers.py").read_text())
+    code = (
+        "import sys; sys.path.insert(0, 'scripts'); import run_sim_helpers as h\n"
+        "assert h.parse_stop_time_hours('2h') == 2.0\n"
+        "try:\n"
+        "    h.sim_flag_options()\n"
+        "except FileNotFoundError:\n"
+        "    print('series-missing')\n"
+    )
+    out = subprocess.run([sys.executable, "-c", code], cwd=tmp_path,
+                         capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr
+    assert out.stdout.strip() == "series-missing"

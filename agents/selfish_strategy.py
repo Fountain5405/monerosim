@@ -121,7 +121,7 @@ class SelfishStrategy:
         self.suppressed_reveals = 0
         self.last_learned = None   # (obs, key, action, stored) of the last learned decision
         # param_stubborn (2026-10-26, studies/sop/scripts/sop_attacker_search.py): the sim's window_stubborn
-        # noown rule with knobs (studies/sop/scripts/sop_policy.py::param_stubborn; G = give_up_objects), run
+        # noown rule with knobs (scripts/sop_policy.py::param_stubborn; G = give_up_objects), run
         # through the learned decision path (same observation, reveal gate and counters)
         self.publish_lead, self.reveal_margin = int(publish_lead), int(reveal_margin)
         self.reveal_depth, self.block_deficit, self.hold_shares = int(reveal_depth), int(block_deficit), int(hold_shares)
@@ -138,7 +138,7 @@ class SelfishStrategy:
             path = Path(policy_file)
             if not path.is_absolute():
                 path = Path(__file__).resolve().parents[1] / path
-            from studies.sop.scripts.sop_policy import load_policy
+            from scripts.sop_policy import load_policy
             try:
                 self.policy, self.policy_meta = load_policy(str(path))
             except (FileNotFoundError, ValueError) as e:
@@ -194,7 +194,7 @@ class SelfishStrategy:
         capped at the window (32 by default: (K - 1) * w) and both collapsed
         to it once either passes, pa = weights[5] - weights[0], ph =
         weights[6] - weights[7]."""
-        from studies.sop.scripts.sop_policy import WINDOW
+        from scripts.sop_policy import WINDOW
         W = WINDOW if window is None else int(window)
         xa, xh = min(int(weights[3]), W), min(int(weights[4]), W)
         if xa >= W or xh >= W:
@@ -212,7 +212,7 @@ class SelfishStrategy:
         branch; reveal is only released if the strategy's own acceptance test
         passes (past the window and ahead by weight, as window_stubborn), else
         it becomes a hold and is counted as suppressed."""
-        from studies.sop.scripts.sop_policy import (GIVE_UP, HOLD, PUBLISH, REVEAL, ACTION_NAMES, key_of, param_stubborn,
+        from scripts.sop_policy import (GIVE_UP, HOLD, PUBLISH, REVEAL, ACTION_NAMES, key_of, param_stubborn,
                                         sim_stubborn)
         give_up = ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=True, forward_to=None)
         hold = ReleaseDecision(release_from=old_fork, release_to=None, adopt_public=False, forward_to=old_fork)

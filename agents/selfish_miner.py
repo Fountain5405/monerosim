@@ -35,7 +35,7 @@ Attributes (via --attributes KEY VALUE):
                         (optional); must equal the policy file's training alpha.
     publish_lead, reveal_margin, reveal_depth, block_deficit, hold_shares
                         param_stubborn (2026-10-26): the knobs L, M, R, B, Z of
-                        studies/sop/scripts/sop_policy.py::param_stubborn, the window_stubborn
+                        scripts/sop_policy.py::param_stubborn, the window_stubborn
                         noown rule with knobs searched in the race model
                         (studies/sop/docs/20261026_sop_attacker_search.md); G is
                         give_up_objects (required >= 0). Defaults 0/1/1/0/0 are

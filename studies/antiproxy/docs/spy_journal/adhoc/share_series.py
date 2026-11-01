@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0, "analysis"); sys.path.insert(0, "studies/antiproxy/analysis/spy")
+sys.path.insert(0, "analysis"); sys.path.insert(0, "analysis/spy")
 import topology_metrics as tm
 run = sys.argv[1]
 by_ip, _, _, node_class, general = tm.load_run_meta(run)

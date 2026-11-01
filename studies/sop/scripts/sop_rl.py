@@ -30,7 +30,7 @@ if __name__ == "__main__":   # run as `python studies/sop/scripts/sop_rl.py`: ma
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from studies.sop.scripts import sop_mdp as M
-from studies.sop.scripts.sop_policy import HOLD, PUBLISH, REVEAL, GIVE_UP, Obs, key_of, load_policy, sim_stubborn  # noqa: F401 (re-exported)
+from scripts.sop_policy import HOLD, PUBLISH, REVEAL, GIVE_UP, Obs, key_of, load_policy, sim_stubborn  # noqa: F401 (re-exported)
 from studies.sop.scripts.sop_race_model import FAR_CAP, RULE_PRESETS, SimConfig, SopEnv
 
 assert (HOLD, PUBLISH, REVEAL, GIVE_UP) == (M.HOLD, M.PUBLISH, M.REVEAL, M.GIVE_UP)

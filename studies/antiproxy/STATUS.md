@@ -1,14 +1,14 @@
 # Antiproxy study: status
 
-Status as of 2026-11-01; paths are relative to this folder. The study is
+Status as of 2026-11-01; paths are relative to the repository root. The study is
 active, but the owner stopped all work on 2026-11-01 (about 11:20 UTC): the
 queues are empty and nothing runs. Work resumes after the switch-over to main
 (`SWITCHOVER.md`).
 
 The study measures how spy fleets infiltrate Monero's peer lists and trace
 transaction origins (Dandelion++ first-hop attribution), and tests defences at
-the P2P layer. The full write-up is `docs/20261027_findings_summary.md`
-(Findings 1-8). The experiment journal, `docs/SPY_EXPERIMENT_JOURNAL.md`, holds
+the P2P layer. The full write-up is `studies/antiproxy/docs/20261027_findings_summary.md`
+(Findings 1-8). The experiment journal, `studies/antiproxy/docs/SPY_EXPERIMENT_JOURNAL.md`, holds
 entries E1-E71, predictions P1-P67 and 111 registered runs.
 
 ## Current findings
@@ -63,7 +63,7 @@ weekly address rotation and the candidate cut's freshness).
 
 ## Corrections in force
 
-- `docs/superpowers/specs/20261030-per-host-peerlist-accounting-design.md`:
+- `studies/antiproxy/docs/superpowers/specs/20261030-per-host-peerlist-accounting-design.md`:
   appendix A corrects section 1 (the stock white list is already one entry per
   host; the defence is gray-side only).
 - The P62-P67 filings carry a correction block (2026-10-31 05:10): a cell's m

@@ -41,7 +41,7 @@ stopped using this box. Nothing of the lab's runs here and nothing will be queue
 - Cell configs resolve timing from the box's core count and `~/.monerosim/calibration.json`; a config generated here is not
   byte-identical to one generated on a 64-thread box. Generate where you run, or pin the inputs.
 
-Questions: the lab's journal is `studies/antiproxy/docs/SPY_EXPERIMENT_JOURNAL.md` on branch `feat/spy-relay-log` (GitHub, same repo as `main`);
+Questions: the lab's journal is `docs/SPY_EXPERIMENT_JOURNAL.md` on branch `feat/spy-relay-log` (GitHub, same repo as `main`);
 the coordinator-side notes are in the `antiproxy` account there.
 
 *Verified 2026-10-24 15:48 UTC:* the copy finished (`EXIT 0`), a dry-run rsync against the array lists nothing left to send, and both sides hold 58,373 files. The lab needs nothing further from this folder; it may be deleted when the owner says so.

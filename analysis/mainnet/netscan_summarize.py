@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Summarise an xmrnetscan snapshot (Rucknium's crawler) into the S12 counterpart
-of our own crawl's report.json (studies/antiproxy/analysis/mainnet/summarize.py) and the replica
+of our own crawl's report.json (analysis/mainnet/summarize.py) and the replica
 spec's section 6 numbers.
 
 xmrnetscan is Rucknium's Monero network crawler

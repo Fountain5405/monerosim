@@ -1,6 +1,6 @@
 import sys, re
 from collections import Counter, defaultdict
-sys.path.insert(0, "studies/antiproxy/analysis/spy"); sys.path.insert(0, "analysis"); sys.path.insert(0, ".")
+sys.path.insert(0, "analysis/spy"); sys.path.insert(0, "analysis"); sys.path.insert(0, ".")
 import x0_calibration as x
 tm = x.topology_metrics
 run = sys.argv[1]

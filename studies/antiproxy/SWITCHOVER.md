@@ -4,17 +4,24 @@ The repository reorganization of 2026-11-01 merged `feat/spy-relay-log` into
 main (tag `handoff/antiproxy` plus `7c3a9ddb`) and moved the study's files into
 `studies/antiproxy/` (`studies/MOVES.tsv`; report:
 `docs/20261101_repo_reorganization.md`). HANDOFF.md said to keep the box
-checkouts on `feat/spy-relay-log` until told; this note is that word, once the
-reorganization is on main.
+checkouts on `feat/spy-relay-log` until told; the owner gives that word. Every
+step below that pushes, tags or deletes needs the owner's go-ahead, as the
+study's `CLAUDE.md` says.
 
 1. **Let running queues finish in the old checkout.** Don't pull there. The
    owner stopped all work on 2026-11-01, so nothing should be running; check
    the control box, tr and simbox3 before going on.
+   - **Before any checkout pulls or checks out main, move its local
+     `CLAUDE.md` files aside** (`mv CLAUDE.md CLAUDE.local.md`, and the same
+     for `studies/antiproxy/CLAUDE.md`). Main now tracks `CLAUDE.md`; git
+     replaces an ignored local `CLAUDE.md` on pull or checkout without a
+     warning.
 2. **Merge late commits.** If `git log origin/main..origin/feat/spy-relay-log`
    lists anything, merge it into main (`--no-ff`, never rebase). Git's rename
    detection carries edits to moved files over. Then `git mv` new files into
    `studies/antiproxy/` the way `studies/MOVES.tsv` does, add their rows,
-   commit the moves apart from content edits, update references, and push.
+   commit the moves apart from content edits, update references, and push
+   (with the owner's go-ahead).
 3. **Make a fresh checkout or worktree of main** on the control box, tr and
    simbox3.
    - **Rebuild monerod-sim** with `./setup.sh --sim-binary` (feed answers with
@@ -24,18 +31,23 @@ reorganization is on main.
      pre-v4 copy (`44825cd1...`), so both R8 binaries are refused until
      rebuilt. id-consistency is commented out (below).
    - Gitignored cells in the old checkouts' `test_configs/x0/cells/` belong in
-     `studies/antiproxy/configs/x0/cells/` now: copy them over (check the
-     journal's md5s) or regenerate them with `make_cell.sh`.
+     `studies/antiproxy/configs/x0/cells/` now. Regenerate them with
+     `make_cell.sh` rather than copying: a cell built with `--list half` or
+     stemmable CIDRs embeds the absolute path of its ban list or CIDR file
+     (`studies/antiproxy/configs/x0/make_lean.py`), so a copy still points
+     into the old checkout, and a regenerated one gets a new md5 for that
+     reason alone. Cells with `--list none` and no stemmable CIDRs hold no
+     path.
    - Run the checks below.
 4. **Update what the reorganization couldn't** (list below).
-5. **Archive and delete the branch:**
+5. **Archive and delete the branch** (with the owner's go-ahead):
    `git tag -a archive/feat/spy-relay-log origin/feat/spy-relay-log -m "feat/spy-relay-log before switch-over"`,
    `git push origin archive/feat/spy-relay-log`, then
    `git push origin --delete feat/spy-relay-log`.
 6. **Fold anything still useful** from `HANDOFF.md` and
    `SESSION_HANDOFF_20261101.md` (the resume recipe for M1, B1, M2 and I1)
    into `STATUS.md` or `CLAUDE.md`, then `git rm` those two files and this
-   one, commit and push.
+   one, commit and push (with the owner's go-ahead).
 7. **From then on, work on main** as the root `CLAUDE.md` says. New journal
    filings cite the new paths.
 
@@ -43,12 +55,16 @@ reorganization is on main.
 
 From `HANDOFF.md` section 5, with the new paths:
 
-1. `venv/bin/python -m pytest -q studies/antiproxy/analysis/mainnet/test_mainnet_tools.py`.
-   Expected: 48 passed.
-2. `bash studies/antiproxy/docs/spy_journal/drivers/make_cell.sh --reachable 300 --spy-subnets 42 --spies-per-subnet 1 --spy-node0 600 --warmup 46800 --probe 3 --dedup 24 --list none --seed 12345`
-   with the phantom calibration in place. HANDOFF.md's md5 (`ca7ae836...`)
-   was taken before the move; the reorganization report says whether the
-   moved generator reproduces it.
+1. `venv/bin/python -m pytest -q analysis/mainnet/test_mainnet_tools.py studies/antiproxy/analysis/mainnet/test_monitor_series.py`.
+   Expected: 48 passed (the mainnet tools stayed in core; the
+   `monitor_series.py` test moved to the study).
+2. `bash studies/antiproxy/docs/spy_journal/drivers/make_cell.sh --reachable 300 --spy-subnets 9 --spies-per-subnet 1 --spy-node0 600 --warmup 46800 --probe 3 --dedup 24 --list none --seed 12345`
+   with the phantom calibration in place. This builds B1
+   (`lean_24_none_h300_k9_w13h_p3_m1_n600_s12345`), the cell whose md5
+   HANDOFF.md gives (`ca7ae836...`); HANDOFF.md's command says
+   `--spy-subnets 42`, a typo (that builds the k42 cell). The md5 was taken
+   before the move; the reorganization report says what the moved generator
+   produces.
 3. The id-consistency logic driver: skip it until the patch is regenerated.
 4. PoP-patch smoke runs: rerun B1 (k9 m1) and the k42 m1 stock cell (E27's
    shape) under the new binary. Expect light share within ±0.005 of the
@@ -72,8 +88,13 @@ build box; its report gives the results.
   `.../studies/antiproxy/analysis/spy`.
 - The control box's observer cron calls `analysis/mainnet/pull_observer.sh`,
   which is now `studies/antiproxy/analysis/mainnet/pull_observer.sh`.
-- `docs/spy_journal/adhoc/layout_check.py` hard-codes an absolute path, left as
-  it was.
+- `studies/antiproxy/docs/spy_journal/adhoc/layout_check.py` hard-codes an
+  absolute path. The journal's `adhoc/` scripts are kept as they ran, with
+  pre-move paths; the reorganization did not edit them.
+- Comments inside the study's patches still cite pre-move paths (the
+  reorganization does not change patch bytes): `monero-sim-txrelay-log.patch`
+  lines 216 and 220, `monero-sim-fixed-randomx-seed.patch` lines 22 and 42.
+  Fix them the next time the patches are regenerated.
 - The control box's `.claude/HANDOFF.md` session log: keep machine notes in
   `CLAUDE.local.md`, findings in `STATUS.md`.
 
@@ -97,5 +118,11 @@ build box; its report gives the results.
   - left in core: `agents/spy_refresh.py`, which stays with the agent library;
   - kept in core: `analysis/topology_metrics.py`, which the 2026-09 topology
     work created and the branch never changed;
+  - kept in core: `analysis/mainnet/`, which the mainnet-replica work created
+    on main (HANDOFF.md's "new on this branch" was wrong for it), except the
+    three tools the branch added, now in `studies/antiproxy/analysis/mainnet/`
+    (`collect_monitors.sh`, `monitor_series.py`, `pull_observer.sh`). The
+    branch's growth of `poll_node.py` (`--peerlist-dedup`, `--dial-log`) and
+    its tests stay in core with the tool;
   - of `docs/superpowers/*`, only the four specs and plans the branch added
     moved.

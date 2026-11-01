@@ -1,7 +1,7 @@
 # Eclipse study: status
 
 **Closed.** Nothing runs, and no follow-up work is open. Paths are relative to
-this folder unless they start at the repository root.
+the repository root.
 
 The study reproduced, in the simulator, the unreachable-node eclipse attack
 of "Are Unreachable Nodes Truly Safe? Fully Eclipsing Monero's P2P Network!"
@@ -29,8 +29,8 @@ reran a colleague's 50-hour eclipse simulation with `--bootfast`.
 
 ## Where things are
 
-- `docs/eclipse_reproduction.md` (method and results) and
-  `docs/20261006_bootfast_eclipse_reproduction.md`.
+- `studies/eclipse/docs/eclipse_reproduction.md` (method and results) and
+  `studies/eclipse/docs/20261006_bootfast_eclipse_reproduction.md`.
 - `configs/`: the 21 eclipse scenarios.
 - These stay in core, because core and other work use them:
   - `agents/eclipse_*.py`;

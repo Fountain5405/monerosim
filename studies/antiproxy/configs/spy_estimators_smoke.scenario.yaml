@@ -11,8 +11,8 @@
 # Check:  python3 studies/antiproxy/analysis/spy/spy_estimators.py archived_runs/<run>
 #
 # Expand: python3 scripts/generate_config.py --from studies/antiproxy/configs/spy_estimators_smoke.scenario.yaml \
-#             -o test_configs/spy_estimators_smoke.yaml
-# Run:    ./run_sim.sh --config test_configs/spy_estimators_smoke.yaml --bootfast
+#             -o studies/antiproxy/configs/spy_estimators_smoke.yaml
+# Run:    ./run_sim.sh --config studies/antiproxy/configs/spy_estimators_smoke.yaml --bootfast
 general:
   stop_time: 5h
   simulation_seed: 12345

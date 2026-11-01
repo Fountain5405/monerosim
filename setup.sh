@@ -1267,7 +1267,7 @@ install_sim_monerod() {
     # so each check runs against the tree with the earlier ones already in.
     for p in "${patches[@]}"; do
         if ! git -C "$sim_build_dir" apply --check "$p"; then
-            log_err "patches/$(basename "$p") no longer applies to monero $monero_ref"
+            log_err "${p#"$SCRIPT_DIR"/} no longer applies to monero $monero_ref"
             log_err "The patch must be rebased onto the new pin (or upstreamed)."
             exit 1
         fi

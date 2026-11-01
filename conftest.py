@@ -2,9 +2,14 @@
 
 This conftest.py is collected from the project root (see pyproject.toml's
 testpaths) so the fixtures defined here are visible to tests in agents/,
-scripts/, and tests/.
+scripts/, tests/ and studies/.
 """
 import pytest
+
+# studies/sop/dot-claude/ and studies/sop/home/ are snapshots of SoP's
+# control-box helpers, kept with their pre-move paths and not maintained;
+# their tests stay out of the suite.
+collect_ignore = ["studies/sop/dot-claude", "studies/sop/home"]
 
 
 @pytest.fixture

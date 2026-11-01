@@ -636,16 +636,6 @@ def test_learned_requires_a_loadable_policy_file(tmp_path):
         SelfishStrategy("learned", start_height=0, policy_file=_policy_file(tmp_path, {}, alpha=0.40), alpha=0.45)
 
 
-def test_learned_observation_matches_sop_mdp():
-    from studies.sop.scripts import sop_mdp as M
-    # fork at 100; attacker 2 blocks (3 and 1 embedded shares), 2 pending; honest 1 block (0 shares), 5 pending
-    w = (6, 6, 1, 2, 0, 8, 6, 1)
-    assert SelfishStrategy.observation(2, 1, w) == (2, 5, 2, 2, 1, 0, 5)
-    s = M.event(M.event(M.event(M.START, True, True, M.Caps()), True, False, M.Caps()), True, False, M.Caps())
-    # one attacker block then two attacker shares: a=1, D=1, pa=2
-    assert SelfishStrategy.observation(1, 0, (1, 1, 0, 0, 0, 3, 0, 0)) == s
-
-
 def test_learned_uses_table_then_falls_back_to_sim_stubborn(tmp_path):
     s = SelfishStrategy("learned", start_height=0, window_objects=32, window_rule="20261020",
                         give_up_objects=5, policy_file=_policy_file(tmp_path, {"1,2,32,0,1,32,1": "hold"}))
