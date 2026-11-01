@@ -1742,3 +1742,19 @@ miners 0 / 2 / 0 / 3 blocks) and 0.809 of the stock side's (1,293 of
 1,598), against 0.998 / 0.836 for seed 1. The sides' tips part 442 blocks
 back (heights 2733 and 2592, fork at 2291); each stock-side honest node
 logged 21 peer bans, no SoP-side node any. The split replicates.
+
+The adoption ladder at alpha 0.30 (14 nodes, one seed each; honest
+miners at equal hashrate):
+
+| SoP adoption | attacker share (by chain) | honest miners' blocks h001 / h002 / h003 / h004 | split |
+|---|---|---|---|
+| 0 % (stock d2 attacker, k0) | 0.269 | 375 / 387 / 387 / 382 | no |
+| 25 % (k1, h001 on SoP) | 0.000 | 284 / 548 / 542 / 574 | no |
+| 50 % (k2) | 0.461 SoP side / 0.437 stock side | 456 / 448 / 7 / 8 (SoP side) | yes, 78 deep |
+
+With nobody on SoP the stock attacker at 0.30 loses (0.269). A quarter on
+SoP costs the lone SoP miner half its blocks. Half on SoP hands the
+attacker 0.44-0.46 and costs the stock miners nearly everything. Every
+partial step is worse than either end for someone, at 0.30 as at 0.45:
+SoP needs a flag day (the 14-node caveat stands; owner 10-30: rerun the
+ladder on the 256 GB box with a larger network).
