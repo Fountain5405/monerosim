@@ -1,3 +1,5 @@
+Status (2026-11-01): current (implemented).
+
 # Selfish-Mining Apparatus — Design
 
 **Status:** approved for planning (2026-09-12)

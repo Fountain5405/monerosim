@@ -1,3 +1,5 @@
+Status (2026-11-01): superseded by docs/20261026_sop_attacker_search.md (the 'collapse' here was mostly the attacker's give-up rule; see this doc's 2026-10-23 caveat).
+
 # Share-or-Perish (MRL #146) under the 2026-10-20 revision: v4 campaign results (2026-10-21 to 2026-10-22)
 
 First campaign on the rule as revised 2026-10-20 (log v4; the issue body has

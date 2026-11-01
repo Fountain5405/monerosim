@@ -1,0 +1,5 @@
+2026-10-21 19:48:18 UTC waiting for pid 2496458
+2026-10-21 19:58:48 UTC smoke ended (pid 2496458 gone)
+2026-10-21 19:58:53 UTC CHECK 20261021_192936_sop_v4_smoke__share_sop2_a045 oracle=0mm/12nodes a3=4 reveals=3 a3_undelivered=2 alt_shares=0 probes=ok lateness=ok reveal_stats=ok embed=ok -> PASS
+2026-10-21 19:58:53 UTC decision: smoke gate PASS, GO=4: launching queue
+2026-10-21 19:58:53 UTC launched queue pid 2503444: /scratch/monerosim_dev/monerosim/venv/bin/python /scratch/monerosim_dev/monerosim/.claude/campaign9/run_queue_v4.py

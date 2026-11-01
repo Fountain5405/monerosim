@@ -1,0 +1,16 @@
+2026-10-19 10:46:06 queue start (follow-up); waiting on the deep_hunt queue
+2026-10-20 03:43:06 start scripts/selfish_matrix.py test_configs/matrix/sop_v3_n40_rep2.yaml --cells block_stock --parallel 1
+2026-10-20 06:50:06 start scripts/selfish_matrix.py test_configs/matrix/sop_v3_h10_a045_72h.yaml --cells share_sop2_a045 --parallel 1
+2026-10-20 09:17:57 done sop_v3_n40_rep2 rc=0 5.58 h
+2026-10-20 09:17:57 start scripts/selfish_matrix.py test_configs/matrix/sop_v3_n40_depth_rep.yaml --cells share_sop2 --parallel 1
+2026-10-20 13:14:40 done sop_v3_h10_a045_72h rc=0 6.41 h
+2026-10-20 16:04:40 done sop_v3_n40_depth_rep rc=0 6.78 h
+2026-10-20 16:04:40 checks on: ['20261020_034307_sop_v3_n40_rep2__block_stock_a033_d2', '20261020_091758_sop_v3_n40_depth_rep__share_sop2_a033_d5', '20261020_065007_sop_v3_h10_a045_72h__share_sop2_a045_d2']
+2026-10-20 16:04:51 check oracle rc=0
+2026-10-20 16:04:57 check probe rc=0
+2026-10-20 16:05:04 check flipback rc=0
+2026-10-20 16:05:04 check late_new rc=0
+2026-10-20 16:05:05 check reveals_stats rc=0
+2026-10-20 16:05:10 check reveals_depths rc=0
+2026-10-20 16:05:12 check pending rc=0
+2026-10-20 16:05:12 queue end

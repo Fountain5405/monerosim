@@ -1,3 +1,5 @@
+Status (2026-11-01): current.
+
 # MSB calibration study (2026-09-21)
 
 `scripts/msb_study.py` over every selfish/eclipse run on this box

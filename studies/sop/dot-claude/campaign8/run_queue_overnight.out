@@ -1,0 +1,28 @@
+2026-10-19 03:07:30 queue start (overnight)
+2026-10-19 03:07:30 start scripts/selfish_matrix.py test_configs/matrix/sop_rev2_h10_a045_72h.yaml --cells share_sop2_a045 --parallel 1
+2026-10-19 03:07:50 small run planned: cpus=0-13,32-45 pinning=on workers=14 (14 of 32 free physical cores (none used by other Shadow runs); capped at 14 hosts)
+2026-10-19 03:08:20 start scripts/selfish_matrix.py test_configs/matrix/sop_rev2_n40_rep.yaml --cells share_sop2 --parallel 1
+2026-10-19 09:18:29 done rc=0 6.18 h
+    | arm | countermeasure | alpha | depth | alpha | share | share_h | ctrl | gamma | att_orph | net_orph | msb_z | blocks | verdicts | health | run |
+    |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+    | share | sop2 | a045 | d2 | 0.450 | 0.379 | 0.379 | - | 0.019 | 0.475 | 0.351 | 34.355 | 1965 | FAIL (3) | ok | 20261019_030731_sop_rev2_h10_a045_72h__share_sop2_a045_d2 |
+2026-10-19 09:43:31 done rc=0 6.59 h
+    | arm | countermeasure | alpha | depth | alpha | share | share_h | ctrl | gamma | att_orph | net_orph | msb_z | blocks | verdicts | health | run |
+    |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+    | share | sop2 | a033 | d2 | 0.330 | 0.027 | 0.027 | - | 0.000 | 0.944 | 0.325 | 28.789 | 1252 | FAIL (2) | ok | 20261019_030821_sop_rev2_n40_rep__share_sop2_a033_d2 |
+2026-10-19 09:43:31 checks on: ['20261019_030731_sop_rev2_h10_a045_72h__share_sop2_a045_d2', '20261019_030821_sop_rev2_n40_rep__share_sop2_a033_d2']
+2026-10-19 09:43:31 start nice -n 10 /scratch/monerosim_dev/monerosim/venv/bin/python scripts/sop_oracle.py check /scratch/monerosim_dev/monerosim/archived_runs/20261019_030731_sop_rev2_h10_a045_72h__share_sop2_a045_d2 /scratch/monerosim_dev/monerosim/archived_runs/20261019_030821_sop_rev2_n40_rep__share_sop2_a033_d2
+2026-10-19 09:43:41 done rc=0 0.00 h
+2026-10-19 09:43:41 start nice -n 10 /scratch/monerosim_dev/monerosim/venv/bin/python -m scripts.sop_lateness_probe replay /scratch/monerosim_dev/monerosim/archived_runs/20261019_030731_sop_rev2_h10_a045_72h__share_sop2_a045_d2 /scratch/monerosim_dev/monerosim/archived_runs/20261019_030821_sop_rev2_n40_rep__share_sop2_a033_d2
+2026-10-19 09:43:47 done rc=0 0.00 h
+2026-10-19 09:43:47 start nice -n 10 /scratch/monerosim_dev/monerosim/venv/bin/python scripts/selfish_mining/flipback_scan.py /scratch/monerosim_dev/monerosim/archived_runs/20261019_030731_sop_rev2_h10_a045_72h__share_sop2_a045_d2 /scratch/monerosim_dev/monerosim/archived_runs/20261019_030821_sop_rev2_n40_rep__share_sop2_a033_d2
+2026-10-19 09:43:52 done rc=0 0.00 h
+2026-10-19 09:43:52 start nice -n 10 /scratch/monerosim_dev/monerosim/venv/bin/python .claude/campaign8/late_start_scan.py 20261019_030731_sop_rev2_h10_a045_72h__share_sop2_a045_d2 20261019_030821_sop_rev2_n40_rep__share_sop2_a033_d2
+2026-10-19 09:43:53 done rc=0 0.00 h
+2026-10-19 09:43:53 start nice -n 10 /scratch/monerosim_dev/monerosim/venv/bin/python scripts/selfish_mining/sop_reveals.py stats /scratch/monerosim_dev/monerosim/.claude/campaign8/overnight/reveals_stats.json /scratch/monerosim_dev/monerosim/archived_runs/20261019_030731_sop_rev2_h10_a045_72h__share_sop2_a045_d2 /scratch/monerosim_dev/monerosim/archived_runs/20261019_030821_sop_rev2_n40_rep__share_sop2_a033_d2
+2026-10-19 09:43:53 done rc=0 0.00 h
+2026-10-19 09:43:53 start nice -n 10 /scratch/monerosim_dev/monerosim/venv/bin/python scripts/selfish_mining/sop_reveals.py depths /scratch/monerosim_dev/monerosim/.claude/campaign8/overnight/reveals_depths.json /scratch/monerosim_dev/monerosim/archived_runs/20261019_030731_sop_rev2_h10_a045_72h__share_sop2_a045_d2 /scratch/monerosim_dev/monerosim/archived_runs/20261019_030821_sop_rev2_n40_rep__share_sop2_a033_d2
+2026-10-19 09:43:57 done rc=0 0.00 h
+2026-10-19 09:43:57 start nice -n 10 /scratch/monerosim_dev/monerosim/venv/bin/python scripts/selfish_mining/sop_pending.py /scratch/monerosim_dev/monerosim/archived_runs/20261019_030731_sop_rev2_h10_a045_72h__share_sop2_a045_d2 /scratch/monerosim_dev/monerosim/archived_runs/20261019_030821_sop_rev2_n40_rep__share_sop2_a033_d2
+2026-10-19 09:43:57 done rc=1 0.00 h
+2026-10-19 09:43:57 queue end

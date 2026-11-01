@@ -1,0 +1,70 @@
+{
+ "cell": "share_sop2_a040_d3",
+ "values": {
+  "arm": "share",
+  "countermeasure": "sop2",
+  "alpha": "a040",
+  "depth": "d3"
+ },
+ "config": "/scratch/monerosim_dev/monerosim/matrix_runs/stubborn_h10/configs/share_sop2_a040_d3.yaml",
+ "run_name": "stubborn_h10__share_sop2_a040_d3",
+ "returncode": 0,
+ "wall_s": 8735.6,
+ "run_dir": "/scratch/monerosim_dev/monerosim/archived_runs/20260930_190000_stubborn_h10__share_sop2_a040_d3",
+ "health": {
+  "ok": true,
+  "summary": "ok",
+  "forks_seen": 250,
+  "reorg_started": 22,
+  "reorg_success": 22,
+  "exceptions": 0,
+  "alt_added": 275,
+  "decisions": 297,
+  "sop_subjective": 231,
+  "share_weighted": 231,
+  "agent_tracebacks": 0
+ },
+ "alpha": 0.4,
+ "alpha_eff": 0.4,
+ "release_lead": 1,
+ "eclipse": false,
+ "share": 0.14705882352941177,
+ "share_honest_ref": 0.14705882352941177,
+ "controlled": null,
+ "gamma": 0.015625,
+ "n_ties": 64,
+ "attacker_orphan_rate": 0.8076923076923077,
+ "network_orphan_rate": 0.423728813559322,
+ "canonical_blocks": 102,
+ "preload_blocks": 994,
+ "msb_max_z": 9.76188541591844,
+ "honest_ref": {
+  "node": "honest-001",
+  "blocks": 102,
+  "tip": 1096,
+  "bridge_tip": 1096,
+  "differing_heights": 0,
+  "first_divergence": null,
+  "share": 0.14705882352941177
+ },
+ "theory": {
+  "es_gamma0": 0.4837209302325583,
+  "at_measured_gamma": 0.48502906976744203
+ },
+ "verdicts": [
+  [
+   "attacker share vs Eyal-Sirer gamma=0 curve",
+   false
+  ],
+  [
+   "attacker share vs Eyal-Sirer theory at measured gamma",
+   false
+  ],
+  [
+   "attacker beats honest baseline (share > alpha)",
+   false
+  ]
+ ],
+ "all_verdicts_pass": false,
+ "attacker_found": 78
+}

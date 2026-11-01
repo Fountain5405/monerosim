@@ -1,0 +1,18 @@
+### 2026-10-24T16:43:53Z validation: stubborn chain (caps 8/8/160/48/48)
+exit 137
+exit 137
+### 2026-10-24T17:09:53Z race model hunt, 2000 d, seed 1
+| alpha | rule | give-up | reveals | canon days | #>=10 | per day | per year | days per | mean reorg | max reorg | revenue share | orphan frac |
+| 0.45 | sop | o5 | 87283 | 1104.0 | 79 | 0.0716 | 26.137 | 13.97 | 3.25 | 14 | 0.3612 | 0.5565 |
+| 0.45 | sop | o5 | 60198 | 1148.8 | 287 | 0.2498 | 91.247 | 4.00 | 3.27 | 16 | 0.2806 | 0.6415 |
+### 2026-10-24T17:10:00Z enumerate 4/4/64/24/24
+  round 25: 563,581 states, frontier 105,095  [0s]
+  round 50: 15,339,470 states, frontier 1,253,092  [80s]
+  round 75: 58,490,446 states, frontier 1,701,979  [711s]
+  round 100: 82,910,537 states, frontier 338,554  [1913s]
+exit 124
+### 2026-10-24T18:00:00Z enumerate 5/5/96/32/32
+  round 25: 947,401 states, frontier 186,138  [1s]
+  round 50: 35,094,001 states, frontier 3,302,365  [190s]
+exit 137
+### done 2026-10-24T18:14:38Z

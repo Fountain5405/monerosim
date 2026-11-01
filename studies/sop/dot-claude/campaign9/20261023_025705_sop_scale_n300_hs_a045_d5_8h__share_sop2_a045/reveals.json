@@ -1,0 +1,16 @@
+{
+ "20261023_025705_sop_scale_n300_hs_a045_d5_8h__share_sop2_a045": {
+  "found_att": 104,
+  "found_hon": 114,
+  "found": 218,
+  "reveals": [],
+  "other_reorgs": [],
+  "unknown_old_ids": 0,
+  "depth_hist": {},
+  "share": 0.0,
+  "canonical_blocks": 113,
+  "attacker_orphan_rate": 1.0,
+  "network_orphan_rate": 0.481651376146789,
+  "attacker_found": 104
+ }
+}

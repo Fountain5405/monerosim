@@ -1,0 +1,13 @@
+  round 25: 563,581 states, frontier 105,095  [1s]
+  round 50: 15,339,470 states, frontier 1,253,092  [72s]
+  round 75: 58,490,446 states, frontier 1,701,979  [624s]
+  round 100: 82,910,537 states, frontier 338,554  [1949s]
+  round 125: 85,103,053 states, frontier 2,702  [3381s]
+caps: a<=4 h<=4 |D|<=64 p<=24 deficit<=24  own_pending=ignore
+reachable states: 85,108,639  (with a real choice after some event: 85,108,639; inside the window: 84,911,833, past it: 196,806)  [4059.5s]
+states by (attacker blocks a, honest blocks h):
+  a\h         0         1         2         3
+    0       625     12700    179700    176938
+    1     15625     28025    547550    607560
+    2    390625    750675  16864585  19223130
+    3    488125    941100  20887035  23994641

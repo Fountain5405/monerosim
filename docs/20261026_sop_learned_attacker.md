@@ -1,3 +1,5 @@
+Status (2026-11-01): current (the RL ladder was stopped on 2026-10-26).
+
 # A learned attacker for Share-or-Perish: the validation ladder (2026-10-25/26)
 
 Design: docs/superpowers/specs/2026-10-25-sop-rl-attacker-design.md. Plan:

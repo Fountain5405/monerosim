@@ -1,3 +1,5 @@
+Status (2026-11-01): current (selfish-mining apparatus validation; findings are indexed in docs/20260922_selfish_mining_manuscript.md).
+
 # Selfish-Mining Apparatus — Results & Validation (2026-09-12)
 
 This is the human entry point for validating the selfish-mining apparatus

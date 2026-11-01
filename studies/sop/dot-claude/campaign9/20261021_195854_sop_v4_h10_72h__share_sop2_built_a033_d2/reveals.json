@@ -1,0 +1,33 @@
+{
+ "20261021_195854_sop_v4_h10_72h__share_sop2_built_a033_d2": {
+  "found_att": 999,
+  "found_hon": 1985,
+  "found": 2984,
+  "reveals": [],
+  "other_reorgs": [
+   {
+    "t": "2000-01-02 06:19:04.326",
+    "split": 1687,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 0,
+    "applied": 1
+   },
+   {
+    "t": "2000-01-03 16:07:30.702",
+    "split": 2719,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 0,
+    "applied": 1
+   }
+  ],
+  "unknown_old_ids": 0,
+  "depth_hist": {},
+  "share": 0.0,
+  "canonical_blocks": 1979,
+  "attacker_orphan_rate": 1.0,
+  "network_orphan_rate": 0.3367962466487936,
+  "attacker_found": 999
+ }
+}

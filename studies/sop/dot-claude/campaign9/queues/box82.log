@@ -1,0 +1,31 @@
+2026-10-30T19:31:31Z chain start (2 queued)
+2026-10-30T22:32:19Z launch sop_v4_dsweep_gamma_72h share_sop_d20_a045_f6_s1
+local commit: df22d181 (0 dirty files)
+box HEAD cb94d619; synced files differing from it: 61
+fix markers in agents/selfish_miner.py: 2
+no marker for share_sop_d20_a045_f6_s1
+launching () sop_v4_dsweep_gamma_72h: share_sop_d20_a045_f6_s1
+driver pid: 243154 
+243157 /home/selfishmining/monerosim/venv/bin/python scripts/selfish_matrix.py test_configs/matrix/sop_v4_dswe
+2026-10-30 22:32:20Z sop_v4_dsweep_gamma_72h queue start lanes=1 cells=share_sop_d20_a045_f6_s1 box=box82-host
+2026-10-30 22:32:20Z sop_v4_dsweep_gamma_72h lane 1 start sop_v4_dsweep_gamma_72h/share_sop_d20_a045_f6_s1
+2026-10-31T06:32:10Z launch sop_v4_dsweep_slow_72h honest_sop_d10_a047_l12_s1
+local commit: 0d44b555 (0 dirty files)
+box HEAD cb94d619; synced files differing from it: 63
+fix markers in agents/selfish_miner.py: 2
+no marker for honest_sop_d10_a047_l12_s1
+launching () sop_v4_dsweep_slow_72h: honest_sop_d10_a047_l12_s1
+driver pid: 269003 
+269006 /home/selfishmining/monerosim/venv/bin/python scripts/selfish_matrix.py test_configs/matrix/sop_v4_dswe
+2026-10-31 06:32:12Z sop_v4_dsweep_slow_72h queue start lanes=1 cells=honest_sop_d10_a047_l12_s1 box=box82-host
+2026-10-31 06:32:12Z sop_v4_dsweep_slow_72h lane 1 start sop_v4_dsweep_slow_72h/honest_sop_d10_a047_l12_s1
+2026-10-31T13:36:04Z launch sop_v4_seed2_gamma_72h share_sop_a045_f3_s2
+local commit: 7beeb6b4 (0 dirty files)
+box HEAD cb94d619; synced files differing from it: 63
+fix markers in agents/selfish_miner.py: 2
+no marker for share_sop_a045_f3_s2
+launching () sop_v4_seed2_gamma_72h: share_sop_a045_f3_s2
+driver pid: 292385 
+292388 /home/selfishmining/monerosim/venv/bin/python scripts/selfish_matrix.py test_configs/matrix/sop_v4_seed
+2026-10-31 13:36:05Z sop_v4_seed2_gamma_72h queue start lanes=1 cells=share_sop_a045_f3_s2 box=box82-host
+2026-10-31 13:36:05Z sop_v4_seed2_gamma_72h lane 1 start sop_v4_seed2_gamma_72h/share_sop_a045_f3_s2

@@ -1,0 +1,60 @@
+{
+ "20261019_111740_deep_hunt_smoke__block_stock_a045_d2": {
+  "found_att": 72,
+  "found_hon": 92,
+  "found": 164,
+  "reveals": [
+   {
+    "t": "2000-01-01 02:02:21.049",
+    "split": 1011,
+    "removed": 10,
+    "honest_orphaned": 10,
+    "att_applied": 11,
+    "applied": 11
+   },
+   {
+    "t": "2000-01-01 02:57:09.841",
+    "split": 1032,
+    "removed": 10,
+    "honest_orphaned": 10,
+    "att_applied": 11,
+    "applied": 11
+   }
+  ],
+  "other_reorgs": [],
+  "unknown_old_ids": 0,
+  "depth_hist": {
+   "10": 2
+  },
+  "share": 0.2871287128712871,
+  "canonical_blocks": 101,
+  "attacker_orphan_rate": 0.5972222222222222,
+  "network_orphan_rate": 0.38414634146341464,
+  "attacker_found": 72
+ },
+ "20261019_111740_deep_hunt_smoke__share_sop2_a045_d2": {
+  "found_att": 81,
+  "found_hon": 93,
+  "found": 174,
+  "reveals": [
+   {
+    "t": "2000-01-01 04:20:20.339",
+    "split": 1054,
+    "removed": 10,
+    "honest_orphaned": 10,
+    "att_applied": 15,
+    "applied": 15
+   }
+  ],
+  "other_reorgs": [],
+  "unknown_old_ids": 0,
+  "depth_hist": {
+   "10": 1
+  },
+  "share": 0.15306122448979592,
+  "canonical_blocks": 98,
+  "attacker_orphan_rate": 0.8148148148148149,
+  "network_orphan_rate": 0.4367816091954023,
+  "attacker_found": 81
+ }
+}

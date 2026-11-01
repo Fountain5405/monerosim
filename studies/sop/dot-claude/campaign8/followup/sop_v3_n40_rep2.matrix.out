@@ -1,0 +1,11 @@
+[matrix] block_stock_a033_d2: share 0.311
+commit: `8c1b653b`
+# Matrix sop_v3_n40_rep2
+
+- base: `/scratch/monerosim_dev/monerosim/test_configs/selfish_n40_sop.yaml`  seed: 54322  stop_time: 48h
+- cells: 1  failures: 0
+
+| arm | countermeasure | alpha | depth | alpha | share | share_h | ctrl | gamma | att_orph | net_orph | msb_z | blocks | verdicts | health | run |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| block | stock | a033 | d2 | 0.330 | 0.311 | 0.311 | - | 0.021 | 0.260 | 0.207 | 20.406 | 1329 | PASS (2) | INVALID-CHAIN 15 | 20261020_034307_sop_v3_n40_rep2__block_stock_a033_d2 |
+

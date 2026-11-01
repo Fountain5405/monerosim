@@ -1,0 +1,2 @@
+policy policy_noown_a050_coarse.json.gz: share 0.5779 0.5762 0.5776 0.5786 0.5759  mean 0.5772  reveals 101987/run  mean reorg 3.24  max reorg 21  stored 0.159
+sim_stubborn: share 0.5721 0.5705 0.5716 0.5730 0.5703  mean 0.5715  reveals 124250/run  mean reorg 2.69  max reorg 19  stored 0.000

@@ -1,0 +1,22 @@
+  round 25: 563,581 states, frontier 105,095  [1s]
+  round 50: 15,339,470 states, frontier 1,253,092  [72s]
+  round 75: 58,490,446 states, frontier 1,701,979  [613s]
+  round 100: 82,910,537 states, frontier 338,554  [1639s]
+  round 125: 85,103,053 states, frontier 2,702  [2764s]
+alpha=0.45 own_pending=ignore caps: a<=4 h<=4 |D|<=64 p<=24 deficit<=24  states: 85,108,639  [enumerated in 3286s]
+  rho=0.27500 gain=+1.094e-02 (305 sweeps)
+  rho=0.38750 gain=+3.906e-03 (318 sweeps)
+  rho=0.44375 gain=+3.906e-04 (306 sweeps)
+  rho=0.47187 gain=-1.367e-03 (293 sweeps)
+  rho=0.45781 gain=-4.883e-04 (279 sweeps)
+  rho=0.45078 gain=-4.883e-05 (265 sweeps)
+  rho=0.44727 gain=+1.709e-04 (251 sweeps)
+  rho=0.44902 gain=+6.104e-05 (238 sweeps)
+  rho=0.44990 gain=+6.104e-06 (224 sweeps)
+  rho=0.45034 gain=-2.136e-05 (209 sweeps)
+  rho=0.45012 gain=-7.629e-06 (194 sweeps)
+  rho=0.45001 gain=-7.629e-07 (178 sweeps)
+  rho=0.44996 gain=+2.670e-06 (161 sweeps)
+optimal attacker revenue share at alpha=0.45: 0.4500  (honest mining 0.45; states 85,108,639; 45619s)
+action counts over decision (state, event) pairs: hold 150807554, publish 925680, reveal 371305, give_up 96576120
+policy table (85,108,014 post-event states) -> mdp_out/policy_a0.45_ignore_c4_4_64_24_24.json

@@ -1,0 +1,15 @@
+[matrix] block_stock_a033_d2: share 0.115
+[matrix] block_stock_a040_d2: share 0.237
+[matrix] block_stock_a045_d2: share 0.423
+commit: `8c1b653b`
+# Matrix deep_hunt_stock
+
+- base: `/scratch/monerosim_dev/monerosim/test_configs/selfish_micro_sop.yaml`  seed: 13580  stop_time: 48h
+- cells: 3  failures: 0
+
+| arm | countermeasure | alpha | depth | alpha | share | share_h | ctrl | gamma | att_orph | net_orph | msb_z | blocks | verdicts | health | run |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| block | stock | a033 | d2 | 0.330 | 0.115 | 0.115 | - | 0.000 | 0.773 | 0.327 | 32.618 | 1273 | FAIL (2) | ok | 20261019_174320_deep_hunt_stock__block_stock_a033_d2 |
+| block | stock | a040 | d2 | 0.400 | 0.237 | 0.237 | - | 0.000 | 0.588 | 0.345 | 30.682 | 1200 | FAIL (3) | ok | 20261019_210240_deep_hunt_stock__block_stock_a040_d2 |
+| block | stock | a045 | d2 | 0.450 | 0.423 | 0.423 | - | 0.000 | 0.417 | 0.385 | 32.007 | 1226 | FAIL (3) | INVALID-CHAIN 1 | 20261020_002119_deep_hunt_stock__block_stock_a045_d2 |
+

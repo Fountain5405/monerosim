@@ -1,3 +1,5 @@
+Status (2026-11-01): superseded by docs/20261007_sop_campaign7_results.md for every SoP number; its PoP-core, det-tie and mid-scale findings stand.
+
 # E4 countermeasure campaign — code and data review (2026-09-25)
 
 **Status:** review record. Scope: every E4 artifact produced 2026-09-22 →

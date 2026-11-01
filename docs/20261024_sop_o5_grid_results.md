@@ -1,3 +1,5 @@
+Status (2026-11-01): current (round-1 record of the attacker search; later rounds and the conclusions are in docs/20261026_sop_attacker_search.md).
+
 # SoP o5 attacker grid, round 1 (2026-10-24)
 
 The objects-give-up attacker (`give_up_objects 5`, commit `23162f3a`) under

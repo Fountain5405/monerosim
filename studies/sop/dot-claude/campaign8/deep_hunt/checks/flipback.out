@@ -1,0 +1,1162 @@
+### 20261019_111740_deep_hunt_smoke__block_stock_a045_d2  (attacker blocks found: 72)
+  attacker-bridge        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     7340.473s split 1011 +11 [-] kept; attacker blocks main at end: 11
+    10629.264s split 1032 +11 [-] kept; attacker blocks main at end: 11
+  honest-001             reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     7341.049s split 1011 +11 [-] kept; attacker blocks main at end: 11
+    10629.841s split 1032 +11 [-] kept; attacker blocks main at end: 11
+  honest-002             reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     7341.024s split 1011 +11 [-] kept; attacker blocks main at end: 11
+    10629.816s split 1032 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-001        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     7340.924s split 1011 +11 [-] kept; attacker blocks main at end: 11
+    10629.716s split 1032 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-002        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     7341.074s split 1011 +11 [-] kept; attacker blocks main at end: 11
+    10629.866s split 1032 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-003        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     7340.849s split 1011 +11 [-] kept; attacker blocks main at end: 11
+    10629.641s split 1032 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-004        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     7340.824s split 1011 +11 [-] kept; attacker blocks main at end: 11
+    10629.616s split 1032 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-005        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     7341.074s split 1011 +11 [-] kept; attacker blocks main at end: 11
+    10629.866s split 1032 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-006        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     7341.174s split 1011 +11 [-] kept; attacker blocks main at end: 11
+    10629.966s split 1032 +11 [-] kept; attacker blocks main at end: 11
+  relay-001              reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     7340.924s split 1011 +11 [-] kept; attacker blocks main at end: 11
+    10629.716s split 1032 +11 [-] kept; attacker blocks main at end: 11
+  relay-002              reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     7341.199s split 1011 +11 [-] kept; attacker blocks main at end: 11
+    10629.991s split 1032 +11 [-] kept; attacker blocks main at end: 11
+### 20261019_111740_deep_hunt_smoke__share_sop2_a045_d2  (attacker blocks found: 81)
+  attacker-bridge        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    15619.758s split 1054 +15 [SIM-SoP: fork 1053 OBJECTIVE alt 13013/15 vs main 11396/10 (h0=994 nf=169 nf_main=148) -> SWITC] kept; attacker blocks main at end: 15
+  honest-001             reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    15620.339s split 1054 +15 [SIM-SoP: fork 1053 OBJECTIVE alt 13013/15 vs main 11396/10 (h0=994 nf=169 nf_main=148) -> SWITC] kept; attacker blocks main at end: 15
+  honest-002             reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    15620.314s split 1054 +15 [SIM-SoP: fork 1053 OBJECTIVE alt 13013/15 vs main 11396/10 (h0=994 nf=169 nf_main=148) -> SWITC] kept; attacker blocks main at end: 15
+  monero-seed-001        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    15620.214s split 1054 +15 [SIM-SoP: fork 1053 OBJECTIVE alt 13013/15 vs main 11396/10 (h0=994 nf=169 nf_main=148) -> SWITC] kept; attacker blocks main at end: 15
+  monero-seed-002        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    15620.364s split 1054 +15 [SIM-SoP: fork 1053 OBJECTIVE alt 13013/15 vs main 11396/10 (h0=994 nf=169 nf_main=148) -> SWITC] kept; attacker blocks main at end: 15
+  monero-seed-003        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    15620.139s split 1054 +15 [SIM-SoP: fork 1053 OBJECTIVE alt 13013/15 vs main 11396/10 (h0=994 nf=169 nf_main=148) -> SWITC] kept; attacker blocks main at end: 15
+  monero-seed-004        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    15620.114s split 1054 +15 [SIM-SoP: fork 1053 OBJECTIVE alt 13013/15 vs main 11396/10 (h0=994 nf=169 nf_main=148) -> SWITC] kept; attacker blocks main at end: 15
+  monero-seed-005        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    15620.364s split 1054 +15 [SIM-SoP: fork 1053 OBJECTIVE alt 13013/15 vs main 11396/10 (h0=994 nf=169 nf_main=148) -> SWITC] kept; attacker blocks main at end: 15
+  monero-seed-006        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    15620.464s split 1054 +15 [SIM-SoP: fork 1053 OBJECTIVE alt 13013/15 vs main 11396/10 (h0=994 nf=169 nf_main=148) -> SWITC] kept; attacker blocks main at end: 15
+  relay-001              reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    15620.214s split 1054 +15 [SIM-SoP: fork 1053 OBJECTIVE alt 13013/15 vs main 11396/10 (h0=994 nf=169 nf_main=148) -> SWITC] kept; attacker blocks main at end: 15
+  relay-002              reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    15620.489s split 1054 +15 [SIM-SoP: fork 1053 OBJECTIVE alt 13013/15 vs main 11396/10 (h0=995 nf=169 nf_main=148) -> SWITC] kept; attacker blocks main at end: 15
+### 20261019_174320_deep_hunt_stock__block_stock_a033_d2  (attacker blocks found: 642)
+  attacker-bridge        reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     9251.779s split 1033 +11 [-] kept; attacker blocks main at end: 11
+    13373.260s split 1054 +11 [-] kept; attacker blocks main at end: 11
+    32318.456s split 1150 +11 [-] kept; attacker blocks main at end: 11
+    53047.994s split 1281 +11 [-] kept; attacker blocks main at end: 11
+    65220.267s split 1367 +12 [-] kept; attacker blocks main at end: 12
+    102953.581s split 1651 +11 [-] kept; attacker blocks main at end: 11
+    104955.535s split 1666 +11 [-] kept; attacker blocks main at end: 11
+    111504.094s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    121710.072s split 1820 +11 [-] kept; attacker blocks main at end: 11
+    124813.685s split 1847 +11 [-] kept; attacker blocks main at end: 11
+    150165.057s split 2057 +11 [-] kept; attacker blocks main at end: 11
+    168088.978s split 2205 +11 [-] kept; attacker blocks main at end: 11
+  honest-001             reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     9252.355s split 1033 +11 [-] kept; attacker blocks main at end: 11
+    13373.836s split 1054 +11 [-] kept; attacker blocks main at end: 11
+    32319.032s split 1150 +11 [-] kept; attacker blocks main at end: 11
+    53048.570s split 1281 +11 [-] kept; attacker blocks main at end: 11
+    65220.843s split 1367 +12 [-] kept; attacker blocks main at end: 12
+    102954.157s split 1651 +11 [-] kept; attacker blocks main at end: 11
+    104956.112s split 1666 +11 [-] kept; attacker blocks main at end: 11
+    111504.670s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    121710.648s split 1820 +11 [-] kept; attacker blocks main at end: 11
+    124814.261s split 1847 +11 [-] kept; attacker blocks main at end: 11
+    150165.633s split 2057 +11 [-] kept; attacker blocks main at end: 11
+    168089.555s split 2205 +11 [-] kept; attacker blocks main at end: 11
+  honest-002             reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     9252.330s split 1033 +11 [-] kept; attacker blocks main at end: 11
+    13373.811s split 1054 +11 [-] kept; attacker blocks main at end: 11
+    32319.007s split 1150 +11 [-] kept; attacker blocks main at end: 11
+    53048.545s split 1281 +11 [-] kept; attacker blocks main at end: 11
+    65220.818s split 1367 +12 [-] kept; attacker blocks main at end: 12
+    102954.132s split 1651 +11 [-] kept; attacker blocks main at end: 11
+    104956.087s split 1666 +11 [-] kept; attacker blocks main at end: 11
+    111504.645s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    121710.623s split 1820 +11 [-] kept; attacker blocks main at end: 11
+    124814.236s split 1847 +11 [-] kept; attacker blocks main at end: 11
+    150165.608s split 2057 +11 [-] kept; attacker blocks main at end: 11
+    168089.530s split 2205 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-001        reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     9252.230s split 1033 +11 [-] kept; attacker blocks main at end: 11
+    13373.711s split 1054 +11 [-] kept; attacker blocks main at end: 11
+    32318.907s split 1150 +11 [-] kept; attacker blocks main at end: 11
+    53048.445s split 1281 +11 [-] kept; attacker blocks main at end: 11
+    65220.718s split 1367 +12 [-] kept; attacker blocks main at end: 12
+    102954.032s split 1651 +11 [-] kept; attacker blocks main at end: 11
+    104955.987s split 1666 +11 [-] kept; attacker blocks main at end: 11
+    111504.545s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    121710.523s split 1820 +11 [-] kept; attacker blocks main at end: 11
+    124814.136s split 1847 +11 [-] kept; attacker blocks main at end: 11
+    150165.508s split 2057 +11 [-] kept; attacker blocks main at end: 11
+    168089.430s split 2205 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-002        reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     9252.380s split 1033 +11 [-] kept; attacker blocks main at end: 11
+    13373.861s split 1054 +11 [-] kept; attacker blocks main at end: 11
+    32319.057s split 1150 +11 [-] kept; attacker blocks main at end: 11
+    53048.595s split 1281 +11 [-] kept; attacker blocks main at end: 11
+    65220.868s split 1367 +12 [-] kept; attacker blocks main at end: 12
+    102954.182s split 1651 +11 [-] kept; attacker blocks main at end: 11
+    104956.137s split 1666 +11 [-] kept; attacker blocks main at end: 11
+    111504.695s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    121710.673s split 1820 +11 [-] kept; attacker blocks main at end: 11
+    124814.286s split 1847 +11 [-] kept; attacker blocks main at end: 11
+    150165.658s split 2057 +11 [-] kept; attacker blocks main at end: 11
+    168089.580s split 2205 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-003        reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     9252.155s split 1033 +11 [-] kept; attacker blocks main at end: 11
+    13373.636s split 1054 +11 [-] kept; attacker blocks main at end: 11
+    32318.832s split 1150 +11 [-] kept; attacker blocks main at end: 11
+    53048.370s split 1281 +11 [-] kept; attacker blocks main at end: 11
+    65220.643s split 1367 +12 [-] kept; attacker blocks main at end: 12
+    102953.957s split 1651 +11 [-] kept; attacker blocks main at end: 11
+    104955.912s split 1666 +11 [-] kept; attacker blocks main at end: 11
+    111504.470s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    121710.448s split 1820 +11 [-] kept; attacker blocks main at end: 11
+    124814.061s split 1847 +11 [-] kept; attacker blocks main at end: 11
+    150165.433s split 2057 +11 [-] kept; attacker blocks main at end: 11
+    168089.355s split 2205 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-004        reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     9252.130s split 1033 +11 [-] kept; attacker blocks main at end: 11
+    13373.611s split 1054 +11 [-] kept; attacker blocks main at end: 11
+    32318.807s split 1150 +11 [-] kept; attacker blocks main at end: 11
+    53048.345s split 1281 +11 [-] kept; attacker blocks main at end: 11
+    65220.618s split 1367 +12 [-] kept; attacker blocks main at end: 12
+    102953.932s split 1651 +11 [-] kept; attacker blocks main at end: 11
+    104955.887s split 1666 +11 [-] kept; attacker blocks main at end: 11
+    111504.445s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    121710.423s split 1820 +11 [-] kept; attacker blocks main at end: 11
+    124814.036s split 1847 +11 [-] kept; attacker blocks main at end: 11
+    150165.408s split 2057 +11 [-] kept; attacker blocks main at end: 11
+    168089.330s split 2205 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-005        reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     9252.380s split 1033 +11 [-] kept; attacker blocks main at end: 11
+    13373.861s split 1054 +11 [-] kept; attacker blocks main at end: 11
+    32319.057s split 1150 +11 [-] kept; attacker blocks main at end: 11
+    53048.595s split 1281 +11 [-] kept; attacker blocks main at end: 11
+    65220.868s split 1367 +12 [-] kept; attacker blocks main at end: 12
+    102954.182s split 1651 +11 [-] kept; attacker blocks main at end: 11
+    104956.137s split 1666 +11 [-] kept; attacker blocks main at end: 11
+    111504.695s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    121710.673s split 1820 +11 [-] kept; attacker blocks main at end: 11
+    124814.286s split 1847 +11 [-] kept; attacker blocks main at end: 11
+    150165.658s split 2057 +11 [-] kept; attacker blocks main at end: 11
+    168089.580s split 2205 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-006        reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     9252.480s split 1033 +11 [-] kept; attacker blocks main at end: 11
+    13373.961s split 1054 +11 [-] kept; attacker blocks main at end: 11
+    32319.157s split 1150 +11 [-] kept; attacker blocks main at end: 11
+    53048.695s split 1281 +11 [-] kept; attacker blocks main at end: 11
+    65220.968s split 1367 +12 [-] kept; attacker blocks main at end: 12
+    102954.282s split 1651 +11 [-] kept; attacker blocks main at end: 11
+    104956.237s split 1666 +11 [-] kept; attacker blocks main at end: 11
+    111504.795s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    121710.773s split 1820 +11 [-] kept; attacker blocks main at end: 11
+    124814.386s split 1847 +11 [-] kept; attacker blocks main at end: 11
+    150165.758s split 2057 +11 [-] kept; attacker blocks main at end: 11
+    168089.680s split 2205 +11 [-] kept; attacker blocks main at end: 11
+  relay-001              reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     9252.230s split 1033 +11 [-] kept; attacker blocks main at end: 11
+    13373.711s split 1054 +11 [-] kept; attacker blocks main at end: 11
+    32318.907s split 1150 +11 [-] kept; attacker blocks main at end: 11
+    53048.445s split 1281 +11 [-] kept; attacker blocks main at end: 11
+    65220.718s split 1367 +12 [-] kept; attacker blocks main at end: 12
+    102954.032s split 1651 +11 [-] kept; attacker blocks main at end: 11
+    104955.987s split 1666 +11 [-] kept; attacker blocks main at end: 11
+    111504.545s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    121710.523s split 1820 +11 [-] kept; attacker blocks main at end: 11
+    124814.136s split 1847 +11 [-] kept; attacker blocks main at end: 11
+    150165.508s split 2057 +11 [-] kept; attacker blocks main at end: 11
+    168089.430s split 2205 +11 [-] kept; attacker blocks main at end: 11
+  relay-002              reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     9252.505s split 1033 +11 [-] kept; attacker blocks main at end: 11
+    13373.986s split 1054 +11 [-] kept; attacker blocks main at end: 11
+    32319.182s split 1150 +11 [-] kept; attacker blocks main at end: 11
+    53048.720s split 1281 +11 [-] kept; attacker blocks main at end: 11
+    65220.993s split 1367 +12 [-] kept; attacker blocks main at end: 12
+    102954.307s split 1651 +11 [-] kept; attacker blocks main at end: 11
+    104956.262s split 1666 +11 [-] kept; attacker blocks main at end: 11
+    111504.820s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    121710.798s split 1820 +11 [-] kept; attacker blocks main at end: 11
+    124814.411s split 1847 +11 [-] kept; attacker blocks main at end: 11
+    150165.783s split 2057 +11 [-] kept; attacker blocks main at end: 11
+    168089.705s split 2205 +11 [-] kept; attacker blocks main at end: 11
+### 20261019_210240_deep_hunt_stock__block_stock_a040_d2  (attacker blocks found: 691)
+  attacker-bridge        reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     4416.880s split 1007 +11 [-] kept; attacker blocks main at end: 11
+    25949.604s split 1131 +11 [-] kept; attacker blocks main at end: 11
+    35233.647s split 1195 +11 [-] kept; attacker blocks main at end: 11
+    68452.400s split 1401 +11 [-] kept; attacker blocks main at end: 11
+    71769.823s split 1431 +11 [-] kept; attacker blocks main at end: 11
+    77338.792s split 1462 +11 [-] kept; attacker blocks main at end: 11
+    83623.861s split 1504 +11 [-] kept; attacker blocks main at end: 11
+    95696.754s split 1584 +11 [-] kept; attacker blocks main at end: 11
+    101114.461s split 1630 +12 [-] kept; attacker blocks main at end: 12
+    105279.863s split 1668 +11 [-] kept; attacker blocks main at end: 11
+    109016.010s split 1695 +11 [-] kept; attacker blocks main at end: 11
+    116534.861s split 1764 +12 [-] kept; attacker blocks main at end: 12
+    126976.969s split 1841 +11 [-] kept; attacker blocks main at end: 11
+    128897.301s split 1856 +11 [-] kept; attacker blocks main at end: 11
+    131060.770s split 1874 +11 [-] kept; attacker blocks main at end: 11
+    133751.719s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137643.182s split 1927 +11 [-] kept; attacker blocks main at end: 11
+    139905.526s split 1942 +12 [-] kept; attacker blocks main at end: 12
+    153759.287s split 2049 +11 [-] kept; attacker blocks main at end: 11
+    163072.472s split 2118 +11 [-] kept; attacker blocks main at end: 11
+    165892.664s split 2139 +11 [-] kept; attacker blocks main at end: 11
+    167937.875s split 2153 +11 [-] kept; attacker blocks main at end: 11
+  honest-001             reorgs= 23 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     4417.456s split 1007 +11 [-] kept; attacker blocks main at end: 11
+    25950.180s split 1131 +11 [-] kept; attacker blocks main at end: 11
+    35234.223s split 1195 +11 [-] kept; attacker blocks main at end: 11
+    68452.976s split 1401 +11 [-] kept; attacker blocks main at end: 11
+    71770.399s split 1431 +11 [-] kept; attacker blocks main at end: 11
+    77339.368s split 1462 +11 [-] kept; attacker blocks main at end: 11
+    83624.437s split 1504 +11 [-] kept; attacker blocks main at end: 11
+    95697.330s split 1584 +11 [-] kept; attacker blocks main at end: 11
+    101115.038s split 1630 +12 [-] kept; attacker blocks main at end: 12
+    105280.439s split 1668 +11 [-] kept; attacker blocks main at end: 11
+    109016.586s split 1695 +11 [-] kept; attacker blocks main at end: 11
+    116535.437s split 1764 +12 [-] kept; attacker blocks main at end: 12
+    126977.545s split 1841 +11 [-] kept; attacker blocks main at end: 11
+    128897.877s split 1856 +11 [-] kept; attacker blocks main at end: 11
+    131061.346s split 1874 +11 [-] kept; attacker blocks main at end: 11
+    133752.295s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137643.758s split 1927 +11 [-] kept; attacker blocks main at end: 11
+    139906.103s split 1942 +12 [-] kept; attacker blocks main at end: 12
+    153759.863s split 2049 +11 [-] kept; attacker blocks main at end: 11
+    163073.048s split 2118 +11 [-] kept; attacker blocks main at end: 11
+    165893.240s split 2139 +11 [-] kept; attacker blocks main at end: 11
+    167938.451s split 2153 +11 [-] kept; attacker blocks main at end: 11
+  honest-002             reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     4417.431s split 1007 +11 [-] kept; attacker blocks main at end: 11
+    25950.155s split 1131 +11 [-] kept; attacker blocks main at end: 11
+    35234.198s split 1195 +11 [-] kept; attacker blocks main at end: 11
+    68452.951s split 1401 +11 [-] kept; attacker blocks main at end: 11
+    71770.374s split 1431 +11 [-] kept; attacker blocks main at end: 11
+    77339.343s split 1462 +11 [-] kept; attacker blocks main at end: 11
+    83624.412s split 1504 +11 [-] kept; attacker blocks main at end: 11
+    95697.305s split 1584 +11 [-] kept; attacker blocks main at end: 11
+    101115.012s split 1630 +12 [-] kept; attacker blocks main at end: 12
+    105280.414s split 1668 +11 [-] kept; attacker blocks main at end: 11
+    109016.561s split 1695 +11 [-] kept; attacker blocks main at end: 11
+    116535.412s split 1764 +12 [-] kept; attacker blocks main at end: 12
+    126977.520s split 1841 +11 [-] kept; attacker blocks main at end: 11
+    128897.852s split 1856 +11 [-] kept; attacker blocks main at end: 11
+    131061.321s split 1874 +11 [-] kept; attacker blocks main at end: 11
+    133752.270s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137643.733s split 1927 +11 [-] kept; attacker blocks main at end: 11
+    139906.078s split 1942 +12 [-] kept; attacker blocks main at end: 12
+    153759.838s split 2049 +11 [-] kept; attacker blocks main at end: 11
+    163073.023s split 2118 +11 [-] kept; attacker blocks main at end: 11
+    165893.215s split 2139 +11 [-] kept; attacker blocks main at end: 11
+    167938.426s split 2153 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-001        reorgs= 23 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     4417.331s split 1007 +11 [-] kept; attacker blocks main at end: 11
+    25950.055s split 1131 +11 [-] kept; attacker blocks main at end: 11
+    35234.098s split 1195 +11 [-] kept; attacker blocks main at end: 11
+    68452.851s split 1401 +11 [-] kept; attacker blocks main at end: 11
+    71770.274s split 1431 +11 [-] kept; attacker blocks main at end: 11
+    77339.243s split 1462 +11 [-] kept; attacker blocks main at end: 11
+    83624.312s split 1504 +11 [-] kept; attacker blocks main at end: 11
+    95697.205s split 1584 +11 [-] kept; attacker blocks main at end: 11
+    101114.913s split 1630 +12 [-] kept; attacker blocks main at end: 12
+    105280.314s split 1668 +11 [-] kept; attacker blocks main at end: 11
+    109016.461s split 1695 +11 [-] kept; attacker blocks main at end: 11
+    116535.312s split 1764 +12 [-] kept; attacker blocks main at end: 12
+    126977.420s split 1841 +11 [-] kept; attacker blocks main at end: 11
+    128897.752s split 1856 +11 [-] kept; attacker blocks main at end: 11
+    131061.221s split 1874 +11 [-] kept; attacker blocks main at end: 11
+    133752.170s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137643.633s split 1927 +11 [-] kept; attacker blocks main at end: 11
+    139905.978s split 1942 +12 [-] kept; attacker blocks main at end: 12
+    153759.738s split 2049 +11 [-] kept; attacker blocks main at end: 11
+    163072.923s split 2118 +11 [-] kept; attacker blocks main at end: 11
+    165893.115s split 2139 +11 [-] kept; attacker blocks main at end: 11
+    167938.326s split 2153 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-002        reorgs= 23 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     4417.481s split 1007 +11 [-] kept; attacker blocks main at end: 11
+    25950.205s split 1131 +11 [-] kept; attacker blocks main at end: 11
+    35234.248s split 1195 +11 [-] kept; attacker blocks main at end: 11
+    68453.001s split 1401 +11 [-] kept; attacker blocks main at end: 11
+    71770.424s split 1431 +11 [-] kept; attacker blocks main at end: 11
+    77339.393s split 1462 +11 [-] kept; attacker blocks main at end: 11
+    83624.462s split 1504 +11 [-] kept; attacker blocks main at end: 11
+    95697.355s split 1584 +11 [-] kept; attacker blocks main at end: 11
+    101115.062s split 1630 +12 [-] kept; attacker blocks main at end: 12
+    105280.464s split 1668 +11 [-] kept; attacker blocks main at end: 11
+    109016.611s split 1695 +11 [-] kept; attacker blocks main at end: 11
+    116535.462s split 1764 +12 [-] kept; attacker blocks main at end: 12
+    126977.570s split 1841 +11 [-] kept; attacker blocks main at end: 11
+    128897.902s split 1856 +11 [-] kept; attacker blocks main at end: 11
+    131061.371s split 1874 +11 [-] kept; attacker blocks main at end: 11
+    133752.320s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137643.783s split 1927 +11 [-] kept; attacker blocks main at end: 11
+    139906.128s split 1942 +12 [-] kept; attacker blocks main at end: 12
+    153759.888s split 2049 +11 [-] kept; attacker blocks main at end: 11
+    163073.073s split 2118 +11 [-] kept; attacker blocks main at end: 11
+    165893.265s split 2139 +11 [-] kept; attacker blocks main at end: 11
+    167938.476s split 2153 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-003        reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     4417.256s split 1007 +11 [-] kept; attacker blocks main at end: 11
+    25949.980s split 1131 +11 [-] kept; attacker blocks main at end: 11
+    35234.023s split 1195 +11 [-] kept; attacker blocks main at end: 11
+    68452.776s split 1401 +11 [-] kept; attacker blocks main at end: 11
+    71770.199s split 1431 +11 [-] kept; attacker blocks main at end: 11
+    77339.168s split 1462 +11 [-] kept; attacker blocks main at end: 11
+    83624.237s split 1504 +11 [-] kept; attacker blocks main at end: 11
+    95697.130s split 1584 +11 [-] kept; attacker blocks main at end: 11
+    101114.838s split 1630 +12 [-] kept; attacker blocks main at end: 12
+    105280.239s split 1668 +11 [-] kept; attacker blocks main at end: 11
+    109016.386s split 1695 +11 [-] kept; attacker blocks main at end: 11
+    116535.237s split 1764 +12 [-] kept; attacker blocks main at end: 12
+    126977.345s split 1841 +11 [-] kept; attacker blocks main at end: 11
+    128897.677s split 1856 +11 [-] kept; attacker blocks main at end: 11
+    131061.146s split 1874 +11 [-] kept; attacker blocks main at end: 11
+    133752.095s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137643.558s split 1927 +11 [-] kept; attacker blocks main at end: 11
+    139905.903s split 1942 +12 [-] kept; attacker blocks main at end: 12
+    153759.663s split 2049 +11 [-] kept; attacker blocks main at end: 11
+    163072.848s split 2118 +11 [-] kept; attacker blocks main at end: 11
+    165893.040s split 2139 +11 [-] kept; attacker blocks main at end: 11
+    167938.251s split 2153 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-004        reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     4417.231s split 1007 +11 [-] kept; attacker blocks main at end: 11
+    25949.955s split 1131 +11 [-] kept; attacker blocks main at end: 11
+    35233.998s split 1195 +11 [-] kept; attacker blocks main at end: 11
+    68452.751s split 1401 +11 [-] kept; attacker blocks main at end: 11
+    71770.174s split 1431 +11 [-] kept; attacker blocks main at end: 11
+    77339.143s split 1462 +11 [-] kept; attacker blocks main at end: 11
+    83624.212s split 1504 +11 [-] kept; attacker blocks main at end: 11
+    95697.105s split 1584 +11 [-] kept; attacker blocks main at end: 11
+    101114.812s split 1630 +12 [-] kept; attacker blocks main at end: 12
+    105280.214s split 1668 +11 [-] kept; attacker blocks main at end: 11
+    109016.361s split 1695 +11 [-] kept; attacker blocks main at end: 11
+    116535.212s split 1764 +12 [-] kept; attacker blocks main at end: 12
+    126977.320s split 1841 +11 [-] kept; attacker blocks main at end: 11
+    128897.652s split 1856 +11 [-] kept; attacker blocks main at end: 11
+    131061.121s split 1874 +11 [-] kept; attacker blocks main at end: 11
+    133752.070s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137643.533s split 1927 +11 [-] kept; attacker blocks main at end: 11
+    139905.878s split 1942 +12 [-] kept; attacker blocks main at end: 12
+    153759.638s split 2049 +11 [-] kept; attacker blocks main at end: 11
+    163072.823s split 2118 +11 [-] kept; attacker blocks main at end: 11
+    165893.015s split 2139 +11 [-] kept; attacker blocks main at end: 11
+    167938.226s split 2153 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-005        reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     4417.481s split 1007 +11 [-] kept; attacker blocks main at end: 11
+    25950.205s split 1131 +11 [-] kept; attacker blocks main at end: 11
+    35234.248s split 1195 +11 [-] kept; attacker blocks main at end: 11
+    68453.001s split 1401 +11 [-] kept; attacker blocks main at end: 11
+    71770.424s split 1431 +11 [-] kept; attacker blocks main at end: 11
+    77339.393s split 1462 +11 [-] kept; attacker blocks main at end: 11
+    83624.462s split 1504 +11 [-] kept; attacker blocks main at end: 11
+    95697.355s split 1584 +11 [-] kept; attacker blocks main at end: 11
+    101115.062s split 1630 +12 [-] kept; attacker blocks main at end: 12
+    105280.464s split 1668 +11 [-] kept; attacker blocks main at end: 11
+    109016.611s split 1695 +11 [-] kept; attacker blocks main at end: 11
+    116535.462s split 1764 +12 [-] kept; attacker blocks main at end: 12
+    126977.570s split 1841 +11 [-] kept; attacker blocks main at end: 11
+    128897.902s split 1856 +11 [-] kept; attacker blocks main at end: 11
+    131061.371s split 1874 +11 [-] kept; attacker blocks main at end: 11
+    133752.320s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137643.783s split 1927 +11 [-] kept; attacker blocks main at end: 11
+    139906.128s split 1942 +12 [-] kept; attacker blocks main at end: 12
+    153759.888s split 2049 +11 [-] kept; attacker blocks main at end: 11
+    163073.073s split 2118 +11 [-] kept; attacker blocks main at end: 11
+    165893.265s split 2139 +11 [-] kept; attacker blocks main at end: 11
+    167938.476s split 2153 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-006        reorgs= 23 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     4417.581s split 1007 +11 [-] kept; attacker blocks main at end: 11
+    25950.305s split 1131 +11 [-] kept; attacker blocks main at end: 11
+    35234.348s split 1195 +11 [-] kept; attacker blocks main at end: 11
+    68453.101s split 1401 +11 [-] kept; attacker blocks main at end: 11
+    71770.524s split 1431 +11 [-] kept; attacker blocks main at end: 11
+    77339.493s split 1462 +11 [-] kept; attacker blocks main at end: 11
+    83624.562s split 1504 +11 [-] kept; attacker blocks main at end: 11
+    95697.455s split 1584 +11 [-] kept; attacker blocks main at end: 11
+    101115.162s split 1630 +12 [-] kept; attacker blocks main at end: 12
+    105280.564s split 1668 +11 [-] kept; attacker blocks main at end: 11
+    109016.711s split 1695 +11 [-] kept; attacker blocks main at end: 11
+    116535.562s split 1764 +12 [-] kept; attacker blocks main at end: 12
+    126977.670s split 1841 +11 [-] kept; attacker blocks main at end: 11
+    128898.002s split 1856 +11 [-] kept; attacker blocks main at end: 11
+    131061.471s split 1874 +11 [-] kept; attacker blocks main at end: 11
+    133752.421s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137643.883s split 1927 +11 [-] kept; attacker blocks main at end: 11
+    139906.228s split 1942 +12 [-] kept; attacker blocks main at end: 12
+    153759.988s split 2049 +11 [-] kept; attacker blocks main at end: 11
+    163073.173s split 2118 +11 [-] kept; attacker blocks main at end: 11
+    165893.365s split 2139 +11 [-] kept; attacker blocks main at end: 11
+    167938.576s split 2153 +11 [-] kept; attacker blocks main at end: 11
+  relay-001              reorgs= 23 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     4417.331s split 1007 +11 [-] kept; attacker blocks main at end: 11
+    25950.055s split 1131 +11 [-] kept; attacker blocks main at end: 11
+    35234.098s split 1195 +11 [-] kept; attacker blocks main at end: 11
+    68452.851s split 1401 +11 [-] kept; attacker blocks main at end: 11
+    71770.274s split 1431 +11 [-] kept; attacker blocks main at end: 11
+    77339.243s split 1462 +11 [-] kept; attacker blocks main at end: 11
+    83624.312s split 1504 +11 [-] kept; attacker blocks main at end: 11
+    95697.205s split 1584 +11 [-] kept; attacker blocks main at end: 11
+    101114.912s split 1630 +12 [-] kept; attacker blocks main at end: 12
+    105280.314s split 1668 +11 [-] kept; attacker blocks main at end: 11
+    109016.461s split 1695 +11 [-] kept; attacker blocks main at end: 11
+    116535.312s split 1764 +12 [-] kept; attacker blocks main at end: 12
+    126977.420s split 1841 +11 [-] kept; attacker blocks main at end: 11
+    128897.752s split 1856 +11 [-] kept; attacker blocks main at end: 11
+    131061.221s split 1874 +11 [-] kept; attacker blocks main at end: 11
+    133752.170s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137643.633s split 1927 +11 [-] kept; attacker blocks main at end: 11
+    139905.978s split 1942 +12 [-] kept; attacker blocks main at end: 12
+    153759.738s split 2049 +11 [-] kept; attacker blocks main at end: 11
+    163072.923s split 2118 +11 [-] kept; attacker blocks main at end: 11
+    165893.115s split 2139 +11 [-] kept; attacker blocks main at end: 11
+    167938.326s split 2153 +11 [-] kept; attacker blocks main at end: 11
+  relay-002              reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+     4417.606s split 1007 +11 [-] kept; attacker blocks main at end: 11
+    25950.330s split 1131 +11 [-] kept; attacker blocks main at end: 11
+    35234.373s split 1195 +11 [-] kept; attacker blocks main at end: 11
+    68453.126s split 1401 +11 [-] kept; attacker blocks main at end: 11
+    71770.549s split 1431 +11 [-] kept; attacker blocks main at end: 11
+    77339.518s split 1462 +11 [-] kept; attacker blocks main at end: 11
+    83624.587s split 1504 +11 [-] kept; attacker blocks main at end: 11
+    95697.480s split 1584 +11 [-] kept; attacker blocks main at end: 11
+    101115.188s split 1630 +12 [-] kept; attacker blocks main at end: 12
+    105280.589s split 1668 +11 [-] kept; attacker blocks main at end: 11
+    109016.736s split 1695 +11 [-] kept; attacker blocks main at end: 11
+    116535.587s split 1764 +12 [-] kept; attacker blocks main at end: 12
+    126977.695s split 1841 +11 [-] kept; attacker blocks main at end: 11
+    128898.027s split 1856 +11 [-] kept; attacker blocks main at end: 11
+    131061.496s split 1874 +11 [-] kept; attacker blocks main at end: 11
+    133752.445s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137643.908s split 1927 +11 [-] kept; attacker blocks main at end: 11
+    139906.253s split 1942 +12 [-] kept; attacker blocks main at end: 12
+    153760.013s split 2049 +11 [-] kept; attacker blocks main at end: 11
+    163073.198s split 2118 +11 [-] kept; attacker blocks main at end: 11
+    165893.390s split 2139 +11 [-] kept; attacker blocks main at end: 11
+    167938.601s split 2153 +11 [-] kept; attacker blocks main at end: 11
+### 20261020_002119_deep_hunt_stock__block_stock_a045_d2  (attacker blocks found: 889)
+  attacker-bridge        reorgs= 41 onto-attacker=39 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    13831.179s split 1044 +11 [-] kept; attacker blocks main at end: 11
+    17185.606s split 1066 +11 [-] kept; attacker blocks main at end: 11
+    29165.560s split 1127 +12 [-] kept; attacker blocks main at end: 12
+    31542.147s split 1144 +11 [-] kept; attacker blocks main at end: 11
+    36634.565s split 1171 +11 [-] kept; attacker blocks main at end: 11
+    40389.794s split 1193 +11 [-] kept; attacker blocks main at end: 11
+    47592.557s split 1234 +11 [-] kept; attacker blocks main at end: 11
+    50235.706s split 1248 +11 [-] kept; attacker blocks main at end: 11
+    53328.991s split 1259 +11 [-] kept; attacker blocks main at end: 11
+    56010.851s split 1277 +11 [-] kept; attacker blocks main at end: 11
+    64586.979s split 1327 +11 [-] kept; attacker blocks main at end: 11
+    67729.902s split 1353 +11 [-] kept; attacker blocks main at end: 11
+    70775.192s split 1367 +11 [-] kept; attacker blocks main at end: 11
+    75163.419s split 1397 +11 [-] kept; attacker blocks main at end: 11
+    78206.151s split 1416 +11 [-] kept; attacker blocks main at end: 11
+    88002.711s split 1491 +11 [-] kept; attacker blocks main at end: 11
+    91106.041s split 1513 +11 [-] kept; attacker blocks main at end: 11
+    96345.679s split 1555 +13 [-] kept; attacker blocks main at end: 13
+    98592.728s split 1568 +11 [-] kept; attacker blocks main at end: 11
+    102301.928s split 1598 +11 [-] kept; attacker blocks main at end: 11
+    106060.766s split 1630 +11 [-] kept; attacker blocks main at end: 11
+    107540.602s split 1646 +11 [-] kept; attacker blocks main at end: 11
+    115972.698s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    118328.565s split 1748 +11 [-] kept; attacker blocks main at end: 11
+    121663.255s split 1767 +11 [-] kept; attacker blocks main at end: 11
+    126258.341s split 1809 +11 [-] kept; attacker blocks main at end: 11
+    132567.689s split 1860 +11 [-] kept; attacker blocks main at end: 11
+    135101.052s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137380.977s split 1913 +11 [-] kept; attacker blocks main at end: 11
+    138734.774s split 1926 +11 [-] kept; attacker blocks main at end: 11
+    140653.287s split 1945 +11 [-] kept; attacker blocks main at end: 11
+    143692.986s split 1973 +11 [-] kept; attacker blocks main at end: 11
+    145737.977s split 1985 +11 [-] kept; attacker blocks main at end: 11
+    149310.222s split 2019 +11 [-] kept; attacker blocks main at end: 11
+    151254.821s split 2032 +11 [-] kept; attacker blocks main at end: 11
+    153179.635s split 2046 +11 [-] kept; attacker blocks main at end: 11
+    154843.068s split 2058 +11 [-] kept; attacker blocks main at end: 11
+    167462.860s split 2156 +12 [-] kept; attacker blocks main at end: 12
+    171225.682s split 2188 +11 [-] kept; attacker blocks main at end: 11
+  honest-001             reorgs= 39 onto-attacker=39 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    13831.755s split 1044 +11 [-] kept; attacker blocks main at end: 11
+    17186.182s split 1066 +11 [-] kept; attacker blocks main at end: 11
+    29166.136s split 1127 +12 [-] kept; attacker blocks main at end: 12
+    31542.723s split 1144 +11 [-] kept; attacker blocks main at end: 11
+    36635.141s split 1171 +11 [-] kept; attacker blocks main at end: 11
+    40390.370s split 1193 +11 [-] kept; attacker blocks main at end: 11
+    47593.134s split 1234 +11 [-] kept; attacker blocks main at end: 11
+    50236.282s split 1248 +11 [-] kept; attacker blocks main at end: 11
+    53329.567s split 1259 +11 [-] kept; attacker blocks main at end: 11
+    56011.427s split 1277 +11 [-] kept; attacker blocks main at end: 11
+    64587.555s split 1327 +11 [-] kept; attacker blocks main at end: 11
+    67730.478s split 1353 +11 [-] kept; attacker blocks main at end: 11
+    70775.769s split 1367 +11 [-] kept; attacker blocks main at end: 11
+    75163.995s split 1397 +11 [-] kept; attacker blocks main at end: 11
+    78206.727s split 1416 +11 [-] kept; attacker blocks main at end: 11
+    88003.287s split 1491 +11 [-] kept; attacker blocks main at end: 11
+    91106.617s split 1513 +11 [-] kept; attacker blocks main at end: 11
+    96346.255s split 1555 +13 [-] kept; attacker blocks main at end: 13
+    98593.304s split 1568 +11 [-] kept; attacker blocks main at end: 11
+    102302.504s split 1598 +11 [-] kept; attacker blocks main at end: 11
+    106061.342s split 1630 +11 [-] kept; attacker blocks main at end: 11
+    107541.178s split 1646 +11 [-] kept; attacker blocks main at end: 11
+    115973.274s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    118329.141s split 1748 +11 [-] kept; attacker blocks main at end: 11
+    121663.831s split 1767 +11 [-] kept; attacker blocks main at end: 11
+    126258.917s split 1809 +11 [-] kept; attacker blocks main at end: 11
+    132568.265s split 1860 +11 [-] kept; attacker blocks main at end: 11
+    135101.628s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137381.554s split 1913 +11 [-] kept; attacker blocks main at end: 11
+    138735.350s split 1926 +11 [-] kept; attacker blocks main at end: 11
+    140653.864s split 1945 +11 [-] kept; attacker blocks main at end: 11
+    143693.562s split 1973 +11 [-] kept; attacker blocks main at end: 11
+    145738.553s split 1985 +11 [-] kept; attacker blocks main at end: 11
+    149310.798s split 2019 +11 [-] kept; attacker blocks main at end: 11
+    151255.398s split 2032 +11 [-] kept; attacker blocks main at end: 11
+    153180.211s split 2046 +11 [-] kept; attacker blocks main at end: 11
+    154843.644s split 2058 +11 [-] kept; attacker blocks main at end: 11
+    167463.436s split 2156 +12 [-] kept; attacker blocks main at end: 12
+    171226.258s split 2188 +11 [-] kept; attacker blocks main at end: 11
+  honest-002             reorgs= 41 onto-attacker=39 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    13831.730s split 1044 +11 [-] kept; attacker blocks main at end: 11
+    17186.157s split 1066 +11 [-] kept; attacker blocks main at end: 11
+    29166.111s split 1127 +12 [-] kept; attacker blocks main at end: 12
+    31542.698s split 1144 +11 [-] kept; attacker blocks main at end: 11
+    36635.116s split 1171 +11 [-] kept; attacker blocks main at end: 11
+    40390.345s split 1193 +11 [-] kept; attacker blocks main at end: 11
+    47593.109s split 1234 +11 [-] kept; attacker blocks main at end: 11
+    50236.257s split 1248 +11 [-] kept; attacker blocks main at end: 11
+    53329.542s split 1259 +11 [-] kept; attacker blocks main at end: 11
+    56011.402s split 1277 +11 [-] kept; attacker blocks main at end: 11
+    64587.530s split 1327 +11 [-] kept; attacker blocks main at end: 11
+    67730.453s split 1353 +11 [-] kept; attacker blocks main at end: 11
+    70775.744s split 1367 +11 [-] kept; attacker blocks main at end: 11
+    75163.970s split 1397 +11 [-] kept; attacker blocks main at end: 11
+    78206.702s split 1416 +11 [-] kept; attacker blocks main at end: 11
+    88003.262s split 1491 +11 [-] kept; attacker blocks main at end: 11
+    91106.592s split 1513 +11 [-] kept; attacker blocks main at end: 11
+    96346.230s split 1555 +13 [-] kept; attacker blocks main at end: 13
+    98593.279s split 1568 +11 [-] kept; attacker blocks main at end: 11
+    102302.479s split 1598 +11 [-] kept; attacker blocks main at end: 11
+    106061.317s split 1630 +11 [-] kept; attacker blocks main at end: 11
+    107541.153s split 1646 +11 [-] kept; attacker blocks main at end: 11
+    115973.249s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    118329.116s split 1748 +11 [-] kept; attacker blocks main at end: 11
+    121663.806s split 1767 +11 [-] kept; attacker blocks main at end: 11
+    126258.892s split 1809 +11 [-] kept; attacker blocks main at end: 11
+    132568.240s split 1860 +11 [-] kept; attacker blocks main at end: 11
+    135101.603s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137381.529s split 1913 +11 [-] kept; attacker blocks main at end: 11
+    138735.325s split 1926 +11 [-] kept; attacker blocks main at end: 11
+    140653.838s split 1945 +11 [-] kept; attacker blocks main at end: 11
+    143693.537s split 1973 +11 [-] kept; attacker blocks main at end: 11
+    145738.528s split 1985 +11 [-] kept; attacker blocks main at end: 11
+    149310.773s split 2019 +11 [-] kept; attacker blocks main at end: 11
+    151255.373s split 2032 +11 [-] kept; attacker blocks main at end: 11
+    153180.186s split 2046 +11 [-] kept; attacker blocks main at end: 11
+    154843.619s split 2058 +11 [-] kept; attacker blocks main at end: 11
+    167463.411s split 2156 +12 [-] kept; attacker blocks main at end: 12
+    171226.233s split 2188 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-001        reorgs= 41 onto-attacker=39 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    13831.630s split 1044 +11 [-] kept; attacker blocks main at end: 11
+    17186.057s split 1066 +11 [-] kept; attacker blocks main at end: 11
+    29166.011s split 1127 +12 [-] kept; attacker blocks main at end: 12
+    31542.598s split 1144 +11 [-] kept; attacker blocks main at end: 11
+    36635.016s split 1171 +11 [-] kept; attacker blocks main at end: 11
+    40390.245s split 1193 +11 [-] kept; attacker blocks main at end: 11
+    47593.009s split 1234 +11 [-] kept; attacker blocks main at end: 11
+    50236.157s split 1248 +11 [-] kept; attacker blocks main at end: 11
+    53329.442s split 1259 +11 [-] kept; attacker blocks main at end: 11
+    56011.302s split 1277 +11 [-] kept; attacker blocks main at end: 11
+    64587.430s split 1327 +11 [-] kept; attacker blocks main at end: 11
+    67730.353s split 1353 +11 [-] kept; attacker blocks main at end: 11
+    70775.644s split 1367 +11 [-] kept; attacker blocks main at end: 11
+    75163.870s split 1397 +11 [-] kept; attacker blocks main at end: 11
+    78206.602s split 1416 +11 [-] kept; attacker blocks main at end: 11
+    88003.162s split 1491 +11 [-] kept; attacker blocks main at end: 11
+    91106.492s split 1513 +11 [-] kept; attacker blocks main at end: 11
+    96346.130s split 1555 +13 [-] kept; attacker blocks main at end: 13
+    98593.179s split 1568 +11 [-] kept; attacker blocks main at end: 11
+    102302.379s split 1598 +11 [-] kept; attacker blocks main at end: 11
+    106061.217s split 1630 +11 [-] kept; attacker blocks main at end: 11
+    107541.053s split 1646 +11 [-] kept; attacker blocks main at end: 11
+    115973.149s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    118329.016s split 1748 +11 [-] kept; attacker blocks main at end: 11
+    121663.706s split 1767 +11 [-] kept; attacker blocks main at end: 11
+    126258.792s split 1809 +11 [-] kept; attacker blocks main at end: 11
+    132568.140s split 1860 +11 [-] kept; attacker blocks main at end: 11
+    135101.503s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137381.429s split 1913 +11 [-] kept; attacker blocks main at end: 11
+    138735.225s split 1926 +11 [-] kept; attacker blocks main at end: 11
+    140653.738s split 1945 +11 [-] kept; attacker blocks main at end: 11
+    143693.437s split 1973 +11 [-] kept; attacker blocks main at end: 11
+    145738.428s split 1985 +11 [-] kept; attacker blocks main at end: 11
+    149310.673s split 2019 +11 [-] kept; attacker blocks main at end: 11
+    151255.273s split 2032 +11 [-] kept; attacker blocks main at end: 11
+    153180.086s split 2046 +11 [-] kept; attacker blocks main at end: 11
+    154843.519s split 2058 +11 [-] kept; attacker blocks main at end: 11
+    167463.311s split 2156 +12 [-] kept; attacker blocks main at end: 12
+    171226.133s split 2188 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-002        reorgs= 39 onto-attacker=39 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    13831.780s split 1044 +11 [-] kept; attacker blocks main at end: 11
+    17186.207s split 1066 +11 [-] kept; attacker blocks main at end: 11
+    29166.161s split 1127 +12 [-] kept; attacker blocks main at end: 12
+    31542.748s split 1144 +11 [-] kept; attacker blocks main at end: 11
+    36635.166s split 1171 +11 [-] kept; attacker blocks main at end: 11
+    40390.395s split 1193 +11 [-] kept; attacker blocks main at end: 11
+    47593.159s split 1234 +11 [-] kept; attacker blocks main at end: 11
+    50236.307s split 1248 +11 [-] kept; attacker blocks main at end: 11
+    53329.592s split 1259 +11 [-] kept; attacker blocks main at end: 11
+    56011.452s split 1277 +11 [-] kept; attacker blocks main at end: 11
+    64587.580s split 1327 +11 [-] kept; attacker blocks main at end: 11
+    67730.503s split 1353 +11 [-] kept; attacker blocks main at end: 11
+    70775.794s split 1367 +11 [-] kept; attacker blocks main at end: 11
+    75164.020s split 1397 +11 [-] kept; attacker blocks main at end: 11
+    78206.752s split 1416 +11 [-] kept; attacker blocks main at end: 11
+    88003.312s split 1491 +11 [-] kept; attacker blocks main at end: 11
+    91106.642s split 1513 +11 [-] kept; attacker blocks main at end: 11
+    96346.280s split 1555 +13 [-] kept; attacker blocks main at end: 13
+    98593.329s split 1568 +11 [-] kept; attacker blocks main at end: 11
+    102302.529s split 1598 +11 [-] kept; attacker blocks main at end: 11
+    106061.367s split 1630 +11 [-] kept; attacker blocks main at end: 11
+    107541.203s split 1646 +11 [-] kept; attacker blocks main at end: 11
+    115973.299s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    118329.166s split 1748 +11 [-] kept; attacker blocks main at end: 11
+    121663.856s split 1767 +11 [-] kept; attacker blocks main at end: 11
+    126258.942s split 1809 +11 [-] kept; attacker blocks main at end: 11
+    132568.290s split 1860 +11 [-] kept; attacker blocks main at end: 11
+    135101.653s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137381.579s split 1913 +11 [-] kept; attacker blocks main at end: 11
+    138735.375s split 1926 +11 [-] kept; attacker blocks main at end: 11
+    140653.889s split 1945 +11 [-] kept; attacker blocks main at end: 11
+    143693.587s split 1973 +11 [-] kept; attacker blocks main at end: 11
+    145738.578s split 1985 +11 [-] kept; attacker blocks main at end: 11
+    149310.823s split 2019 +11 [-] kept; attacker blocks main at end: 11
+    151255.423s split 2032 +11 [-] kept; attacker blocks main at end: 11
+    153180.236s split 2046 +11 [-] kept; attacker blocks main at end: 11
+    154843.669s split 2058 +11 [-] kept; attacker blocks main at end: 11
+    167463.461s split 2156 +12 [-] kept; attacker blocks main at end: 12
+    171226.283s split 2188 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-003        reorgs= 41 onto-attacker=39 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    13831.555s split 1044 +11 [-] kept; attacker blocks main at end: 11
+    17185.982s split 1066 +11 [-] kept; attacker blocks main at end: 11
+    29165.936s split 1127 +12 [-] kept; attacker blocks main at end: 12
+    31542.523s split 1144 +11 [-] kept; attacker blocks main at end: 11
+    36634.941s split 1171 +11 [-] kept; attacker blocks main at end: 11
+    40390.170s split 1193 +11 [-] kept; attacker blocks main at end: 11
+    47592.934s split 1234 +11 [-] kept; attacker blocks main at end: 11
+    50236.082s split 1248 +11 [-] kept; attacker blocks main at end: 11
+    53329.367s split 1259 +11 [-] kept; attacker blocks main at end: 11
+    56011.227s split 1277 +11 [-] kept; attacker blocks main at end: 11
+    64587.355s split 1327 +11 [-] kept; attacker blocks main at end: 11
+    67730.278s split 1353 +11 [-] kept; attacker blocks main at end: 11
+    70775.569s split 1367 +11 [-] kept; attacker blocks main at end: 11
+    75163.795s split 1397 +11 [-] kept; attacker blocks main at end: 11
+    78206.527s split 1416 +11 [-] kept; attacker blocks main at end: 11
+    88003.087s split 1491 +11 [-] kept; attacker blocks main at end: 11
+    91106.417s split 1513 +11 [-] kept; attacker blocks main at end: 11
+    96346.055s split 1555 +13 [-] kept; attacker blocks main at end: 13
+    98593.104s split 1568 +11 [-] kept; attacker blocks main at end: 11
+    102302.304s split 1598 +11 [-] kept; attacker blocks main at end: 11
+    106061.142s split 1630 +11 [-] kept; attacker blocks main at end: 11
+    107540.978s split 1646 +11 [-] kept; attacker blocks main at end: 11
+    115973.074s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    118328.941s split 1748 +11 [-] kept; attacker blocks main at end: 11
+    121663.631s split 1767 +11 [-] kept; attacker blocks main at end: 11
+    126258.717s split 1809 +11 [-] kept; attacker blocks main at end: 11
+    132568.065s split 1860 +11 [-] kept; attacker blocks main at end: 11
+    135101.428s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137381.354s split 1913 +11 [-] kept; attacker blocks main at end: 11
+    138735.150s split 1926 +11 [-] kept; attacker blocks main at end: 11
+    140653.664s split 1945 +11 [-] kept; attacker blocks main at end: 11
+    143693.362s split 1973 +11 [-] kept; attacker blocks main at end: 11
+    145738.353s split 1985 +11 [-] kept; attacker blocks main at end: 11
+    149310.598s split 2019 +11 [-] kept; attacker blocks main at end: 11
+    151255.198s split 2032 +11 [-] kept; attacker blocks main at end: 11
+    153180.011s split 2046 +11 [-] kept; attacker blocks main at end: 11
+    154843.444s split 2058 +11 [-] kept; attacker blocks main at end: 11
+    167463.236s split 2156 +12 [-] kept; attacker blocks main at end: 12
+    171226.058s split 2188 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-004        reorgs= 41 onto-attacker=39 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    13831.530s split 1044 +11 [-] kept; attacker blocks main at end: 11
+    17185.957s split 1066 +11 [-] kept; attacker blocks main at end: 11
+    29165.911s split 1127 +12 [-] kept; attacker blocks main at end: 12
+    31542.498s split 1144 +11 [-] kept; attacker blocks main at end: 11
+    36634.916s split 1171 +11 [-] kept; attacker blocks main at end: 11
+    40390.145s split 1193 +11 [-] kept; attacker blocks main at end: 11
+    47592.909s split 1234 +11 [-] kept; attacker blocks main at end: 11
+    50236.057s split 1248 +11 [-] kept; attacker blocks main at end: 11
+    53329.342s split 1259 +11 [-] kept; attacker blocks main at end: 11
+    56011.202s split 1277 +11 [-] kept; attacker blocks main at end: 11
+    64587.330s split 1327 +11 [-] kept; attacker blocks main at end: 11
+    67730.253s split 1353 +11 [-] kept; attacker blocks main at end: 11
+    70775.544s split 1367 +11 [-] kept; attacker blocks main at end: 11
+    75163.770s split 1397 +11 [-] kept; attacker blocks main at end: 11
+    78206.502s split 1416 +11 [-] kept; attacker blocks main at end: 11
+    88003.062s split 1491 +11 [-] kept; attacker blocks main at end: 11
+    91106.392s split 1513 +11 [-] kept; attacker blocks main at end: 11
+    96346.030s split 1555 +13 [-] kept; attacker blocks main at end: 13
+    98593.079s split 1568 +11 [-] kept; attacker blocks main at end: 11
+    102302.279s split 1598 +11 [-] kept; attacker blocks main at end: 11
+    106061.117s split 1630 +11 [-] kept; attacker blocks main at end: 11
+    107540.953s split 1646 +11 [-] kept; attacker blocks main at end: 11
+    115973.049s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    118328.916s split 1748 +11 [-] kept; attacker blocks main at end: 11
+    121663.606s split 1767 +11 [-] kept; attacker blocks main at end: 11
+    126258.692s split 1809 +11 [-] kept; attacker blocks main at end: 11
+    132568.040s split 1860 +11 [-] kept; attacker blocks main at end: 11
+    135101.403s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137381.329s split 1913 +11 [-] kept; attacker blocks main at end: 11
+    138735.125s split 1926 +11 [-] kept; attacker blocks main at end: 11
+    140653.639s split 1945 +11 [-] kept; attacker blocks main at end: 11
+    143693.337s split 1973 +11 [-] kept; attacker blocks main at end: 11
+    145738.328s split 1985 +11 [-] kept; attacker blocks main at end: 11
+    149310.573s split 2019 +11 [-] kept; attacker blocks main at end: 11
+    151255.173s split 2032 +11 [-] kept; attacker blocks main at end: 11
+    153179.986s split 2046 +11 [-] kept; attacker blocks main at end: 11
+    154843.419s split 2058 +11 [-] kept; attacker blocks main at end: 11
+    167463.211s split 2156 +12 [-] kept; attacker blocks main at end: 12
+    171226.033s split 2188 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-005        reorgs= 41 onto-attacker=39 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    13831.780s split 1044 +11 [-] kept; attacker blocks main at end: 11
+    17186.207s split 1066 +11 [-] kept; attacker blocks main at end: 11
+    29166.161s split 1127 +12 [-] kept; attacker blocks main at end: 12
+    31542.748s split 1144 +11 [-] kept; attacker blocks main at end: 11
+    36635.166s split 1171 +11 [-] kept; attacker blocks main at end: 11
+    40390.395s split 1193 +11 [-] kept; attacker blocks main at end: 11
+    47593.159s split 1234 +11 [-] kept; attacker blocks main at end: 11
+    50236.307s split 1248 +11 [-] kept; attacker blocks main at end: 11
+    53329.592s split 1259 +11 [-] kept; attacker blocks main at end: 11
+    56011.452s split 1277 +11 [-] kept; attacker blocks main at end: 11
+    64587.580s split 1327 +11 [-] kept; attacker blocks main at end: 11
+    67730.503s split 1353 +11 [-] kept; attacker blocks main at end: 11
+    70775.794s split 1367 +11 [-] kept; attacker blocks main at end: 11
+    75164.020s split 1397 +11 [-] kept; attacker blocks main at end: 11
+    78206.752s split 1416 +11 [-] kept; attacker blocks main at end: 11
+    88003.312s split 1491 +11 [-] kept; attacker blocks main at end: 11
+    91106.642s split 1513 +11 [-] kept; attacker blocks main at end: 11
+    96346.280s split 1555 +13 [-] kept; attacker blocks main at end: 13
+    98593.329s split 1568 +11 [-] kept; attacker blocks main at end: 11
+    102302.529s split 1598 +11 [-] kept; attacker blocks main at end: 11
+    106061.367s split 1630 +11 [-] kept; attacker blocks main at end: 11
+    107541.203s split 1646 +11 [-] kept; attacker blocks main at end: 11
+    115973.299s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    118329.166s split 1748 +11 [-] kept; attacker blocks main at end: 11
+    121663.856s split 1767 +11 [-] kept; attacker blocks main at end: 11
+    126258.942s split 1809 +11 [-] kept; attacker blocks main at end: 11
+    132568.290s split 1860 +11 [-] kept; attacker blocks main at end: 11
+    135101.653s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137381.579s split 1913 +11 [-] kept; attacker blocks main at end: 11
+    138735.375s split 1926 +11 [-] kept; attacker blocks main at end: 11
+    140653.889s split 1945 +11 [-] kept; attacker blocks main at end: 11
+    143693.587s split 1973 +11 [-] kept; attacker blocks main at end: 11
+    145738.578s split 1985 +11 [-] kept; attacker blocks main at end: 11
+    149310.823s split 2019 +11 [-] kept; attacker blocks main at end: 11
+    151255.423s split 2032 +11 [-] kept; attacker blocks main at end: 11
+    153180.236s split 2046 +11 [-] kept; attacker blocks main at end: 11
+    154843.669s split 2058 +11 [-] kept; attacker blocks main at end: 11
+    167463.461s split 2156 +12 [-] kept; attacker blocks main at end: 12
+    171226.283s split 2188 +11 [-] kept; attacker blocks main at end: 11
+  monero-seed-006        reorgs= 41 onto-attacker=39 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    13831.880s split 1044 +11 [-] kept; attacker blocks main at end: 11
+    17186.307s split 1066 +11 [-] kept; attacker blocks main at end: 11
+    29166.261s split 1127 +12 [-] kept; attacker blocks main at end: 12
+    31542.848s split 1144 +11 [-] kept; attacker blocks main at end: 11
+    36635.266s split 1171 +11 [-] kept; attacker blocks main at end: 11
+    40390.495s split 1193 +11 [-] kept; attacker blocks main at end: 11
+    47593.259s split 1234 +11 [-] kept; attacker blocks main at end: 11
+    50236.407s split 1248 +11 [-] kept; attacker blocks main at end: 11
+    53329.692s split 1259 +11 [-] kept; attacker blocks main at end: 11
+    56011.552s split 1277 +11 [-] kept; attacker blocks main at end: 11
+    64587.680s split 1327 +11 [-] kept; attacker blocks main at end: 11
+    67730.603s split 1353 +11 [-] kept; attacker blocks main at end: 11
+    70775.894s split 1367 +11 [-] kept; attacker blocks main at end: 11
+    75164.120s split 1397 +11 [-] kept; attacker blocks main at end: 11
+    78206.852s split 1416 +11 [-] kept; attacker blocks main at end: 11
+    88003.412s split 1491 +11 [-] kept; attacker blocks main at end: 11
+    91106.742s split 1513 +11 [-] kept; attacker blocks main at end: 11
+    96346.380s split 1555 +13 [-] kept; attacker blocks main at end: 13
+    98593.429s split 1568 +11 [-] kept; attacker blocks main at end: 11
+    102302.629s split 1598 +11 [-] kept; attacker blocks main at end: 11
+    106061.467s split 1630 +11 [-] kept; attacker blocks main at end: 11
+    107541.303s split 1646 +11 [-] kept; attacker blocks main at end: 11
+    115973.399s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    118329.266s split 1748 +11 [-] kept; attacker blocks main at end: 11
+    121663.956s split 1767 +11 [-] kept; attacker blocks main at end: 11
+    126259.042s split 1809 +11 [-] kept; attacker blocks main at end: 11
+    132568.390s split 1860 +11 [-] kept; attacker blocks main at end: 11
+    135101.753s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137381.679s split 1913 +11 [-] kept; attacker blocks main at end: 11
+    138735.475s split 1926 +11 [-] kept; attacker blocks main at end: 11
+    140653.989s split 1945 +11 [-] kept; attacker blocks main at end: 11
+    143693.687s split 1973 +11 [-] kept; attacker blocks main at end: 11
+    145738.678s split 1985 +11 [-] kept; attacker blocks main at end: 11
+    149310.923s split 2019 +11 [-] kept; attacker blocks main at end: 11
+    151255.523s split 2032 +11 [-] kept; attacker blocks main at end: 11
+    153180.336s split 2046 +11 [-] kept; attacker blocks main at end: 11
+    154843.769s split 2058 +11 [-] kept; attacker blocks main at end: 11
+    167463.561s split 2156 +12 [-] kept; attacker blocks main at end: 12
+    171226.383s split 2188 +11 [-] kept; attacker blocks main at end: 11
+  relay-001              reorgs= 41 onto-attacker=39 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    13831.630s split 1044 +11 [-] kept; attacker blocks main at end: 11
+    17186.057s split 1066 +11 [-] kept; attacker blocks main at end: 11
+    29166.011s split 1127 +12 [-] kept; attacker blocks main at end: 12
+    31542.598s split 1144 +11 [-] kept; attacker blocks main at end: 11
+    36635.016s split 1171 +11 [-] kept; attacker blocks main at end: 11
+    40390.245s split 1193 +11 [-] kept; attacker blocks main at end: 11
+    47593.009s split 1234 +11 [-] kept; attacker blocks main at end: 11
+    50236.157s split 1248 +11 [-] kept; attacker blocks main at end: 11
+    53329.442s split 1259 +11 [-] kept; attacker blocks main at end: 11
+    56011.302s split 1277 +11 [-] kept; attacker blocks main at end: 11
+    64587.430s split 1327 +11 [-] kept; attacker blocks main at end: 11
+    67730.353s split 1353 +11 [-] kept; attacker blocks main at end: 11
+    70775.644s split 1367 +11 [-] kept; attacker blocks main at end: 11
+    75163.870s split 1397 +11 [-] kept; attacker blocks main at end: 11
+    78206.602s split 1416 +11 [-] kept; attacker blocks main at end: 11
+    88003.162s split 1491 +11 [-] kept; attacker blocks main at end: 11
+    91106.492s split 1513 +11 [-] kept; attacker blocks main at end: 11
+    96346.130s split 1555 +13 [-] kept; attacker blocks main at end: 13
+    98593.179s split 1568 +11 [-] kept; attacker blocks main at end: 11
+    102302.379s split 1598 +11 [-] kept; attacker blocks main at end: 11
+    106061.217s split 1630 +11 [-] kept; attacker blocks main at end: 11
+    107541.053s split 1646 +11 [-] kept; attacker blocks main at end: 11
+    115973.149s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    118329.016s split 1748 +11 [-] kept; attacker blocks main at end: 11
+    121663.706s split 1767 +11 [-] kept; attacker blocks main at end: 11
+    126258.792s split 1809 +11 [-] kept; attacker blocks main at end: 11
+    132568.140s split 1860 +11 [-] kept; attacker blocks main at end: 11
+    135101.503s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137381.429s split 1913 +11 [-] kept; attacker blocks main at end: 11
+    138735.225s split 1926 +11 [-] kept; attacker blocks main at end: 11
+    140653.739s split 1945 +11 [-] kept; attacker blocks main at end: 11
+    143693.437s split 1973 +11 [-] kept; attacker blocks main at end: 11
+    145738.428s split 1985 +11 [-] kept; attacker blocks main at end: 11
+    149310.673s split 2019 +11 [-] kept; attacker blocks main at end: 11
+    151255.273s split 2032 +11 [-] kept; attacker blocks main at end: 11
+    153180.086s split 2046 +11 [-] kept; attacker blocks main at end: 11
+    154843.519s split 2058 +11 [-] kept; attacker blocks main at end: 11
+    167463.311s split 2156 +12 [-] kept; attacker blocks main at end: 12
+    171226.133s split 2188 +11 [-] kept; attacker blocks main at end: 11
+  relay-002              reorgs= 41 onto-attacker=39 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    13831.905s split 1044 +11 [-] kept; attacker blocks main at end: 11
+    17186.332s split 1066 +11 [-] kept; attacker blocks main at end: 11
+    29166.286s split 1127 +12 [-] kept; attacker blocks main at end: 12
+    31542.873s split 1144 +11 [-] kept; attacker blocks main at end: 11
+    36635.291s split 1171 +11 [-] kept; attacker blocks main at end: 11
+    40390.520s split 1193 +11 [-] kept; attacker blocks main at end: 11
+    47593.284s split 1234 +11 [-] kept; attacker blocks main at end: 11
+    50236.432s split 1248 +11 [-] kept; attacker blocks main at end: 11
+    53329.717s split 1259 +11 [-] kept; attacker blocks main at end: 11
+    56011.577s split 1277 +11 [-] kept; attacker blocks main at end: 11
+    64587.705s split 1327 +11 [-] kept; attacker blocks main at end: 11
+    67730.628s split 1353 +11 [-] kept; attacker blocks main at end: 11
+    70775.919s split 1367 +11 [-] kept; attacker blocks main at end: 11
+    75164.145s split 1397 +11 [-] kept; attacker blocks main at end: 11
+    78206.877s split 1416 +11 [-] kept; attacker blocks main at end: 11
+    88003.437s split 1491 +11 [-] kept; attacker blocks main at end: 11
+    91106.767s split 1513 +11 [-] kept; attacker blocks main at end: 11
+    96346.405s split 1555 +13 [-] kept; attacker blocks main at end: 13
+    98593.454s split 1568 +11 [-] kept; attacker blocks main at end: 11
+    102302.654s split 1598 +11 [-] kept; attacker blocks main at end: 11
+    106061.492s split 1630 +11 [-] kept; attacker blocks main at end: 11
+    107541.328s split 1646 +11 [-] kept; attacker blocks main at end: 11
+    115973.424s split 1726 +11 [-] kept; attacker blocks main at end: 11
+    118329.291s split 1748 +11 [-] kept; attacker blocks main at end: 11
+    121663.981s split 1767 +11 [-] kept; attacker blocks main at end: 11
+    126259.067s split 1809 +11 [-] kept; attacker blocks main at end: 11
+    132568.415s split 1860 +11 [-] kept; attacker blocks main at end: 11
+    135101.778s split 1885 +11 [-] kept; attacker blocks main at end: 11
+    137381.704s split 1913 +11 [-] kept; attacker blocks main at end: 11
+    138735.500s split 1926 +11 [-] kept; attacker blocks main at end: 11
+    140654.013s split 1945 +11 [-] kept; attacker blocks main at end: 11
+    143693.712s split 1973 +11 [-] kept; attacker blocks main at end: 11
+    145738.703s split 1985 +11 [-] kept; attacker blocks main at end: 11
+    149310.948s split 2019 +11 [-] kept; attacker blocks main at end: 11
+    151255.548s split 2032 +11 [-] kept; attacker blocks main at end: 11
+    153180.361s split 2046 +11 [-] kept; attacker blocks main at end: 11
+    154843.794s split 2058 +11 [-] kept; attacker blocks main at end: 11
+    167463.586s split 2156 +12 [-] kept; attacker blocks main at end: 12
+    171226.408s split 2188 +11 [-] kept; attacker blocks main at end: 11
+### 20261019_114734_deep_hunt_sop_a045__share_sop2_a045_d2  (attacker blocks found: 1383)
+  attacker-bridge        reorgs= 18 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    16340.817s split 1059 +13 [SIM-SoP: fork 1058 OBJECTIVE alt 9754/13 vs main 9548/10 (h0=994 nf=127 nf_main=124) -> SWITCH] kept; attacker blocks main at end: 13
+    69117.784s split 1339 +30 [SIM-SoP: fork 1338 OBJECTIVE alt 21046/30 vs main 20755/23 (h0=994 nf=372 nf_main=365) -> SWITC] kept; attacker blocks main at end: 30
+    118170.182s split 1714 +14 [SIM-SoP: fork 1713 OBJECTIVE alt 8700/14 vs main 7192/13 (h0=994 nf=199 nf_main=165) -> SWITCH] kept; attacker blocks main at end: 14
+    125614.214s split 1767 +15 [SIM-SoP: fork 1766 OBJECTIVE alt 11825/15 vs main 11395/12 (h0=994 nf=275 nf_main=265) -> SWITC] kept; attacker blocks main at end: 15
+    134511.415s split 1838 +15 [SIM-SoP: fork 1837 OBJECTIVE alt 9976/15 vs main 9632/11 (h0=994 nf=232 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 15
+    175102.962s split 2185 +15 [SIM-SoP: fork 2184 OBJECTIVE alt 7224/15 vs main 7181/10 (h0=994 nf=168 nf_main=167) -> SWITCH] kept; attacker blocks main at end: 15
+    180257.903s split 2237 +14 [SIM-SoP: fork 2236 OBJECTIVE alt 6279/14 vs main 5968/10 (h0=994 nf=148 nf_main=142) -> SWITCH] kept; attacker blocks main at end: 14
+    182361.137s split 2256 +12 [SIM-SoP: fork 2255 OBJECTIVE alt 7286/12 vs main 7272/11 (h0=994 nf=172 nf_main=171) -> SWITCH] kept; attacker blocks main at end: 12
+    197020.742s split 2362 +17 [SIM-SoP: fork 2361 OBJECTIVE alt 11628/17 vs main 11395/10 (h0=994 nf=271 nf_main=265) -> SWITC] kept; attacker blocks main at end: 17
+    200658.211s split 2392 +20 [SIM-SoP: fork 2391 OBJECTIVE alt 10709/20 vs main 10083/17 (h0=994 nf=252 nf_main=239) -> SWITC] kept; attacker blocks main at end: 20
+    202590.436s split 2413 +11 [SIM-SoP: fork 2412 OBJECTIVE alt 8660/11 vs main 8464/11 (h0=994 nf=203 nf_main=200) -> SWITCH] kept; attacker blocks main at end: 11
+    208544.294s split 2448 +19 [SIM-SoP: fork 2447 OBJECTIVE alt 13206/19 vs main 13096/12 (h0=994 nf=310 nf_main=310) -> SWITC] kept; attacker blocks main at end: 19
+    213772.125s split 2498 +15 [SIM-SoP: fork 2497 OBJECTIVE alt 9987/15 vs main 9407/11 (h0=994 nf=235 nf_main=222) -> SWITCH] kept; attacker blocks main at end: 15
+    216208.087s split 2522 +13 [SIM-SoP: fork 2521 OBJECTIVE alt 7860/13 vs main 7562/10 (h0=994 nf=184 nf_main=177) -> SWITCH] kept; attacker blocks main at end: 13
+    235344.600s split 2688 +14 [SIM-SoP: fork 2687 OBJECTIVE alt 10956/14 vs main 10648/10 (h0=994 nf=249 nf_main=242) -> SWITC] kept; attacker blocks main at end: 14
+    253236.533s split 2850 +12 [SIM-SoP: fork 2849 OBJECTIVE alt 7224/12 vs main 7098/10 (h0=994 nf=172 nf_main=169) -> SWITCH] kept; attacker blocks main at end: 12
+    255477.083s split 2867 +16 [SIM-SoP: fork 2866 OBJECTIVE alt 10019/16 vs main 9632/11 (h0=994 nf=233 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 16
+  honest-001             reorgs= 17 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    16341.397s split 1059 +13 [SIM-SoP: fork 1058 OBJECTIVE alt 9754/13 vs main 9548/10 (h0=994 nf=127 nf_main=124) -> SWITCH] kept; attacker blocks main at end: 13
+    69118.604s split 1339 +30 [SIM-SoP: fork 1338 OBJECTIVE alt 21046/30 vs main 20755/23 (h0=994 nf=372 nf_main=365) -> SWITC] kept; attacker blocks main at end: 30
+    118170.765s split 1714 +14 [SIM-SoP: fork 1713 OBJECTIVE alt 8700/14 vs main 7192/13 (h0=994 nf=199 nf_main=165) -> SWITCH] kept; attacker blocks main at end: 14
+    125614.799s split 1767 +15 [SIM-SoP: fork 1766 OBJECTIVE alt 11825/15 vs main 11395/12 (h0=994 nf=275 nf_main=265) -> SWITC] kept; attacker blocks main at end: 15
+    134511.998s split 1838 +15 [SIM-SoP: fork 1837 OBJECTIVE alt 9976/15 vs main 9632/11 (h0=994 nf=232 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 15
+    175103.544s split 2185 +15 [SIM-SoP: fork 2184 OBJECTIVE alt 7224/15 vs main 7181/10 (h0=994 nf=168 nf_main=167) -> SWITCH] kept; attacker blocks main at end: 15
+    180258.484s split 2237 +14 [SIM-SoP: fork 2236 OBJECTIVE alt 6279/14 vs main 5968/10 (h0=994 nf=148 nf_main=142) -> SWITCH] kept; attacker blocks main at end: 14
+    182361.719s split 2256 +12 [SIM-SoP: fork 2255 OBJECTIVE alt 7286/12 vs main 7272/11 (h0=994 nf=172 nf_main=171) -> SWITCH] kept; attacker blocks main at end: 12
+    197021.327s split 2362 +17 [SIM-SoP: fork 2361 OBJECTIVE alt 11628/17 vs main 11395/10 (h0=994 nf=271 nf_main=265) -> SWITC] kept; attacker blocks main at end: 17
+    200658.796s split 2392 +20 [SIM-SoP: fork 2391 OBJECTIVE alt 10709/20 vs main 10083/17 (h0=994 nf=252 nf_main=239) -> SWITC] kept; attacker blocks main at end: 20
+    202591.018s split 2413 +11 [SIM-SoP: fork 2412 OBJECTIVE alt 8660/11 vs main 8464/11 (h0=994 nf=203 nf_main=200) -> SWITCH] kept; attacker blocks main at end: 11
+    208544.881s split 2448 +19 [SIM-SoP: fork 2447 OBJECTIVE alt 13206/19 vs main 13096/12 (h0=994 nf=310 nf_main=310) -> SWITC] kept; attacker blocks main at end: 19
+    213772.708s split 2498 +15 [SIM-SoP: fork 2497 OBJECTIVE alt 9987/15 vs main 9407/11 (h0=994 nf=235 nf_main=222) -> SWITCH] kept; attacker blocks main at end: 15
+    216208.669s split 2522 +13 [SIM-SoP: fork 2521 OBJECTIVE alt 7860/13 vs main 7562/10 (h0=994 nf=184 nf_main=177) -> SWITCH] kept; attacker blocks main at end: 13
+    235345.185s split 2688 +14 [SIM-SoP: fork 2687 OBJECTIVE alt 10956/14 vs main 10648/10 (h0=994 nf=249 nf_main=242) -> SWITC] kept; attacker blocks main at end: 14
+    253237.115s split 2850 +12 [SIM-SoP: fork 2849 OBJECTIVE alt 7224/12 vs main 7098/10 (h0=994 nf=172 nf_main=169) -> SWITCH] kept; attacker blocks main at end: 12
+    255477.667s split 2867 +16 [SIM-SoP: fork 2866 OBJECTIVE alt 10019/16 vs main 9632/11 (h0=994 nf=233 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 16
+  honest-002             reorgs= 20 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    16341.372s split 1059 +13 [SIM-SoP: fork 1058 OBJECTIVE alt 9754/13 vs main 9548/10 (h0=994 nf=127 nf_main=124) -> SWITCH] kept; attacker blocks main at end: 13
+    69118.569s split 1339 +30 [SIM-SoP: fork 1338 OBJECTIVE alt 21046/30 vs main 20755/23 (h0=994 nf=372 nf_main=365) -> SWITC] kept; attacker blocks main at end: 30
+    118170.740s split 1714 +14 [SIM-SoP: fork 1713 OBJECTIVE alt 8700/14 vs main 7192/13 (h0=994 nf=199 nf_main=165) -> SWITCH] kept; attacker blocks main at end: 14
+    125614.774s split 1767 +15 [SIM-SoP: fork 1766 OBJECTIVE alt 11825/15 vs main 11395/12 (h0=994 nf=275 nf_main=265) -> SWITC] kept; attacker blocks main at end: 15
+    134511.973s split 1838 +15 [SIM-SoP: fork 1837 OBJECTIVE alt 9976/15 vs main 9632/11 (h0=994 nf=232 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 15
+    175103.519s split 2185 +15 [SIM-SoP: fork 2184 OBJECTIVE alt 7224/15 vs main 7181/10 (h0=994 nf=168 nf_main=167) -> SWITCH] kept; attacker blocks main at end: 15
+    180258.459s split 2237 +14 [SIM-SoP: fork 2236 OBJECTIVE alt 6279/14 vs main 5968/10 (h0=994 nf=148 nf_main=142) -> SWITCH] kept; attacker blocks main at end: 14
+    182361.694s split 2256 +12 [SIM-SoP: fork 2255 OBJECTIVE alt 7286/12 vs main 7272/11 (h0=994 nf=172 nf_main=171) -> SWITCH] kept; attacker blocks main at end: 12
+    197021.302s split 2362 +17 [SIM-SoP: fork 2361 OBJECTIVE alt 11628/17 vs main 11395/10 (h0=994 nf=271 nf_main=265) -> SWITC] kept; attacker blocks main at end: 17
+    200658.771s split 2392 +20 [SIM-SoP: fork 2391 OBJECTIVE alt 10709/20 vs main 10083/17 (h0=994 nf=252 nf_main=239) -> SWITC] kept; attacker blocks main at end: 20
+    202590.994s split 2413 +11 [SIM-SoP: fork 2412 OBJECTIVE alt 8660/11 vs main 8464/11 (h0=994 nf=203 nf_main=200) -> SWITCH] kept; attacker blocks main at end: 11
+    208544.856s split 2448 +19 [SIM-SoP: fork 2447 OBJECTIVE alt 13206/19 vs main 13096/12 (h0=994 nf=310 nf_main=310) -> SWITC] kept; attacker blocks main at end: 19
+    213772.683s split 2498 +15 [SIM-SoP: fork 2497 OBJECTIVE alt 9987/15 vs main 9407/11 (h0=994 nf=235 nf_main=222) -> SWITCH] kept; attacker blocks main at end: 15
+    216208.644s split 2522 +13 [SIM-SoP: fork 2521 OBJECTIVE alt 7860/13 vs main 7562/10 (h0=994 nf=184 nf_main=177) -> SWITCH] kept; attacker blocks main at end: 13
+    235345.159s split 2688 +14 [SIM-SoP: fork 2687 OBJECTIVE alt 10956/14 vs main 10648/10 (h0=994 nf=249 nf_main=242) -> SWITC] kept; attacker blocks main at end: 14
+    253237.090s split 2850 +12 [SIM-SoP: fork 2849 OBJECTIVE alt 7224/12 vs main 7098/10 (h0=994 nf=172 nf_main=169) -> SWITCH] kept; attacker blocks main at end: 12
+    255477.642s split 2867 +16 [SIM-SoP: fork 2866 OBJECTIVE alt 10019/16 vs main 9632/11 (h0=994 nf=233 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 16
+  monero-seed-001        reorgs= 20 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    16341.272s split 1059 +13 [SIM-SoP: fork 1058 OBJECTIVE alt 9754/13 vs main 9548/10 (h0=994 nf=127 nf_main=124) -> SWITCH] kept; attacker blocks main at end: 13
+    69118.429s split 1339 +30 [SIM-SoP: fork 1338 OBJECTIVE alt 21046/30 vs main 20755/23 (h0=994 nf=372 nf_main=365) -> SWITC] kept; attacker blocks main at end: 30
+    118170.640s split 1714 +14 [SIM-SoP: fork 1713 OBJECTIVE alt 8700/14 vs main 7192/13 (h0=994 nf=199 nf_main=165) -> SWITCH] kept; attacker blocks main at end: 14
+    125614.674s split 1767 +15 [SIM-SoP: fork 1766 OBJECTIVE alt 11825/15 vs main 11395/12 (h0=994 nf=275 nf_main=265) -> SWITC] kept; attacker blocks main at end: 15
+    134511.873s split 1838 +15 [SIM-SoP: fork 1837 OBJECTIVE alt 9976/15 vs main 9632/11 (h0=994 nf=232 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 15
+    175103.419s split 2185 +15 [SIM-SoP: fork 2184 OBJECTIVE alt 7224/15 vs main 7181/10 (h0=994 nf=168 nf_main=167) -> SWITCH] kept; attacker blocks main at end: 15
+    180258.359s split 2237 +14 [SIM-SoP: fork 2236 OBJECTIVE alt 6279/14 vs main 5968/10 (h0=994 nf=148 nf_main=142) -> SWITCH] kept; attacker blocks main at end: 14
+    182361.594s split 2256 +12 [SIM-SoP: fork 2255 OBJECTIVE alt 7286/12 vs main 7272/11 (h0=994 nf=172 nf_main=171) -> SWITCH] kept; attacker blocks main at end: 12
+    197021.202s split 2362 +17 [SIM-SoP: fork 2361 OBJECTIVE alt 11628/17 vs main 11395/10 (h0=994 nf=271 nf_main=265) -> SWITC] kept; attacker blocks main at end: 17
+    200658.671s split 2392 +20 [SIM-SoP: fork 2391 OBJECTIVE alt 10709/20 vs main 10083/17 (h0=994 nf=252 nf_main=239) -> SWITC] kept; attacker blocks main at end: 20
+    202590.893s split 2413 +11 [SIM-SoP: fork 2412 OBJECTIVE alt 8660/11 vs main 8464/11 (h0=994 nf=203 nf_main=200) -> SWITCH] kept; attacker blocks main at end: 11
+    208544.756s split 2448 +19 [SIM-SoP: fork 2447 OBJECTIVE alt 13206/19 vs main 13096/12 (h0=994 nf=310 nf_main=310) -> SWITC] kept; attacker blocks main at end: 19
+    213772.583s split 2498 +15 [SIM-SoP: fork 2497 OBJECTIVE alt 9987/15 vs main 9407/11 (h0=994 nf=235 nf_main=222) -> SWITCH] kept; attacker blocks main at end: 15
+    216208.544s split 2522 +13 [SIM-SoP: fork 2521 OBJECTIVE alt 7860/13 vs main 7562/10 (h0=994 nf=184 nf_main=177) -> SWITCH] kept; attacker blocks main at end: 13
+    235345.060s split 2688 +14 [SIM-SoP: fork 2687 OBJECTIVE alt 10956/14 vs main 10648/10 (h0=994 nf=249 nf_main=242) -> SWITC] kept; attacker blocks main at end: 14
+    253236.990s split 2850 +12 [SIM-SoP: fork 2849 OBJECTIVE alt 7224/12 vs main 7098/10 (h0=994 nf=172 nf_main=169) -> SWITCH] kept; attacker blocks main at end: 12
+    255477.542s split 2867 +16 [SIM-SoP: fork 2866 OBJECTIVE alt 10019/16 vs main 9632/11 (h0=994 nf=233 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 16
+  monero-seed-002        reorgs= 19 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    16341.422s split 1059 +13 [SIM-SoP: fork 1058 OBJECTIVE alt 9754/13 vs main 9548/10 (h0=994 nf=127 nf_main=124) -> SWITCH] kept; attacker blocks main at end: 13
+    69118.639s split 1339 +30 [SIM-SoP: fork 1338 OBJECTIVE alt 21046/30 vs main 20755/23 (h0=994 nf=372 nf_main=365) -> SWITC] kept; attacker blocks main at end: 30
+    118170.790s split 1714 +14 [SIM-SoP: fork 1713 OBJECTIVE alt 8700/14 vs main 7192/13 (h0=994 nf=199 nf_main=165) -> SWITCH] kept; attacker blocks main at end: 14
+    125614.824s split 1767 +15 [SIM-SoP: fork 1766 OBJECTIVE alt 11825/15 vs main 11395/12 (h0=994 nf=275 nf_main=265) -> SWITC] kept; attacker blocks main at end: 15
+    134512.023s split 1838 +15 [SIM-SoP: fork 1837 OBJECTIVE alt 9976/15 vs main 9632/11 (h0=994 nf=232 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 15
+    175103.569s split 2185 +15 [SIM-SoP: fork 2184 OBJECTIVE alt 7224/15 vs main 7181/10 (h0=994 nf=168 nf_main=167) -> SWITCH] kept; attacker blocks main at end: 15
+    180258.509s split 2237 +14 [SIM-SoP: fork 2236 OBJECTIVE alt 6279/14 vs main 5968/10 (h0=994 nf=148 nf_main=142) -> SWITCH] kept; attacker blocks main at end: 14
+    182361.744s split 2256 +12 [SIM-SoP: fork 2255 OBJECTIVE alt 7286/12 vs main 7272/11 (h0=994 nf=172 nf_main=171) -> SWITCH] kept; attacker blocks main at end: 12
+    197021.352s split 2362 +17 [SIM-SoP: fork 2361 OBJECTIVE alt 11628/17 vs main 11395/10 (h0=994 nf=271 nf_main=265) -> SWITC] kept; attacker blocks main at end: 17
+    200658.821s split 2392 +20 [SIM-SoP: fork 2391 OBJECTIVE alt 10709/20 vs main 10083/17 (h0=994 nf=252 nf_main=239) -> SWITC] kept; attacker blocks main at end: 20
+    202591.044s split 2413 +11 [SIM-SoP: fork 2412 OBJECTIVE alt 8660/11 vs main 8464/11 (h0=994 nf=203 nf_main=200) -> SWITCH] kept; attacker blocks main at end: 11
+    208544.906s split 2448 +19 [SIM-SoP: fork 2447 OBJECTIVE alt 13206/19 vs main 13096/12 (h0=994 nf=310 nf_main=310) -> SWITC] kept; attacker blocks main at end: 19
+    213772.733s split 2498 +15 [SIM-SoP: fork 2497 OBJECTIVE alt 9987/15 vs main 9407/11 (h0=994 nf=235 nf_main=222) -> SWITCH] kept; attacker blocks main at end: 15
+    216208.694s split 2522 +13 [SIM-SoP: fork 2521 OBJECTIVE alt 7860/13 vs main 7562/10 (h0=994 nf=184 nf_main=177) -> SWITCH] kept; attacker blocks main at end: 13
+    235345.210s split 2688 +14 [SIM-SoP: fork 2687 OBJECTIVE alt 10956/14 vs main 10648/10 (h0=994 nf=249 nf_main=242) -> SWITC] kept; attacker blocks main at end: 14
+    253237.140s split 2850 +12 [SIM-SoP: fork 2849 OBJECTIVE alt 7224/12 vs main 7098/10 (h0=994 nf=172 nf_main=169) -> SWITCH] kept; attacker blocks main at end: 12
+    255477.692s split 2867 +16 [SIM-SoP: fork 2866 OBJECTIVE alt 10019/16 vs main 9632/11 (h0=994 nf=233 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 16
+  monero-seed-003        reorgs= 18 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    16341.197s split 1059 +13 [SIM-SoP: fork 1058 OBJECTIVE alt 9754/13 vs main 9548/10 (h0=994 nf=127 nf_main=124) -> SWITCH] kept; attacker blocks main at end: 13
+    69118.324s split 1339 +30 [SIM-SoP: fork 1338 OBJECTIVE alt 21046/30 vs main 20755/23 (h0=994 nf=372 nf_main=365) -> SWITC] kept; attacker blocks main at end: 30
+    118170.565s split 1714 +14 [SIM-SoP: fork 1713 OBJECTIVE alt 8700/14 vs main 7192/13 (h0=994 nf=199 nf_main=165) -> SWITCH] kept; attacker blocks main at end: 14
+    125614.599s split 1767 +15 [SIM-SoP: fork 1766 OBJECTIVE alt 11825/15 vs main 11395/12 (h0=994 nf=275 nf_main=265) -> SWITC] kept; attacker blocks main at end: 15
+    134511.798s split 1838 +15 [SIM-SoP: fork 1837 OBJECTIVE alt 9976/15 vs main 9632/11 (h0=994 nf=232 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 15
+    175103.344s split 2185 +15 [SIM-SoP: fork 2184 OBJECTIVE alt 7224/15 vs main 7181/10 (h0=994 nf=168 nf_main=167) -> SWITCH] kept; attacker blocks main at end: 15
+    180258.284s split 2237 +14 [SIM-SoP: fork 2236 OBJECTIVE alt 6279/14 vs main 5968/10 (h0=994 nf=148 nf_main=142) -> SWITCH] kept; attacker blocks main at end: 14
+    182361.519s split 2256 +12 [SIM-SoP: fork 2255 OBJECTIVE alt 7286/12 vs main 7272/11 (h0=994 nf=172 nf_main=171) -> SWITCH] kept; attacker blocks main at end: 12
+    197021.127s split 2362 +17 [SIM-SoP: fork 2361 OBJECTIVE alt 11628/17 vs main 11395/10 (h0=994 nf=271 nf_main=265) -> SWITC] kept; attacker blocks main at end: 17
+    200658.596s split 2392 +20 [SIM-SoP: fork 2391 OBJECTIVE alt 10709/20 vs main 10083/17 (h0=994 nf=252 nf_main=239) -> SWITC] kept; attacker blocks main at end: 20
+    202590.818s split 2413 +11 [SIM-SoP: fork 2412 OBJECTIVE alt 8660/11 vs main 8464/11 (h0=994 nf=203 nf_main=200) -> SWITCH] kept; attacker blocks main at end: 11
+    208544.681s split 2448 +19 [SIM-SoP: fork 2447 OBJECTIVE alt 13206/19 vs main 13096/12 (h0=994 nf=310 nf_main=310) -> SWITC] kept; attacker blocks main at end: 19
+    213772.508s split 2498 +15 [SIM-SoP: fork 2497 OBJECTIVE alt 9987/15 vs main 9407/11 (h0=994 nf=235 nf_main=222) -> SWITCH] kept; attacker blocks main at end: 15
+    216208.469s split 2522 +13 [SIM-SoP: fork 2521 OBJECTIVE alt 7860/13 vs main 7562/10 (h0=994 nf=184 nf_main=177) -> SWITCH] kept; attacker blocks main at end: 13
+    235344.985s split 2688 +14 [SIM-SoP: fork 2687 OBJECTIVE alt 10956/14 vs main 10648/10 (h0=994 nf=249 nf_main=242) -> SWITC] kept; attacker blocks main at end: 14
+    253236.915s split 2850 +12 [SIM-SoP: fork 2849 OBJECTIVE alt 7224/12 vs main 7098/10 (h0=994 nf=172 nf_main=169) -> SWITCH] kept; attacker blocks main at end: 12
+    255477.467s split 2867 +16 [SIM-SoP: fork 2866 OBJECTIVE alt 10019/16 vs main 9632/11 (h0=994 nf=233 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 16
+  monero-seed-004        reorgs= 18 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    16341.172s split 1059 +13 [SIM-SoP: fork 1058 OBJECTIVE alt 9754/13 vs main 9548/10 (h0=994 nf=127 nf_main=124) -> SWITCH] kept; attacker blocks main at end: 13
+    69118.289s split 1339 +30 [SIM-SoP: fork 1338 OBJECTIVE alt 21046/30 vs main 20755/23 (h0=994 nf=372 nf_main=365) -> SWITC] kept; attacker blocks main at end: 30
+    118170.540s split 1714 +14 [SIM-SoP: fork 1713 OBJECTIVE alt 8700/14 vs main 7192/13 (h0=994 nf=199 nf_main=165) -> SWITCH] kept; attacker blocks main at end: 14
+    125614.574s split 1767 +15 [SIM-SoP: fork 1766 OBJECTIVE alt 11825/15 vs main 11395/12 (h0=994 nf=275 nf_main=265) -> SWITC] kept; attacker blocks main at end: 15
+    134511.773s split 1838 +15 [SIM-SoP: fork 1837 OBJECTIVE alt 9976/15 vs main 9632/11 (h0=994 nf=232 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 15
+    175103.319s split 2185 +15 [SIM-SoP: fork 2184 OBJECTIVE alt 7224/15 vs main 7181/10 (h0=994 nf=168 nf_main=167) -> SWITCH] kept; attacker blocks main at end: 15
+    180258.259s split 2237 +14 [SIM-SoP: fork 2236 OBJECTIVE alt 6279/14 vs main 5968/10 (h0=994 nf=148 nf_main=142) -> SWITCH] kept; attacker blocks main at end: 14
+    182361.494s split 2256 +12 [SIM-SoP: fork 2255 OBJECTIVE alt 7286/12 vs main 7272/11 (h0=994 nf=172 nf_main=171) -> SWITCH] kept; attacker blocks main at end: 12
+    197021.102s split 2362 +17 [SIM-SoP: fork 2361 OBJECTIVE alt 11628/17 vs main 11395/10 (h0=994 nf=271 nf_main=265) -> SWITC] kept; attacker blocks main at end: 17
+    200658.571s split 2392 +20 [SIM-SoP: fork 2391 OBJECTIVE alt 10709/20 vs main 10083/17 (h0=994 nf=252 nf_main=239) -> SWITC] kept; attacker blocks main at end: 20
+    202590.794s split 2413 +11 [SIM-SoP: fork 2412 OBJECTIVE alt 8660/11 vs main 8464/11 (h0=994 nf=203 nf_main=200) -> SWITCH] kept; attacker blocks main at end: 11
+    208544.656s split 2448 +19 [SIM-SoP: fork 2447 OBJECTIVE alt 13206/19 vs main 13096/12 (h0=994 nf=310 nf_main=310) -> SWITC] kept; attacker blocks main at end: 19
+    213772.483s split 2498 +15 [SIM-SoP: fork 2497 OBJECTIVE alt 9987/15 vs main 9407/11 (h0=994 nf=235 nf_main=222) -> SWITCH] kept; attacker blocks main at end: 15
+    216208.444s split 2522 +13 [SIM-SoP: fork 2521 OBJECTIVE alt 7860/13 vs main 7562/10 (h0=994 nf=184 nf_main=177) -> SWITCH] kept; attacker blocks main at end: 13
+    235344.960s split 2688 +14 [SIM-SoP: fork 2687 OBJECTIVE alt 10956/14 vs main 10648/10 (h0=994 nf=249 nf_main=242) -> SWITC] kept; attacker blocks main at end: 14
+    253236.890s split 2850 +12 [SIM-SoP: fork 2849 OBJECTIVE alt 7224/12 vs main 7098/10 (h0=994 nf=172 nf_main=169) -> SWITCH] kept; attacker blocks main at end: 12
+    255477.442s split 2867 +16 [SIM-SoP: fork 2866 OBJECTIVE alt 10019/16 vs main 9632/11 (h0=994 nf=233 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 16
+  monero-seed-005        reorgs= 18 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    16341.422s split 1059 +13 [SIM-SoP: fork 1058 OBJECTIVE alt 9754/13 vs main 9548/10 (h0=994 nf=127 nf_main=124) -> SWITCH] kept; attacker blocks main at end: 13
+    69118.639s split 1339 +30 [SIM-SoP: fork 1338 OBJECTIVE alt 21046/30 vs main 20755/23 (h0=994 nf=372 nf_main=365) -> SWITC] kept; attacker blocks main at end: 30
+    118170.790s split 1714 +14 [SIM-SoP: fork 1713 OBJECTIVE alt 8700/14 vs main 7192/13 (h0=994 nf=199 nf_main=165) -> SWITCH] kept; attacker blocks main at end: 14
+    125614.824s split 1767 +15 [SIM-SoP: fork 1766 OBJECTIVE alt 11825/15 vs main 11395/12 (h0=994 nf=275 nf_main=265) -> SWITC] kept; attacker blocks main at end: 15
+    134512.023s split 1838 +15 [SIM-SoP: fork 1837 OBJECTIVE alt 9976/15 vs main 9632/11 (h0=994 nf=232 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 15
+    175103.569s split 2185 +15 [SIM-SoP: fork 2184 OBJECTIVE alt 7224/15 vs main 7181/10 (h0=994 nf=168 nf_main=167) -> SWITCH] kept; attacker blocks main at end: 15
+    180258.509s split 2237 +14 [SIM-SoP: fork 2236 OBJECTIVE alt 6279/14 vs main 5968/10 (h0=994 nf=148 nf_main=142) -> SWITCH] kept; attacker blocks main at end: 14
+    182361.744s split 2256 +12 [SIM-SoP: fork 2255 OBJECTIVE alt 7286/12 vs main 7272/11 (h0=994 nf=172 nf_main=171) -> SWITCH] kept; attacker blocks main at end: 12
+    197021.352s split 2362 +17 [SIM-SoP: fork 2361 OBJECTIVE alt 11628/17 vs main 11395/10 (h0=994 nf=271 nf_main=265) -> SWITC] kept; attacker blocks main at end: 17
+    200658.821s split 2392 +20 [SIM-SoP: fork 2391 OBJECTIVE alt 10709/20 vs main 10083/17 (h0=994 nf=252 nf_main=239) -> SWITC] kept; attacker blocks main at end: 20
+    202591.043s split 2413 +11 [SIM-SoP: fork 2412 OBJECTIVE alt 8660/11 vs main 8464/11 (h0=994 nf=203 nf_main=200) -> SWITCH] kept; attacker blocks main at end: 11
+    208544.906s split 2448 +19 [SIM-SoP: fork 2447 OBJECTIVE alt 13206/19 vs main 13096/12 (h0=994 nf=310 nf_main=310) -> SWITC] kept; attacker blocks main at end: 19
+    213772.734s split 2498 +15 [SIM-SoP: fork 2497 OBJECTIVE alt 9987/15 vs main 9407/11 (h0=994 nf=235 nf_main=222) -> SWITCH] kept; attacker blocks main at end: 15
+    216208.694s split 2522 +13 [SIM-SoP: fork 2521 OBJECTIVE alt 7860/13 vs main 7562/10 (h0=994 nf=184 nf_main=177) -> SWITCH] kept; attacker blocks main at end: 13
+    235345.210s split 2688 +14 [SIM-SoP: fork 2687 OBJECTIVE alt 10956/14 vs main 10648/10 (h0=994 nf=249 nf_main=242) -> SWITC] kept; attacker blocks main at end: 14
+    253237.140s split 2850 +12 [SIM-SoP: fork 2849 OBJECTIVE alt 7224/12 vs main 7098/10 (h0=994 nf=172 nf_main=169) -> SWITCH] kept; attacker blocks main at end: 12
+    255477.692s split 2867 +16 [SIM-SoP: fork 2866 OBJECTIVE alt 10019/16 vs main 9632/11 (h0=994 nf=233 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 16
+  monero-seed-006        reorgs= 18 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    16341.522s split 1059 +13 [SIM-SoP: fork 1058 OBJECTIVE alt 9754/13 vs main 9548/10 (h0=994 nf=127 nf_main=124) -> SWITCH] kept; attacker blocks main at end: 13
+    69118.779s split 1339 +30 [SIM-SoP: fork 1338 OBJECTIVE alt 21046/30 vs main 20755/23 (h0=994 nf=372 nf_main=365) -> SWITC] kept; attacker blocks main at end: 30
+    118170.890s split 1714 +14 [SIM-SoP: fork 1713 OBJECTIVE alt 8700/14 vs main 7192/13 (h0=994 nf=199 nf_main=165) -> SWITCH] kept; attacker blocks main at end: 14
+    125614.924s split 1767 +15 [SIM-SoP: fork 1766 OBJECTIVE alt 11825/15 vs main 11395/12 (h0=994 nf=275 nf_main=265) -> SWITC] kept; attacker blocks main at end: 15
+    134512.123s split 1838 +15 [SIM-SoP: fork 1837 OBJECTIVE alt 9976/15 vs main 9632/11 (h0=994 nf=232 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 15
+    175103.669s split 2185 +15 [SIM-SoP: fork 2184 OBJECTIVE alt 7224/15 vs main 7181/10 (h0=994 nf=168 nf_main=167) -> SWITCH] kept; attacker blocks main at end: 15
+    180258.609s split 2237 +14 [SIM-SoP: fork 2236 OBJECTIVE alt 6279/14 vs main 5968/10 (h0=994 nf=148 nf_main=142) -> SWITCH] kept; attacker blocks main at end: 14
+    182361.844s split 2256 +12 [SIM-SoP: fork 2255 OBJECTIVE alt 7286/12 vs main 7272/11 (h0=994 nf=172 nf_main=171) -> SWITCH] kept; attacker blocks main at end: 12
+    197021.452s split 2362 +17 [SIM-SoP: fork 2361 OBJECTIVE alt 11628/17 vs main 11395/10 (h0=994 nf=271 nf_main=265) -> SWITC] kept; attacker blocks main at end: 17
+    200658.921s split 2392 +20 [SIM-SoP: fork 2391 OBJECTIVE alt 10709/20 vs main 10083/17 (h0=994 nf=252 nf_main=239) -> SWITC] kept; attacker blocks main at end: 20
+    202591.144s split 2413 +11 [SIM-SoP: fork 2412 OBJECTIVE alt 8660/11 vs main 8464/11 (h0=994 nf=203 nf_main=200) -> SWITCH] kept; attacker blocks main at end: 11
+    208545.006s split 2448 +19 [SIM-SoP: fork 2447 OBJECTIVE alt 13206/19 vs main 13096/12 (h0=994 nf=310 nf_main=310) -> SWITC] kept; attacker blocks main at end: 19
+    213772.833s split 2498 +15 [SIM-SoP: fork 2497 OBJECTIVE alt 9987/15 vs main 9407/11 (h0=994 nf=235 nf_main=222) -> SWITCH] kept; attacker blocks main at end: 15
+    216208.794s split 2522 +13 [SIM-SoP: fork 2521 OBJECTIVE alt 7860/13 vs main 7562/10 (h0=994 nf=184 nf_main=177) -> SWITCH] kept; attacker blocks main at end: 13
+    235345.310s split 2688 +14 [SIM-SoP: fork 2687 OBJECTIVE alt 10956/14 vs main 10648/10 (h0=994 nf=249 nf_main=242) -> SWITC] kept; attacker blocks main at end: 14
+    253237.240s split 2850 +12 [SIM-SoP: fork 2849 OBJECTIVE alt 7224/12 vs main 7098/10 (h0=994 nf=172 nf_main=169) -> SWITCH] kept; attacker blocks main at end: 12
+    255477.792s split 2867 +16 [SIM-SoP: fork 2866 OBJECTIVE alt 10019/16 vs main 9632/11 (h0=994 nf=233 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 16
+  relay-001              reorgs= 18 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    16341.272s split 1059 +13 [SIM-SoP: fork 1058 OBJECTIVE alt 9754/13 vs main 9548/10 (h0=994 nf=127 nf_main=124) -> SWITCH] kept; attacker blocks main at end: 13
+    69118.429s split 1339 +30 [SIM-SoP: fork 1338 OBJECTIVE alt 21046/30 vs main 20755/23 (h0=994 nf=372 nf_main=365) -> SWITC] kept; attacker blocks main at end: 30
+    118170.640s split 1714 +14 [SIM-SoP: fork 1713 OBJECTIVE alt 8700/14 vs main 7192/13 (h0=994 nf=199 nf_main=165) -> SWITCH] kept; attacker blocks main at end: 14
+    125614.674s split 1767 +15 [SIM-SoP: fork 1766 OBJECTIVE alt 11825/15 vs main 11395/12 (h0=994 nf=275 nf_main=265) -> SWITC] kept; attacker blocks main at end: 15
+    134511.873s split 1838 +15 [SIM-SoP: fork 1837 OBJECTIVE alt 9976/15 vs main 9632/11 (h0=994 nf=232 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 15
+    175103.419s split 2185 +15 [SIM-SoP: fork 2184 OBJECTIVE alt 7224/15 vs main 7181/10 (h0=994 nf=168 nf_main=167) -> SWITCH] kept; attacker blocks main at end: 15
+    180258.359s split 2237 +14 [SIM-SoP: fork 2236 OBJECTIVE alt 6279/14 vs main 5968/10 (h0=994 nf=148 nf_main=142) -> SWITCH] kept; attacker blocks main at end: 14
+    182361.594s split 2256 +12 [SIM-SoP: fork 2255 OBJECTIVE alt 7286/12 vs main 7272/11 (h0=994 nf=172 nf_main=171) -> SWITCH] kept; attacker blocks main at end: 12
+    197021.202s split 2362 +17 [SIM-SoP: fork 2361 OBJECTIVE alt 11628/17 vs main 11395/10 (h0=994 nf=271 nf_main=265) -> SWITC] kept; attacker blocks main at end: 17
+    200658.671s split 2392 +20 [SIM-SoP: fork 2391 OBJECTIVE alt 10709/20 vs main 10083/17 (h0=994 nf=252 nf_main=239) -> SWITC] kept; attacker blocks main at end: 20
+    202590.894s split 2413 +11 [SIM-SoP: fork 2412 OBJECTIVE alt 8660/11 vs main 8464/11 (h0=994 nf=203 nf_main=200) -> SWITCH] kept; attacker blocks main at end: 11
+    208544.756s split 2448 +19 [SIM-SoP: fork 2447 OBJECTIVE alt 13206/19 vs main 13096/12 (h0=994 nf=310 nf_main=310) -> SWITC] kept; attacker blocks main at end: 19
+    213772.583s split 2498 +15 [SIM-SoP: fork 2497 OBJECTIVE alt 9987/15 vs main 9407/11 (h0=994 nf=235 nf_main=222) -> SWITCH] kept; attacker blocks main at end: 15
+    216208.544s split 2522 +13 [SIM-SoP: fork 2521 OBJECTIVE alt 7860/13 vs main 7562/10 (h0=994 nf=184 nf_main=177) -> SWITCH] kept; attacker blocks main at end: 13
+    235345.060s split 2688 +14 [SIM-SoP: fork 2687 OBJECTIVE alt 10956/14 vs main 10648/10 (h0=994 nf=249 nf_main=242) -> SWITC] kept; attacker blocks main at end: 14
+    253236.990s split 2850 +12 [SIM-SoP: fork 2849 OBJECTIVE alt 7224/12 vs main 7098/10 (h0=994 nf=172 nf_main=169) -> SWITCH] kept; attacker blocks main at end: 12
+    255477.542s split 2867 +16 [SIM-SoP: fork 2866 OBJECTIVE alt 10019/16 vs main 9632/11 (h0=994 nf=233 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 16
+  relay-002              reorgs= 18 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    16341.547s split 1059 +13 [SIM-SoP: fork 1058 OBJECTIVE alt 9754/13 vs main 9548/10 (h0=994 nf=127 nf_main=124) -> SWITCH] kept; attacker blocks main at end: 13
+    69118.814s split 1339 +30 [SIM-SoP: fork 1338 OBJECTIVE alt 21046/30 vs main 20755/23 (h0=994 nf=372 nf_main=365) -> SWITC] kept; attacker blocks main at end: 30
+    118170.915s split 1714 +14 [SIM-SoP: fork 1713 OBJECTIVE alt 8700/14 vs main 7192/13 (h0=994 nf=199 nf_main=165) -> SWITCH] kept; attacker blocks main at end: 14
+    125614.949s split 1767 +15 [SIM-SoP: fork 1766 OBJECTIVE alt 11825/15 vs main 11395/12 (h0=994 nf=275 nf_main=265) -> SWITC] kept; attacker blocks main at end: 15
+    134512.148s split 1838 +15 [SIM-SoP: fork 1837 OBJECTIVE alt 9976/15 vs main 9632/11 (h0=994 nf=232 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 15
+    175103.694s split 2185 +15 [SIM-SoP: fork 2184 OBJECTIVE alt 7224/15 vs main 7181/10 (h0=994 nf=168 nf_main=167) -> SWITCH] kept; attacker blocks main at end: 15
+    180258.634s split 2237 +14 [SIM-SoP: fork 2236 OBJECTIVE alt 6279/14 vs main 5968/10 (h0=994 nf=148 nf_main=142) -> SWITCH] kept; attacker blocks main at end: 14
+    182361.869s split 2256 +12 [SIM-SoP: fork 2255 OBJECTIVE alt 7286/12 vs main 7272/11 (h0=994 nf=172 nf_main=171) -> SWITCH] kept; attacker blocks main at end: 12
+    197021.477s split 2362 +17 [SIM-SoP: fork 2361 OBJECTIVE alt 11628/17 vs main 11395/10 (h0=994 nf=271 nf_main=265) -> SWITC] kept; attacker blocks main at end: 17
+    200658.946s split 2392 +20 [SIM-SoP: fork 2391 OBJECTIVE alt 10709/20 vs main 10083/17 (h0=994 nf=252 nf_main=239) -> SWITC] kept; attacker blocks main at end: 20
+    202591.169s split 2413 +11 [SIM-SoP: fork 2412 OBJECTIVE alt 8660/11 vs main 8464/11 (h0=994 nf=203 nf_main=200) -> SWITCH] kept; attacker blocks main at end: 11
+    208545.031s split 2448 +19 [SIM-SoP: fork 2447 OBJECTIVE alt 13206/19 vs main 13096/12 (h0=994 nf=310 nf_main=310) -> SWITC] kept; attacker blocks main at end: 19
+    213772.858s split 2498 +15 [SIM-SoP: fork 2497 OBJECTIVE alt 9987/15 vs main 9407/11 (h0=994 nf=235 nf_main=222) -> SWITCH] kept; attacker blocks main at end: 15
+    216208.819s split 2522 +13 [SIM-SoP: fork 2521 OBJECTIVE alt 7860/13 vs main 7562/10 (h0=994 nf=184 nf_main=177) -> SWITCH] kept; attacker blocks main at end: 13
+    235345.335s split 2688 +14 [SIM-SoP: fork 2687 OBJECTIVE alt 10956/14 vs main 10648/10 (h0=994 nf=249 nf_main=242) -> SWITC] kept; attacker blocks main at end: 14
+    253237.265s split 2850 +12 [SIM-SoP: fork 2849 OBJECTIVE alt 7224/12 vs main 7098/10 (h0=994 nf=172 nf_main=169) -> SWITCH] kept; attacker blocks main at end: 12
+    255477.817s split 2867 +16 [SIM-SoP: fork 2866 OBJECTIVE alt 10019/16 vs main 9632/11 (h0=994 nf=233 nf_main=224) -> SWITCH] kept; attacker blocks main at end: 16
+### 20261019_114819_deep_hunt_sop_a040__share_sop2_a040_d2  (attacker blocks found: 4763)
+  attacker-bridge        reorgs=  8 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    335822.597s split 3506 +19 [SIM-SoP: fork 3505 OBJECTIVE alt 9675/19 vs main 9288/10 (h0=994 nf=225 nf_main=216) -> SWITCH] kept; attacker blocks main at end: 19
+    546741.563s split 5281 +10 [SIM-SoP: fork 5280 OBJECTIVE alt 7280/10 vs main 6813/10 (h0=994 nf=164 nf_main=153) -> SWITCH] kept; attacker blocks main at end: 10
+    578770.761s split 5528 +18 [SIM-SoP: fork 5527 OBJECTIVE alt 12513/18 vs main 12384/17 (h0=994 nf=291 nf_main=288) -> SWITC] kept; attacker blocks main at end: 18
+    656029.428s split 6191 +13 [SIM-SoP: fork 6190 OBJECTIVE alt 8668/13 vs main 8580/10 (h0=994 nf=197 nf_main=195) -> SWITCH] kept; attacker blocks main at end: 13
+    766507.724s split 7134 +12 [SIM-SoP: fork 7133 OBJECTIVE alt 5985/12 vs main 5670/10 (h0=994 nf=133 nf_main=126) -> SWITCH] kept; attacker blocks main at end: 12
+  honest-001             reorgs=  8 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    335823.180s split 3506 +19 [SIM-SoP: fork 3505 OBJECTIVE alt 9675/19 vs main 9288/10 (h0=994 nf=225 nf_main=216) -> SWITCH] kept; attacker blocks main at end: 19
+    546742.144s split 5281 +10 [SIM-SoP: fork 5280 OBJECTIVE alt 7280/10 vs main 6813/10 (h0=994 nf=164 nf_main=153) -> SWITCH] kept; attacker blocks main at end: 10
+    578771.347s split 5528 +18 [SIM-SoP: fork 5527 OBJECTIVE alt 12513/18 vs main 12384/17 (h0=994 nf=291 nf_main=288) -> SWITC] kept; attacker blocks main at end: 18
+    656030.011s split 6191 +13 [SIM-SoP: fork 6190 OBJECTIVE alt 8668/13 vs main 8580/10 (h0=994 nf=197 nf_main=195) -> SWITCH] kept; attacker blocks main at end: 13
+    766508.304s split 7134 +12 [SIM-SoP: fork 7133 OBJECTIVE alt 5985/12 vs main 5670/10 (h0=994 nf=133 nf_main=126) -> SWITCH] kept; attacker blocks main at end: 12
+  honest-002             reorgs=  8 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    335823.155s split 3506 +19 [SIM-SoP: fork 3505 OBJECTIVE alt 9675/19 vs main 9288/10 (h0=994 nf=225 nf_main=216) -> SWITCH] kept; attacker blocks main at end: 19
+    546742.119s split 5281 +10 [SIM-SoP: fork 5280 OBJECTIVE alt 7280/10 vs main 6813/10 (h0=994 nf=164 nf_main=153) -> SWITCH] kept; attacker blocks main at end: 10
+    578771.322s split 5528 +18 [SIM-SoP: fork 5527 OBJECTIVE alt 12513/18 vs main 12384/17 (h0=994 nf=291 nf_main=288) -> SWITC] kept; attacker blocks main at end: 18
+    656029.986s split 6191 +13 [SIM-SoP: fork 6190 OBJECTIVE alt 8668/13 vs main 8580/10 (h0=994 nf=197 nf_main=195) -> SWITCH] kept; attacker blocks main at end: 13
+    766508.279s split 7134 +12 [SIM-SoP: fork 7133 OBJECTIVE alt 5985/12 vs main 5670/10 (h0=994 nf=133 nf_main=126) -> SWITCH] kept; attacker blocks main at end: 12
+  monero-seed-001        reorgs= 10 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    335823.055s split 3506 +19 [SIM-SoP: fork 3505 OBJECTIVE alt 9675/19 vs main 9288/10 (h0=994 nf=225 nf_main=216) -> SWITCH] kept; attacker blocks main at end: 19
+    546742.019s split 5281 +10 [SIM-SoP: fork 5280 OBJECTIVE alt 7280/10 vs main 6813/10 (h0=994 nf=164 nf_main=153) -> SWITCH] kept; attacker blocks main at end: 10
+    578771.222s split 5528 +18 [SIM-SoP: fork 5527 OBJECTIVE alt 12513/18 vs main 12384/17 (h0=994 nf=291 nf_main=288) -> SWITC] kept; attacker blocks main at end: 18
+    656029.886s split 6191 +13 [SIM-SoP: fork 6190 OBJECTIVE alt 8668/13 vs main 8580/10 (h0=994 nf=197 nf_main=195) -> SWITCH] kept; attacker blocks main at end: 13
+    766508.179s split 7134 +12 [SIM-SoP: fork 7133 OBJECTIVE alt 5985/12 vs main 5670/10 (h0=994 nf=133 nf_main=126) -> SWITCH] kept; attacker blocks main at end: 12
+  monero-seed-002        reorgs= 10 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    335823.205s split 3506 +19 [SIM-SoP: fork 3505 OBJECTIVE alt 9675/19 vs main 9288/10 (h0=994 nf=225 nf_main=216) -> SWITCH] kept; attacker blocks main at end: 19
+    546742.169s split 5281 +10 [SIM-SoP: fork 5280 OBJECTIVE alt 7280/10 vs main 6813/10 (h0=994 nf=164 nf_main=153) -> SWITCH] kept; attacker blocks main at end: 10
+    578771.372s split 5528 +18 [SIM-SoP: fork 5527 OBJECTIVE alt 12513/18 vs main 12384/17 (h0=994 nf=291 nf_main=288) -> SWITC] kept; attacker blocks main at end: 18
+    656030.036s split 6191 +13 [SIM-SoP: fork 6190 OBJECTIVE alt 8668/13 vs main 8580/10 (h0=994 nf=197 nf_main=195) -> SWITCH] kept; attacker blocks main at end: 13
+    766508.329s split 7134 +12 [SIM-SoP: fork 7133 OBJECTIVE alt 5985/12 vs main 5670/10 (h0=994 nf=133 nf_main=126) -> SWITCH] kept; attacker blocks main at end: 12
+  monero-seed-003        reorgs= 10 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    335822.980s split 3506 +19 [SIM-SoP: fork 3505 OBJECTIVE alt 9675/19 vs main 9288/10 (h0=994 nf=225 nf_main=216) -> SWITCH] kept; attacker blocks main at end: 19
+    546741.944s split 5281 +10 [SIM-SoP: fork 5280 OBJECTIVE alt 7280/10 vs main 6813/10 (h0=994 nf=164 nf_main=153) -> SWITCH] kept; attacker blocks main at end: 10
+    578771.147s split 5528 +18 [SIM-SoP: fork 5527 OBJECTIVE alt 12513/18 vs main 12384/17 (h0=994 nf=291 nf_main=288) -> SWITC] kept; attacker blocks main at end: 18
+    656029.811s split 6191 +13 [SIM-SoP: fork 6190 OBJECTIVE alt 8668/13 vs main 8580/10 (h0=994 nf=197 nf_main=195) -> SWITCH] kept; attacker blocks main at end: 13
+    766508.104s split 7134 +12 [SIM-SoP: fork 7133 OBJECTIVE alt 5985/12 vs main 5670/10 (h0=994 nf=133 nf_main=126) -> SWITCH] kept; attacker blocks main at end: 12
+  monero-seed-004        reorgs= 10 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    335822.955s split 3506 +19 [SIM-SoP: fork 3505 OBJECTIVE alt 9675/19 vs main 9288/10 (h0=994 nf=225 nf_main=216) -> SWITCH] kept; attacker blocks main at end: 19
+    546741.919s split 5281 +10 [SIM-SoP: fork 5280 OBJECTIVE alt 7280/10 vs main 6813/10 (h0=994 nf=164 nf_main=153) -> SWITCH] kept; attacker blocks main at end: 10
+    578771.122s split 5528 +18 [SIM-SoP: fork 5527 OBJECTIVE alt 12513/18 vs main 12384/17 (h0=994 nf=291 nf_main=288) -> SWITC] kept; attacker blocks main at end: 18
+    656029.786s split 6191 +13 [SIM-SoP: fork 6190 OBJECTIVE alt 8668/13 vs main 8580/10 (h0=994 nf=197 nf_main=195) -> SWITCH] kept; attacker blocks main at end: 13
+    766508.079s split 7134 +12 [SIM-SoP: fork 7133 OBJECTIVE alt 5985/12 vs main 5670/10 (h0=994 nf=133 nf_main=126) -> SWITCH] kept; attacker blocks main at end: 12
+  monero-seed-005        reorgs=  8 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    335823.205s split 3506 +19 [SIM-SoP: fork 3505 OBJECTIVE alt 9675/19 vs main 9288/10 (h0=994 nf=225 nf_main=216) -> SWITCH] kept; attacker blocks main at end: 19
+    546742.169s split 5281 +10 [SIM-SoP: fork 5280 OBJECTIVE alt 7280/10 vs main 6813/10 (h0=994 nf=164 nf_main=153) -> SWITCH] kept; attacker blocks main at end: 10
+    578771.372s split 5528 +18 [SIM-SoP: fork 5527 OBJECTIVE alt 12513/18 vs main 12384/17 (h0=994 nf=291 nf_main=288) -> SWITC] kept; attacker blocks main at end: 18
+    656030.036s split 6191 +13 [SIM-SoP: fork 6190 OBJECTIVE alt 8668/13 vs main 8580/10 (h0=994 nf=197 nf_main=195) -> SWITCH] kept; attacker blocks main at end: 13
+    766508.329s split 7134 +12 [SIM-SoP: fork 7133 OBJECTIVE alt 5985/12 vs main 5670/10 (h0=994 nf=133 nf_main=126) -> SWITCH] kept; attacker blocks main at end: 12
+  monero-seed-006        reorgs= 10 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    335823.305s split 3506 +19 [SIM-SoP: fork 3505 OBJECTIVE alt 9675/19 vs main 9288/10 (h0=994 nf=225 nf_main=216) -> SWITCH] kept; attacker blocks main at end: 19
+    546742.269s split 5281 +10 [SIM-SoP: fork 5280 OBJECTIVE alt 7280/10 vs main 6813/10 (h0=994 nf=164 nf_main=153) -> SWITCH] kept; attacker blocks main at end: 10
+    578771.472s split 5528 +18 [SIM-SoP: fork 5527 OBJECTIVE alt 12513/18 vs main 12384/17 (h0=994 nf=291 nf_main=288) -> SWITC] kept; attacker blocks main at end: 18
+    656030.136s split 6191 +13 [SIM-SoP: fork 6190 OBJECTIVE alt 8668/13 vs main 8580/10 (h0=994 nf=197 nf_main=195) -> SWITCH] kept; attacker blocks main at end: 13
+    766508.429s split 7134 +12 [SIM-SoP: fork 7133 OBJECTIVE alt 5985/12 vs main 5670/10 (h0=994 nf=133 nf_main=126) -> SWITCH] kept; attacker blocks main at end: 12
+  relay-001              reorgs=  8 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    335823.055s split 3506 +19 [SIM-SoP: fork 3505 OBJECTIVE alt 9675/19 vs main 9288/10 (h0=994 nf=225 nf_main=216) -> SWITCH] kept; attacker blocks main at end: 19
+    546742.019s split 5281 +10 [SIM-SoP: fork 5280 OBJECTIVE alt 7280/10 vs main 6813/10 (h0=994 nf=164 nf_main=153) -> SWITCH] kept; attacker blocks main at end: 10
+    578771.222s split 5528 +18 [SIM-SoP: fork 5527 OBJECTIVE alt 12513/18 vs main 12384/17 (h0=994 nf=291 nf_main=288) -> SWITC] kept; attacker blocks main at end: 18
+    656029.886s split 6191 +13 [SIM-SoP: fork 6190 OBJECTIVE alt 8668/13 vs main 8580/10 (h0=994 nf=197 nf_main=195) -> SWITCH] kept; attacker blocks main at end: 13
+    766508.179s split 7134 +12 [SIM-SoP: fork 7133 OBJECTIVE alt 5985/12 vs main 5670/10 (h0=994 nf=133 nf_main=126) -> SWITCH] kept; attacker blocks main at end: 12
+  relay-002              reorgs=  8 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+    335823.330s split 3506 +19 [SIM-SoP: fork 3505 OBJECTIVE alt 9675/19 vs main 9288/10 (h0=994 nf=225 nf_main=216) -> SWITCH] kept; attacker blocks main at end: 19
+    546742.294s split 5281 +10 [SIM-SoP: fork 5280 OBJECTIVE alt 7280/10 vs main 6813/10 (h0=994 nf=164 nf_main=153) -> SWITCH] kept; attacker blocks main at end: 10
+    578771.497s split 5528 +18 [SIM-SoP: fork 5527 OBJECTIVE alt 12513/18 vs main 12384/17 (h0=994 nf=291 nf_main=288) -> SWITC] kept; attacker blocks main at end: 18
+    656030.161s split 6191 +13 [SIM-SoP: fork 6190 OBJECTIVE alt 8668/13 vs main 8580/10 (h0=994 nf=197 nf_main=195) -> SWITCH] kept; attacker blocks main at end: 13
+    766508.454s split 7134 +12 [SIM-SoP: fork 7133 OBJECTIVE alt 5985/12 vs main 5670/10 (h0=994 nf=133 nf_main=126) -> SWITCH] kept; attacker blocks main at end: 12

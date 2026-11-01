@@ -1,3 +1,5 @@
+Status (2026-11-01): current (implemented; the ladder was stopped, see docs/20261026_sop_learned_attacker.md).
+
 # A learned attacker for Share-or-Perish (design, 2026-10-25)
 
 ## Intent

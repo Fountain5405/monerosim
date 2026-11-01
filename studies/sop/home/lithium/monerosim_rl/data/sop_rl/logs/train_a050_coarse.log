@@ -1,0 +1,8 @@
+  rho=0.55000 share=0.56460 states=98,045 reveals=80378 reorg=3.76/20 stored=0.958 [1753s]
+  rho=0.57500 share=0.57571 states=136,064 reveals=95995 reorg=3.61/23 stored=0.970 [1636s]
+  rho=0.58750 share=0.57464 states=160,641 reveals=92643 reorg=3.76/21 stored=0.975 [1599s]
+  rho=0.58125 share=0.59154 states=161,003 reveals=98074 reorg=3.70/23 stored=0.973 [1593s]
+  rho=0.58437 share=0.57831 states=179,626 reveals=92976 reorg=3.79/23 stored=0.978 [1644s]
+  rho=0.58281 share=0.58940 states=179,657 reveals=95884 reorg=3.77/23 stored=0.977 [1604s]
+  rho=0.58359 share=0.57656 states=179,375 reveals=92579 reorg=3.79/22 stored=0.978 [1636s]
+alpha=0.5 env=race: share 0.5915 (rho 0.5832, converged=True); 161,003 states, 594 entries differ from sim_stubborn -> data/sop_rl/policy_noown_a050_coarse.json.gz  [11467s]

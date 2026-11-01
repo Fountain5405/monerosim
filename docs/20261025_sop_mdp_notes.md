@@ -1,3 +1,5 @@
+Status (2026-11-01): current (later MDP bounds and the solver cross-check are in docs/20261026_sop_attacker_search.md, items 6 and 11).
+
 # SoP as an MDP: what the exact model can and cannot reach (2026-10-25)
 
 Owner's direction (docs/20261021_research_direction_idea_SoP.txt): put SoP

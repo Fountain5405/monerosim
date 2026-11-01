@@ -1,3 +1,5 @@
+Status (2026-11-01): current (implemented; the ladder was stopped, see docs/20261026_sop_learned_attacker.md).
+
 # SoP learned attacker (RL) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

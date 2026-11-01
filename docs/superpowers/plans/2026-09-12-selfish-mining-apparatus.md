@@ -1,3 +1,5 @@
+Status (2026-11-01): current (implemented).
+
 # Selfish-Mining Apparatus — Implementation Plan (Phase 1)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

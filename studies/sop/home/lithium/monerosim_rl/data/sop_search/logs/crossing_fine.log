@@ -1,0 +1,55 @@
+6 combos x 6 alphas x 3 seeds at 2000 d (K 3, w 16): 108 runs to do, 0 already in data/sop_search/crossing_fine.jsonl
+  10/108 done [58s]
+  20/108 done [117s]
+  30/108 done [176s]
+  40/108 done [235s]
+  50/108 done [294s]
+  60/108 done [301s]
+  70/108 done [359s]
+  80/108 done [419s]
+  90/108 done [477s]
+  100/108 done [537s]
+  108/108 done [546s]
+alpha 0.46 (honest 0.4550):
+  0.4119  G=5 L=1 M=1 R=1 Z=1          seeds 3  reveals 39348/run  att_orphan 0.327  net_orphan 0.257  reorg 3.96/16
+  0.4111  G=5 L=1 M=1 R=2 Z=1          seeds 3  reveals 38692/run  att_orphan 0.330  net_orphan 0.259  reorg 4.05/16
+  0.4073  G=6 L=1 M=1 R=1 Z=1          seeds 3  reveals 40927/run  att_orphan 0.349  net_orphan 0.273  reorg 4.02/18
+  0.4064  G=6 L=1 M=1 R=2 Z=1          seeds 3  reveals 40251/run  att_orphan 0.352  net_orphan 0.275  reorg 4.10/18
+  0.4017  G=7 L=1 M=1 R=1 Z=1          seeds 3  reveals 41827/run  att_orphan 0.370  net_orphan 0.286  reorg 4.07/20
+alpha 0.46 (honest 0.4600):
+  0.4307  G=5 L=1 M=1 R=1 Z=1          seeds 3  reveals 44241/run  att_orphan 0.312  net_orphan 0.266  reorg 3.97/20
+  0.4300  G=5 L=1 M=1 R=2 Z=1          seeds 3  reveals 43541/run  att_orphan 0.315  net_orphan 0.268  reorg 4.06/20
+  0.4278  G=6 L=1 M=1 R=1 Z=1          seeds 3  reveals 46077/run  att_orphan 0.331  net_orphan 0.281  reorg 4.03/20
+  0.4270  G=6 L=1 M=1 R=2 Z=1          seeds 3  reveals 45334/run  att_orphan 0.335  net_orphan 0.283  reorg 4.11/20
+  0.4235  G=7 L=1 M=1 R=1 Z=1          seeds 3  reveals 47090/run  att_orphan 0.351  net_orphan 0.295  reorg 4.08/20
+alpha 0.47 (honest 0.4650):
+  0.4508  G=5 L=1 M=1 R=1 Z=1          seeds 3  reveals 49412/run  att_orphan 0.296  net_orphan 0.274  reorg 3.98/20
+  0.4502  G=5 L=1 M=1 R=2 Z=1          seeds 3  reveals 48668/run  att_orphan 0.299  net_orphan 0.277  reorg 4.07/20
+  0.4492  G=6 L=1 M=1 R=1 Z=1          seeds 3  reveals 51400/run  att_orphan 0.314  net_orphan 0.290  reorg 4.04/20
+  0.4486  G=6 L=1 M=1 R=2 Z=1          seeds 3  reveals 50628/run  att_orphan 0.317  net_orphan 0.292  reorg 4.12/20
+  0.4463  G=7 L=1 M=1 R=1 Z=1          seeds 3  reveals 52526/run  att_orphan 0.331  net_orphan 0.304  reorg 4.10/22
+alpha 0.47 (honest 0.4700):
+  0.4724  G=6 L=1 M=1 R=1 Z=1          seeds 3  reveals 57030/run  att_orphan 0.295  net_orphan 0.299  reorg 4.04/20
+  0.4724  G=5 L=1 M=1 R=1 Z=1          seeds 3  reveals 54889/run  att_orphan 0.279  net_orphan 0.283  reorg 3.99/20
+  0.4720  G=5 L=1 M=1 R=2 Z=1          seeds 3  reveals 54095/run  att_orphan 0.282  net_orphan 0.286  reorg 4.07/20
+  0.4720  G=6 L=1 M=1 R=2 Z=1          seeds 3  reveals 56195/run  att_orphan 0.298  net_orphan 0.301  reorg 4.12/20
+  0.4710  G=7 L=1 M=1 R=1 Z=1          seeds 3  reveals 58226/run  att_orphan 0.310  net_orphan 0.312  reorg 4.11/23
+alpha 0.47 (honest 0.4750):
+  0.4971  G=7 L=1 M=1 R=1 Z=1          seeds 3  reveals 64184/run  att_orphan 0.288  net_orphan 0.320  reorg 4.11/20
+  0.4969  G=7 L=1 M=1 R=2 Z=1          seeds 3  reveals 63279/run  att_orphan 0.291  net_orphan 0.322  reorg 4.19/20
+  0.4967  G=6 L=1 M=1 R=1 Z=1          seeds 3  reveals 62763/run  att_orphan 0.275  net_orphan 0.307  reorg 4.04/20
+  0.4964  G=6 L=1 M=1 R=2 Z=1          seeds 3  reveals 61883/run  att_orphan 0.278  net_orphan 0.309  reorg 4.13/20
+  0.4952  G=5 L=1 M=1 R=1 Z=1          seeds 3  reveals 60466/run  att_orphan 0.261  net_orphan 0.292  reorg 3.99/20
+alpha 0.48 (honest 0.4800):
+  0.5243  G=7 L=1 M=1 R=1 Z=1          seeds 3  reveals 70182/run  att_orphan 0.266  net_orphan 0.328  reorg 4.11/22
+  0.5242  G=7 L=1 M=1 R=2 Z=1          seeds 3  reveals 69223/run  att_orphan 0.269  net_orphan 0.330  reorg 4.19/22
+  0.5222  G=6 L=1 M=1 R=2 Z=1          seeds 3  reveals 67704/run  att_orphan 0.257  net_orphan 0.317  reorg 4.13/22
+  0.5222  G=6 L=1 M=1 R=1 Z=1          seeds 3  reveals 68631/run  att_orphan 0.255  net_orphan 0.315  reorg 4.05/22
+  0.5187  G=5 L=1 M=1 R=2 Z=1          seeds 3  reveals 65218/run  att_orphan 0.246  net_orphan 0.302  reorg 4.07/20
+crossings (share passes alpha; interpolated):
+  0.4693  G=5 L=1 M=1 R=1 Z=1
+  0.4693  G=6 L=1 M=1 R=1 Z=1
+  0.4694  G=5 L=1 M=1 R=2 Z=1
+  0.4695  G=6 L=1 M=1 R=2 Z=1
+  0.4698  G=7 L=1 M=1 R=1 Z=1
+  0.4699  G=7 L=1 M=1 R=2 Z=1

@@ -1,3 +1,5 @@
+Status (2026-11-01): superseded by docs/superpowers/specs/2026-10-21-sop-rev20261020-design.md (the rule as simulated now) and docs/20260930_sop_conformance.md.
+
 # Share-or-Perish (MRL #146) as a flag-gated monerod-sim patch — design and pre-registration
 
 > **REVIEW NOTICE (2026-09-25, `docs/20260925_e4_code_data_review.md`):**

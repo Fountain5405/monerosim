@@ -1,0 +1,17 @@
+2026-10-19 10:40:39 queue start (deep_hunt); waiting for the v3 smokes
+2026-10-19 11:17:39 v3 smokes: versions ['3']; oracle mismatching nodes 0; oracle lines 52
+2026-10-19 11:17:39 start scripts/selfish_matrix.py test_configs/matrix/deep_hunt_smoke.yaml --parallel 2
+2026-10-19 11:47:33 done deep_hunt_smoke rc=0 0.50 h
+2026-10-19 11:47:33 smoke 20261019_111740_deep_hunt_smoke__block_stock_a045_d2: reveals=2 depths={'10': 2} share=0.2871287128712871
+2026-10-19 11:47:33 smoke 20261019_111740_deep_hunt_smoke__share_sop2_a045_d2: reveals=1 depths={'10': 1} share=0.15306122448979592
+2026-10-19 11:47:33 start scripts/selfish_matrix.py test_configs/matrix/deep_hunt_sop_a045.yaml --parallel 1
+2026-10-19 11:48:18 start scripts/selfish_matrix.py test_configs/matrix/deep_hunt_sop_a040.yaml --parallel 1
+2026-10-19 17:43:19 done deep_hunt_sop_a045 rc=0 5.93 h
+2026-10-19 17:43:19 start scripts/selfish_matrix.py test_configs/matrix/deep_hunt_stock.yaml --parallel 1
+2026-10-20 03:42:07 done deep_hunt_stock rc=0 9.98 h
+2026-10-20 06:47:56 done deep_hunt_sop_a040 rc=0 18.99 h
+2026-10-20 06:47:56 checks on: ['20261019_111740_deep_hunt_smoke__block_stock_a045_d2', '20261019_111740_deep_hunt_smoke__share_sop2_a045_d2', '20261019_174320_deep_hunt_stock__block_stock_a033_d2', '20261019_210240_deep_hunt_stock__block_stock_a040_d2', '20261020_002119_deep_hunt_stock__block_stock_a045_d2', '20261019_114734_deep_hunt_sop_a045__share_sop2_a045_d2', '20261019_114819_deep_hunt_sop_a040__share_sop2_a040_d2']
+2026-10-20 06:48:03 check depths rc=0
+2026-10-20 06:48:10 check flipback rc=0
+2026-10-20 06:48:23 check oracle_sop rc=0
+2026-10-20 06:48:23 queue end

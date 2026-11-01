@@ -1,0 +1,14 @@
+2026-10-19 10:15:47 queue start (smokes v3)
+2026-10-19 10:15:47 start scripts/selfish_matrix.py test_configs/matrix/sop_rev2_smoke.yaml --cells share_sop2_a040_d2 --parallel 1
+2026-10-19 10:16:32 start scripts/selfish_matrix.py .claude/campaign8/after_queue/sop_v3_smoke_n40.yaml --cells share_sop2 --parallel 1
+2026-10-19 10:16:32 small done rc=0 0.01 h
+2026-10-19 10:17:21 v3b start; waiting for pid 1940111 (40-daemon smoke)
+2026-10-19 10:48:21 40-daemon smoke process gone
+2026-10-19 10:48:21 start scripts/selfish_matrix.py .claude/campaign8/after_queue/sop_v3_smoke.yaml --cells share_sop2_a040_d2 --parallel 1
+2026-10-19 11:17:17 small done rc=0
+2026-10-19 11:17:17 checks on: ['20261019_104822_sop_v3_smoke__share_sop2_a040_d2', '20261019_101633_sop_v3_smoke_n40__share_sop2_a033_d2']
+2026-10-19 11:17:17 check oracle rc=2
+2026-10-19 11:17:18 check probe rc=0
+2026-10-19 11:17:18 check late_new rc=0
+2026-10-19 11:17:18 check versions done
+2026-10-19 11:17:18 queue end

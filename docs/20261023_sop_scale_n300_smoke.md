@@ -1,3 +1,5 @@
+Status (2026-11-01): current.
+
 # SoP scale smoke (300 relays) and the stranded attacker (2026-10-23)
 
 Rung 1 of the scale check, `sop_scale_n300_hs_a045_d5_8h` (313 hosts, the v4

@@ -1,0 +1,14 @@
+== /scratch/monerosim_dev/monerosim/archived_runs/20261021_113709_sop_v3_hs_h10_72h__share_sop2_built_a040_d2
+monero-attacker-bridge: v4=0 pool_counted=0 r4=0 r3_flips=0
+monero-attacker-miner: v4=0 pool_counted=0 r4=0 r3_flips=0
+monero-honest-001: v4=0 pool_counted=0 r4=0 r3_flips=0
+monero-honest-002: v4=0 pool_counted=0 r4=0 r3_flips=0
+monero-monero-seed-001: v4=0 pool_counted=0 r4=0 r3_flips=0
+monero-monero-seed-002: v4=0 pool_counted=0 r4=0 r3_flips=0
+monero-monero-seed-003: v4=0 pool_counted=0 r4=0 r3_flips=0
+monero-monero-seed-004: v4=0 pool_counted=0 r4=0 r3_flips=0
+monero-monero-seed-005: v4=0 pool_counted=0 r4=0 r3_flips=0
+monero-monero-seed-006: v4=0 pool_counted=0 r4=0 r3_flips=0
+monero-relay-001: v4=0 pool_counted=0 r4=0 r3_flips=0
+monero-relay-002: v4=0 pool_counted=0 r4=0 r3_flips=0
+TOTAL: v4=0 pool_counted=0 r4=0 r3_flips=0

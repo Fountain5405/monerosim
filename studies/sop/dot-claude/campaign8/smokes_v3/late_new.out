@@ -1,0 +1,22 @@
+scanned 2 dirs in 0 s
+before_online                      0
+capped_logs                        0
+decisions                          77
+h0_logged_ok                       77
+mined_before_banner                0
+never_online                       0
+nodes_12d                          11
+online_flag_ok                     77
+online_lines                       52
+online_lines_extra                 0
+online_offline                     2
+online_raised                      24
+online_sync                        50
+runs_12d                           1
+runs_with_late_12d                 0
+late node kinds: {}
+12d first block after start: n=1 min 123 s, median 123 s, <30 s 0, <60 s 0, <260 s 1
+as run vs spec, differing (run, host, hf, db, online, as run, spec):
+h0 check failures (after-queue build):
+no banner (run, host, decisions, start s, first adds):
+in range (run, host, hf, online, nf, nf_main, base, proposed):

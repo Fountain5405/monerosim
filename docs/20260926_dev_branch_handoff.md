@@ -1,3 +1,5 @@
+Status (2026-11-01): superseded by studies/sop/HANDOFF.md (frozen log of the old dev branch; its SoP numbers are superseded by docs/20261007_sop_campaign7_results.md).
+
 # `dev` branch handoff — for a fresh agent on a fresh box (2026-09-26)
 
 **Read this first.** `dev` is the integration branch for two feature lines

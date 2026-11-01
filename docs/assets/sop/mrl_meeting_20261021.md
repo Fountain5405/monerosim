@@ -1,3 +1,5 @@
+Status (2026-11-01): current (meeting record).
+
 # Share-or-Perish in monerod: progress, 21 Oct 2026
 
 Short version: in our simulations SoP does what it says at α = 1/3. Above

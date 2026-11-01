@@ -1,3 +1,5 @@
+Status (2026-11-01): current (implemented).
+
 # Selfish-Mining Phase 2 — Design (γ-lifting + stubborn variants)
 
 **Status:** design for review (2026-09-12)

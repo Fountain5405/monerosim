@@ -1,0 +1,298 @@
+### 20260930_181907_sop2_h10_honest__connected_sop2  (attacker blocks found: 65)
+### 20260930_181907_sop2_h10_honest__connected_stock  (attacker blocks found: 70)
+### 20260930_181907_sop2_h10_honest__upgraded_sop2  (attacker blocks found: 77)
+### 20260930_181907_sop2_h10_honest_rep__connected_sop2  (attacker blocks found: 54)
+### 20260930_181907_sop2_h10_honest_rep__connected_stock  (attacker blocks found: 93)
+  honest-002             reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_181907_sop2_h10_honest_rep__upgraded_sop2  (attacker blocks found: 60)
+  attacker-bridge        reorgs=  1 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs=  1 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs=  1 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs=  2 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs=  1 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs=  1 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs=  1 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs=  1 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs=  1 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs=  1 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_181907_pop_sop2_h10_fixed__es_r2_sop2  (attacker blocks found: 72)
+  attacker-bridge        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_181907_pop_sop2_h10_fixed__es_sop2  (attacker blocks found: 67)
+### 20260930_181907_pop_sop2_h10_fixed_rep__es_r2_sop2  (attacker blocks found: 68)
+### 20260930_181907_pop_sop2_h10_fixed_rep__es_sop2  (attacker blocks found: 71)
+### 20260930_181907_stubborn_h10_rejudge__share_sop2_rejudge_a040_d2  (attacker blocks found: 86)
+  attacker-bridge        reorgs=  6 onto-attacker= 3 undone<1s= 1 honest-flip-pairs= 0 failed-push=3
+  honest-001             reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs=  3 onto-attacker= 2 undone<1s= 1 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs=  3 onto-attacker= 2 undone<1s= 1 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_181907_stubborn_h10_rejudge__share_sop2_rejudge_a045_d2  (attacker blocks found: 81)
+  attacker-bridge        reorgs= 29 onto-attacker= 8 undone<1s= 4 honest-flip-pairs= 0 failed-push=35
+  honest-001             reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs=  3 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=1
+  monero-seed-001        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_181907_stubborn_h10_rejudge_rep__share_sop2_rejudge_a040_d2  (attacker blocks found: 87)
+  attacker-bridge        reorgs=  8 onto-attacker= 2 undone<1s= 1 honest-flip-pairs= 0 failed-push=8
+  honest-001             reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_181907_stubborn_h10_rejudge_rep__share_sop2_rejudge_a045_d2  (attacker blocks found: 90)
+  attacker-bridge        reorgs=  6 onto-attacker= 2 undone<1s= 1 honest-flip-pairs= 0 failed-push=10
+### 20260930_212205_stubborn_h10__block_sop2_a040_d2  (attacker blocks found: 63)
+  honest-001             reorgs=  2 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs=  2 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs=  2 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs=  2 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_212405_stubborn_h10__block_sop2_a045_d2  (attacker blocks found: 94)
+  attacker-bridge        reorgs=  2 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs=  1 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs=  2 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs=  2 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs=  3 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs=  2 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs=  2 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs=  2 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs=  2 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs=  2 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs=  2 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_212536_stubborn_h10__block_stock_a030_d2  (attacker blocks found: 59)
+  attacker-bridge        reorgs= 17 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs= 17 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs= 17 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs= 17 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs= 17 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs= 17 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs= 17 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs= 17 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs= 17 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs= 17 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs= 17 onto-attacker=17 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_231729_stubborn_h10__block_stock_a040_d1  (attacker blocks found: 67)
+  attacker-bridge        reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_231127_stubborn_h10__block_stock_a040_d2  (attacker blocks found: 60)
+  attacker-bridge        reorgs= 15 onto-attacker=15 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs= 15 onto-attacker=15 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs= 15 onto-attacker=15 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs= 15 onto-attacker=15 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs= 15 onto-attacker=15 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs= 15 onto-attacker=15 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs= 15 onto-attacker=15 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs= 15 onto-attacker=15 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs= 15 onto-attacker=15 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs= 15 onto-attacker=15 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs= 15 onto-attacker=15 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_231729_stubborn_h10__block_stock_a040_d3  (attacker blocks found: 71)
+  attacker-bridge        reorgs= 20 onto-attacker=20 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs= 20 onto-attacker=20 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs= 20 onto-attacker=20 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs= 20 onto-attacker=20 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs= 20 onto-attacker=20 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs= 20 onto-attacker=20 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs= 20 onto-attacker=20 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs= 20 onto-attacker=20 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs= 20 onto-attacker=20 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs= 20 onto-attacker=20 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs= 20 onto-attacker=20 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_231959_stubborn_h10__block_stock_a045_d2  (attacker blocks found: 73)
+  attacker-bridge        reorgs= 24 onto-attacker=24 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs= 24 onto-attacker=24 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs= 24 onto-attacker=24 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs= 24 onto-attacker=24 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs= 24 onto-attacker=24 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs= 24 onto-attacker=24 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs= 24 onto-attacker=24 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs= 24 onto-attacker=24 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs= 24 onto-attacker=24 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs= 24 onto-attacker=24 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs= 24 onto-attacker=24 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_190000_stubborn_h10__share_sop2_a030_d2  (attacker blocks found: 61)
+  honest-002             reorgs=  1 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=1
+### 20260930_190000_stubborn_h10__share_sop2_a040_d1  (attacker blocks found: 61)
+  attacker-bridge        reorgs=  6 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs=  6 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs=  6 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs=  6 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs=  6 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs=  6 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs=  6 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs=  6 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs=  6 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs=  6 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs=  6 onto-attacker= 5 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_190000_stubborn_h10__share_sop2_a040_d2  (attacker blocks found: 69)
+  attacker-bridge        reorgs=  3 onto-attacker= 3 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs=  3 onto-attacker= 3 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs=  3 onto-attacker= 3 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs=  3 onto-attacker= 3 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs=  3 onto-attacker= 3 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs=  3 onto-attacker= 3 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs=  3 onto-attacker= 3 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs=  3 onto-attacker= 3 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs=  3 onto-attacker= 3 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs=  3 onto-attacker= 3 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs=  3 onto-attacker= 3 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_190000_stubborn_h10__share_sop2_a040_d3  (attacker blocks found: 78)
+  attacker-bridge        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_212005_stubborn_h10__share_sop2_a045_d2  (attacker blocks found: 87)
+  attacker-bridge        reorgs=  8 onto-attacker= 8 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs=  8 onto-attacker= 8 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs=  8 onto-attacker= 8 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs=  8 onto-attacker= 8 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs=  8 onto-attacker= 8 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs=  8 onto-attacker= 8 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs=  8 onto-attacker= 8 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs=  8 onto-attacker= 8 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs=  8 onto-attacker= 8 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs=  8 onto-attacker= 8 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs=  8 onto-attacker= 8 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_211805_stubborn_h10_rep__block_sop2_a040_d2  (attacker blocks found: 74)
+### 20260930_211805_stubborn_h10_rep__block_sop2_a045_d2  (attacker blocks found: 88)
+### 20260930_212706_stubborn_h10_rep__block_stock_a030_d2  (attacker blocks found: 53)
+  attacker-bridge        reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs= 12 onto-attacker=12 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_231027_stubborn_h10_rep__block_stock_a040_d1  (attacker blocks found: 70)
+  attacker-bridge        reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs= 22 onto-attacker=22 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_230809_stubborn_h10_rep__block_stock_a040_d2  (attacker blocks found: 68)
+  attacker-bridge        reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs= 23 onto-attacker=23 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_231057_stubborn_h10_rep__block_stock_a040_d3  (attacker blocks found: 76)
+  attacker-bridge        reorgs= 26 onto-attacker=26 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs= 26 onto-attacker=26 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs= 26 onto-attacker=26 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs= 26 onto-attacker=26 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs= 26 onto-attacker=26 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs= 26 onto-attacker=26 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs= 26 onto-attacker=26 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs= 26 onto-attacker=26 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs= 26 onto-attacker=26 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs= 26 onto-attacker=26 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs= 26 onto-attacker=26 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_231227_stubborn_h10_rep__block_stock_a045_d2  (attacker blocks found: 86)
+  attacker-bridge        reorgs= 30 onto-attacker=30 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs= 30 onto-attacker=30 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs= 30 onto-attacker=30 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs= 30 onto-attacker=30 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs= 30 onto-attacker=30 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs= 30 onto-attacker=30 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs= 30 onto-attacker=30 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs= 30 onto-attacker=30 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs= 30 onto-attacker=30 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs= 30 onto-attacker=30 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs= 30 onto-attacker=30 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_190000_stubborn_h10_rep__share_sop2_a030_d2  (attacker blocks found: 62)
+### 20260930_190000_stubborn_h10_rep__share_sop2_a040_d1  (attacker blocks found: 62)
+  attacker-bridge        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs=  1 onto-attacker= 1 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_190000_stubborn_h10_rep__share_sop2_a040_d2  (attacker blocks found: 63)
+  attacker-bridge        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-002             reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs=  2 onto-attacker= 2 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+### 20260930_190000_stubborn_h10_rep__share_sop2_a040_d3  (attacker blocks found: 77)
+  honest-001             reorgs=  1 onto-attacker= 0 undone<1s= 0 honest-flip-pairs= 0 failed-push=1
+### 20260930_211304_stubborn_h10_rep__share_sop2_a045_d2  (attacker blocks found: 82)
+  attacker-bridge        reorgs=  6 onto-attacker= 6 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  honest-001             reorgs=  7 onto-attacker= 6 undone<1s= 0 honest-flip-pairs= 0 failed-push=1
+  honest-002             reorgs=  6 onto-attacker= 6 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-001        reorgs=  6 onto-attacker= 6 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-002        reorgs=  6 onto-attacker= 6 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-003        reorgs=  6 onto-attacker= 6 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-004        reorgs=  6 onto-attacker= 6 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-005        reorgs=  6 onto-attacker= 6 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  monero-seed-006        reorgs=  6 onto-attacker= 6 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-001              reorgs=  6 onto-attacker= 6 undone<1s= 0 honest-flip-pairs= 0 failed-push=0
+  relay-002              reorgs=  6 onto-attacker= 6 undone<1s= 0 honest-flip-pairs= 0 failed-push=0

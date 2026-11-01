@@ -1,3 +1,5 @@
+Status (2026-11-01): superseded by docs/20261026_sop_attacker_search.md (results after 2026-10-28 are items 7-11 there); its line 'neither beat the family' overstates the exact-MDP check, whose capped solves are lower bounds only (item 6 there).
+
 # Share-or-Perish selfish-mining study: status for MRL
 
 2026-10-28, 17:40 UTC (13:40 EDT; item 6 corrected after MRL review), Fountain5405. Full write-up with every cell and the attacker search: [docs/20261026_sop_attacker_search.md](20261026_sop_attacker_search.md).

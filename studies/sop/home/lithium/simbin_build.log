@@ -1,0 +1,12 @@
+applied monero-fakechain-hardforks
+applied monero-sim-mining
+applied monero-sim-selfish-relay
+applied monero-sim-peerlist-dump
+applied monero-sim-pop
+applied monero-sim-tail-emission
+[ 98%] Building CXX object src/daemon/CMakeFiles/daemon.dir/rpc_command_executor.cpp.o
+[ 98%] Linking CXX executable ../../bin/monerod
+[100%] Built target daemon
+flag sim-no-drop-score: present
+flag sim-sop-seen-at-notify: present
+SIMBIN_EXIT=0

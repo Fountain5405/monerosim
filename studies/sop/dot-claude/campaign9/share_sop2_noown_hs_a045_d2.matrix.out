@@ -1,0 +1,11 @@
+[matrix] share_sop2_noown_hs_a045_d2: share 0.112
+commit: `89047312`
+# Matrix sop_v4_noown_72h
+
+- base: `/scratch/monerosim_dev/monerosim/test_configs/selfish_micro_sop.yaml`  seed: 27791  stop_time: 72h
+- cells: 1  failures: 0
+
+| arm | countermeasure | shares | alpha | depth | alpha | share | share_h | ctrl | gamma | att_orph | net_orph | msb_z | blocks | verdicts | health | run |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| share | sop2_noown | hs | a045 | d2 | 0.450 | 0.112 | 0.112 | - | 0.005 | 0.857 | 0.423 | 35.636 | 1926 | FAIL (3) | ok | 20261022_103029_sop_v4_noown_72h__share_sop2_noown_hs_a045_d2 |
+

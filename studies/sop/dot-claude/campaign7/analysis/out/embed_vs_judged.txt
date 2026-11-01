@@ -1,0 +1,10 @@
+== 20261004_155751_stubborn_h10_long_depth__share_sop2_a033_d5  (blocks judged by honest-001: 693)
+  attacker-miner  blocks=3446 judged=141 miner==judged 141 miner>0 but judged 0: 0 other mismatch: 0 | shares found 53113 embedded 37963 (71.5 %)
+  honest-001      blocks=3483 judged=267 miner==judged 265 miner>0 but judged 0: 0 other mismatch: 2 | shares found 53842 embedded 50112 (93.1 %)
+    examples (height, miner N, judged n_sh): [(6727, 12, 11), (7016, 38, 37)]
+  honest-002      blocks=3514 judged=285 miner==judged 280 miner>0 but judged 0: 1 other mismatch: 4 | shares found 53360 embedded 52635 (98.6 %)
+    examples (height, miner N, judged n_sh): [(6907, 1, 0), (6991, 6, 5), (7006, 11, 10), (7111, 5, 4), (7129, 6, 5)]
+== 20261004_155751_stubborn_h10_long__share_sop2_a033_d2  (blocks judged by honest-001: 187)
+  attacker-miner  blocks=3366 judged=115 miner==judged 115 miner>0 but judged 0: 0 other mismatch: 0 | shares found 51019 embedded 27687 (54.3 %)
+  honest-001      blocks=3493 judged=34 miner==judged 34 miner>0 but judged 0: 0 other mismatch: 0 | shares found 51885 embedded 50026 (96.4 %)
+  honest-002      blocks=3454 judged=38 miner==judged 38 miner>0 but judged 0: 0 other mismatch: 0 | shares found 51779 embedded 49434 (95.5 %)

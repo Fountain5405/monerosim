@@ -1,0 +1,22 @@
+[matrix] share_sop2_hs_a045_d5: share 0.520
+commit: `ec79104e`
+# Matrix sop_v3_hs_tail_h10_72h
+
+- base: `/scratch/monerosim_dev/monerosim/test_configs/selfish_micro_sop_tail.yaml`  seed: 25781  stop_time: 72h
+- cells: 1  failures: 0
+
+| arm | countermeasure | shares | alpha | depth | alpha | share | share_h | ctrl | gamma | att_orph | net_orph | msb_z | blocks | verdicts | health | run |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| share | sop2 | hs | a045 | d5 | 0.450 | 0.520 | 0.520 | - | 0.109 | 0.280 | 0.380 | 32.128 | 1924 | FAIL (3) | ok | 20261020_230422_sop_v3_hs_tail_h10_72h__share_sop2_hs_a045_d5 |
+
+[matrix] share_sop2_built_a045_d5: share 0.468
+commit: `cfa185ff`
+# Matrix sop_v3_hs_tail_h10_72h
+
+- base: `/scratch/monerosim_dev/monerosim/test_configs/selfish_micro_sop_tail.yaml`  seed: 25781  stop_time: 72h
+- cells: 1  failures: 0
+
+| arm | countermeasure | shares | alpha | depth | alpha | share | share_h | ctrl | gamma | att_orph | net_orph | msb_z | blocks | verdicts | health | run |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| share | sop2 | built | a045 | d5 | 0.450 | 0.468 | 0.468 | - | 0.075 | 0.347 | 0.382 | 36.354 | 1945 | FAIL (3) | ok | 20261021_055413_sop_v3_hs_tail_h10_72h__share_sop2_built_a045_d5 |
+

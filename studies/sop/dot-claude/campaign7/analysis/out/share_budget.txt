@@ -1,0 +1,10 @@
+== 20261004_155751_stubborn_h10_long_depth__share_sop2_a033_d5
+  honest-001      shares_found= 53842 blocks_found= 3483 shares/block=15.46 embedded mean=15.43 median=11.0 own= 7.81 remote= 7.62 embed_h!=h=222 pooled-minus-embedded mean= 0.58
+  honest-002      shares_found= 53360 blocks_found= 3514 shares/block=15.18 embedded mean=15.92 median=11.0 own= 8.00 remote= 7.92 embed_h!=h=225 pooled-minus-embedded mean= 0.53
+  attacker-miner  shares_found= 53113 blocks_found= 3446 shares/block=15.41 embedded mean=12.01 median= 8.0 own=12.01 remote= 0.00 embed_h!=h=302 pooled-minus-embedded mean= 0.05
+  honest network: shares/block found = 15.32 (Model B: 15)
+== 20261004_155751_stubborn_h10_long__share_sop2_a033_d2
+  honest-001      shares_found= 51885 blocks_found= 3493 shares/block=14.85 embedded mean=15.42 median=11.0 own= 7.78 remote= 7.64 embed_h!=h=235 pooled-minus-embedded mean= 0.45
+  honest-002      shares_found= 51779 blocks_found= 3454 shares/block=14.99 embedded mean=15.37 median=11.0 own= 7.74 remote= 7.63 embed_h!=h=206 pooled-minus-embedded mean= 0.49
+  attacker-miner  shares_found= 51019 blocks_found= 3366 shares/block=15.16 embedded mean= 9.19 median= 7.0 own= 9.19 remote= 0.00 embed_h!=h=345 pooled-minus-embedded mean= 0.04
+  honest network: shares/block found = 14.92 (Model B: 15)

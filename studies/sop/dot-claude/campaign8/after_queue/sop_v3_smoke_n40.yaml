@@ -1,0 +1,75 @@
+# Smoke for the after-queue build (log v3, h0 from the first sync): sop_rev2_n40
+# for 3 h, without the removed sim-sop-nf-rule option. The 24 relays start every
+# 10 s from 30 s to 260 s, so most come online above the snapshot tip. Check with
+# late_start_scan.py (h0 check) and sop_oracle.py check. Run after apply.py and
+# ./setup.sh --sim-binary:
+#   venv/bin/python scripts/selfish_matrix.py .claude/campaign8/after_queue/sop_v3_smoke_n40.yaml --cells share_sop2 --parallel 1
+name: sop_v3_smoke_n40
+seed: 12345
+base: test_configs/selfish_n40_sop.yaml
+parallel: 1
+stop_time: 3h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_objects: '48'
+          weigh: sop
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+    block:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          window_objects: '48'
+          weigh: sop
+  countermeasure:
+    sop2:
+      honest:
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+      relays:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+      bridges:
+        daemon: monerod-sim
+        daemon_options:
+          sim-share-or-perish: true
+    stock:
+      attacker:
+        attributes:
+          weigh: difficulty
+          window_objects: '0'
+  alpha:
+    a033:
+      attacker:
+        hashrate: 3.3
+      honest:
+        hashrate:
+        - 0.8375
+        - 0.8375
+        - 0.8375
+        - 0.8375
+        - 0.8375
+        - 0.8375
+        - 0.8375
+        - 0.8375
+  depth:
+    d2:
+      attacker:
+        attributes:
+          give_up_depth: '2'
+exclude:
+- arm: share
+  countermeasure: stock
+- arm: block
+  countermeasure: sop2
+ksm: true

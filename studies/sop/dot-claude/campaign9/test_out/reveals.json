@@ -1,0 +1,417 @@
+{
+ "20261021_113709_sop_v3_hs_h10_72h__share_sop2_built_a040_d2": {
+  "found_att": 1138,
+  "found_hon": 1849,
+  "found": 2987,
+  "reveals": [
+   {
+    "t": "2000-01-01 00:56:17.243",
+    "split": 1003,
+    "removed": 3,
+    "honest_orphaned": 3,
+    "att_applied": 4,
+    "applied": 4
+   },
+   {
+    "t": "2000-01-01 01:22:20.912",
+    "split": 1010,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-01 03:03:25.679",
+    "split": 1039,
+    "removed": 3,
+    "honest_orphaned": 3,
+    "att_applied": 8,
+    "applied": 8
+   },
+   {
+    "t": "2000-01-01 05:32:02.288",
+    "split": 1080,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 7,
+    "applied": 7
+   },
+   {
+    "t": "2000-01-01 07:47:29.886",
+    "split": 1145,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-01 12:55:42.360",
+    "split": 1251,
+    "removed": 3,
+    "honest_orphaned": 3,
+    "att_applied": 10,
+    "applied": 10
+   },
+   {
+    "t": "2000-01-01 17:09:35.749",
+    "split": 1344,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-01 18:10:53.270",
+    "split": 1373,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 7,
+    "applied": 7
+   },
+   {
+    "t": "2000-01-01 18:31:19.236",
+    "split": 1380,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-01 18:58:01.228",
+    "split": 1390,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 4,
+    "applied": 4
+   },
+   {
+    "t": "2000-01-01 21:43:29.298",
+    "split": 1467,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-01 22:02:25.418",
+    "split": 1475,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 4,
+    "applied": 4
+   },
+   {
+    "t": "2000-01-01 22:33:04.220",
+    "split": 1492,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-01 23:39:55.692",
+    "split": 1520,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 7,
+    "applied": 7
+   },
+   {
+    "t": "2000-01-01 23:55:27.454",
+    "split": 1527,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-02 00:11:40.004",
+    "split": 1536,
+    "removed": 3,
+    "honest_orphaned": 3,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-02 02:51:54.108",
+    "split": 1610,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 12,
+    "applied": 12
+   },
+   {
+    "t": "2000-01-02 06:49:05.661",
+    "split": 1731,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-02 07:46:41.057",
+    "split": 1751,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-02 08:03:25.715",
+    "split": 1761,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 4,
+    "applied": 4
+   },
+   {
+    "t": "2000-01-02 10:20:56.547",
+    "split": 1827,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-02 13:06:14.593",
+    "split": 1906,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 6,
+    "applied": 6
+   },
+   {
+    "t": "2000-01-02 13:19:10.102",
+    "split": 1913,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 7,
+    "applied": 7
+   },
+   {
+    "t": "2000-01-02 13:33:55.665",
+    "split": 1922,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 8,
+    "applied": 8
+   },
+   {
+    "t": "2000-01-02 16:16:28.007",
+    "split": 1999,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 4,
+    "applied": 4
+   },
+   {
+    "t": "2000-01-02 16:35:28.437",
+    "split": 2004,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 6,
+    "applied": 6
+   },
+   {
+    "t": "2000-01-02 17:26:03.069",
+    "split": 2032,
+    "removed": 6,
+    "honest_orphaned": 6,
+    "att_applied": 7,
+    "applied": 7
+   },
+   {
+    "t": "2000-01-02 19:13:27.930",
+    "split": 2089,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 7,
+    "applied": 7
+   },
+   {
+    "t": "2000-01-02 21:32:47.703",
+    "split": 2170,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-02 22:11:51.434",
+    "split": 2193,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 4,
+    "applied": 4
+   },
+   {
+    "t": "2000-01-03 01:07:06.477",
+    "split": 2268,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 2,
+    "applied": 2
+   },
+   {
+    "t": "2000-01-03 01:17:22.493",
+    "split": 2270,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-03 03:18:03.532",
+    "split": 2337,
+    "removed": 6,
+    "honest_orphaned": 6,
+    "att_applied": 7,
+    "applied": 7
+   },
+   {
+    "t": "2000-01-03 03:33:03.980",
+    "split": 2347,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 2,
+    "applied": 2
+   },
+   {
+    "t": "2000-01-03 04:45:40.835",
+    "split": 2376,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 6,
+    "applied": 6
+   },
+   {
+    "t": "2000-01-03 06:31:11.691",
+    "split": 2433,
+    "removed": 3,
+    "honest_orphaned": 3,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-03 06:51:41.070",
+    "split": 2443,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 8,
+    "applied": 8
+   },
+   {
+    "t": "2000-01-03 09:16:53.311",
+    "split": 2526,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-03 09:36:51.864",
+    "split": 2531,
+    "removed": 5,
+    "honest_orphaned": 5,
+    "att_applied": 9,
+    "applied": 9
+   },
+   {
+    "t": "2000-01-03 10:38:44.986",
+    "split": 2559,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-03 11:13:19.236",
+    "split": 2567,
+    "removed": 5,
+    "honest_orphaned": 5,
+    "att_applied": 8,
+    "applied": 8
+   },
+   {
+    "t": "2000-01-03 12:37:15.608",
+    "split": 2623,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 6,
+    "applied": 6
+   },
+   {
+    "t": "2000-01-03 14:41:08.855",
+    "split": 2696,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 4,
+    "applied": 4
+   },
+   {
+    "t": "2000-01-03 18:50:23.760",
+    "split": 2802,
+    "removed": 6,
+    "honest_orphaned": 6,
+    "att_applied": 10,
+    "applied": 10
+   },
+   {
+    "t": "2000-01-03 19:38:21.139",
+    "split": 2828,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 2,
+    "applied": 2
+   },
+   {
+    "t": "2000-01-03 20:47:53.395",
+    "split": 2866,
+    "removed": 6,
+    "honest_orphaned": 6,
+    "att_applied": 7,
+    "applied": 7
+   },
+   {
+    "t": "2000-01-03 22:45:08.109",
+    "split": 2926,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-03 23:12:15.037",
+    "split": 2936,
+    "removed": 3,
+    "honest_orphaned": 3,
+    "att_applied": 7,
+    "applied": 7
+   }
+  ],
+  "other_reorgs": [
+   {
+    "t": "2000-01-01 21:20:56.100",
+    "split": 1460,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 0,
+    "applied": 1
+   }
+  ],
+  "unknown_old_ids": 0,
+  "depth_hist": {
+   "1": 4,
+   "2": 20,
+   "3": 6,
+   "4": 12,
+   "5": 2,
+   "6": 4
+  },
+  "share": 0.13465447154471544,
+  "canonical_blocks": 1968,
+  "attacker_orphan_rate": 0.7671353251318102,
+  "network_orphan_rate": 0.34114496149983264,
+  "attacker_found": 1138
+ }
+}

@@ -1,0 +1,29 @@
+scanned 2 dirs in 1 s
+before_online                      0
+capped_logs                        0
+decisions                          878
+h0_logged_ok                       878
+mined_before_banner                0
+never_online                       0
+no_sync_banner                     1
+nodes_12d                          11
+nodes_40d                          40
+offline_nodes                      1
+online_flag_ok                     878
+online_lines                       52
+online_lines_extra                 0
+online_offline                     2
+online_raised                      0
+online_sync                        50
+runs_12d                           1
+runs_40d                           1
+runs_with_late_12d                 0
+runs_with_late_40d                 0
+late node kinds: {}
+12d first block after start: n=1 min 134 s, median 134 s, <30 s 0, <60 s 0, <260 s 1
+40d first block after start: n=1 min 297 s, median 297 s, <30 s 0, <60 s 0, <260 s 0
+as run vs spec, differing (run, host, hf, db, online, as run, spec):
+h0 check failures (after-queue build):
+no banner (run, host, decisions, start s, first adds):
+   20261020_091758_sop_v3_n40_depth_rep__share_sop2_a033_d5 monero-attacker-miner 1 0.0 [995, 996]
+in range (run, host, hf, online, nf, nf_main, base, proposed):

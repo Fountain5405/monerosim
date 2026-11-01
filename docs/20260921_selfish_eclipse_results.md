@@ -1,3 +1,5 @@
+Status (2026-11-01): current (experiment 3 v1 record; later readings in docs/20260922_selfish_mining_manuscript.md).
+
 # Selfish-mining experiment 3, v1: eclipse composition (2026-09-21)
 
 First run of the eclipse×selfish composition (`gamma_eclipse.yaml`: attacker

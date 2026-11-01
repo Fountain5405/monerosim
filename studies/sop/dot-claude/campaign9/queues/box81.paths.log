@@ -1,0 +1,21 @@
+[honest_sop_d10_a047_l6_s1] run: 20261030_224623_sop_v4_dsweep_slow_72h__honest_sop_d10_a047_l6_s1
+[honest_sop_d10_a047_l6_s1] Progress: 6% — simulated: 04:15:33.940/72:00:00, realtime: 00:25:00
+[honest_sop_d10_a047_l6_s1] monerod: 19  avail GiB: 2
+[honest_sop_d10_a047_l6_s1]   -> attacker-bridge    n= 42 median   0.12 s (min  0.12 max   0.12) from {'honest-001': 42}
+[honest_sop_d10_a047_l6_s1]   -> honest-002         n= 38 median   6.12 s (min  6.12 max   6.12) from {'relay-chain-3': 38}
+[honest_sop_d10_a047_l6_s1]   -> attacker-bridge    n= 30 median   6.00 s (min  6.00 max   6.00) from {'relay-chain-1': 30}
+[honest_sop_d10_a047_l6_s1]   -> honest-001         n= 30 median   6.12 s (min  6.12 max   6.12) from {'relay-chain-1': 30}
+[honest_sop_d20_a047_l12_s1] run: 20261031_051954_sop_v4_dsweep_slow_72h__honest_sop_d20_a047_l12_s1
+[honest_sop_d20_a047_l12_s1] Progress: 6% — simulated: 04:07:53.194/72:00:00, realtime: 00:25:00
+[honest_sop_d20_a047_l12_s1] monerod: 19  avail GiB: 2
+[honest_sop_d20_a047_l12_s1]   -> attacker-bridge    n= 34 median   0.12 s (min  0.12 max   0.12) from {'honest-001': 34}
+[honest_sop_d20_a047_l12_s1]   -> honest-002         n= 25 median  12.12 s (min 12.12 max  12.12) from {'relay-chain-7': 25}
+[honest_sop_d20_a047_l12_s1]   -> attacker-bridge    n= 33 median  12.00 s (min 12.00 max  12.00) from {'relay-chain-1': 33}
+[honest_sop_d20_a047_l12_s1]   -> honest-001         n= 33 median  12.12 s (min 12.12 max  12.12) from {'relay-chain-1': 33}
+[honest_sop_a047_l6_s2] run: 20261031_115335_sop_v4_seed2_slow_72h__honest_sop_a047_l6_s2
+[honest_sop_a047_l6_s2] Progress: 6% — simulated: 04:13:35.126/72:00:00, realtime: 00:25:00
+[honest_sop_a047_l6_s2] monerod: 19  avail GiB: 2
+[honest_sop_a047_l6_s2]   -> attacker-bridge    n= 29 median   0.12 s (min  0.12 max   0.12) from {'honest-001': 29}
+[honest_sop_a047_l6_s2]   -> honest-002         n= 29 median   6.12 s (min  6.12 max   6.12) from {'relay-chain-3': 29}
+[honest_sop_a047_l6_s2]   -> attacker-bridge    n= 36 median   6.00 s (min  6.00 max   6.00) from {'relay-chain-1': 36}
+[honest_sop_a047_l6_s2]   -> honest-001         n= 36 median   6.12 s (min  6.12 max   6.12) from {'relay-chain-1': 36}

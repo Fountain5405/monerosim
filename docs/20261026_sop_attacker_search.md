@@ -1,3 +1,5 @@
+Status (2026-11-01): current: the study's findings document (items 1-11, through 2026-11-01).
+
 # The strongest hand-written attacker against Share-or-Perish (2026-10-26)
 
 The learned attacker could not recover the hand-written rule

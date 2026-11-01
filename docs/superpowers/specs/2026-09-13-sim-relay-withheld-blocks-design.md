@@ -1,3 +1,5 @@
+Status (2026-11-01): current (implemented).
+
 # Sim-Only Relay of Withheld Blocks (γ>0 selfish mining) — Design (2026-09-13)
 
 ## Goal

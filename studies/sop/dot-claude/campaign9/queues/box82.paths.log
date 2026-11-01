@@ -1,0 +1,25 @@
+[share_sop_d20_a045_f6_s1] run: 20261030_223221_sop_v4_dsweep_gamma_72h__share_sop_d20_a045_f6_s1
+[share_sop_d20_a045_f6_s1] Progress: 7% — simulated: 04:47:31.709/72:00:00, realtime: 00:25:00
+[share_sop_d20_a045_f6_s1] monerod: 16  avail GiB: 3
+[share_sop_d20_a045_f6_s1]   -> attacker-bridge    n= 23 median   6.00 s (min  6.00 max   6.00) from {'honest-002': 23}
+[share_sop_d20_a045_f6_s1]   -> attacker-bridge-2  n= 32 median   0.00 s (min  0.00 max   0.00) from {'honest-001': 32}
+[share_sop_d20_a045_f6_s1]   -> honest-002         n= 24 median   6.00 s (min  6.00 max   6.00) from {'relay-slow-1': 24}
+[share_sop_d20_a045_f6_s1]   -> attacker-bridge    n= 40 median   0.00 s (min  0.00 max   0.00) from {'honest-002': 40}
+[share_sop_d20_a045_f6_s1]   -> attacker-bridge-2  n= 34 median   6.00 s (min  6.00 max   6.00) from {'relay-slow-3': 34}
+[share_sop_d20_a045_f6_s1]   -> honest-001         n= 34 median   6.00 s (min  6.00 max   6.00) from {'relay-slow-3': 34}
+[honest_sop_d10_a047_l12_s1] run: 20261031_063213_sop_v4_dsweep_slow_72h__honest_sop_d10_a047_l12_s1
+[honest_sop_d10_a047_l12_s1] Progress: 6% — simulated: 04:05:48.832/72:00:00, realtime: 00:25:00
+[honest_sop_d10_a047_l12_s1] monerod: 19  avail GiB: 3
+[honest_sop_d10_a047_l12_s1]   -> attacker-bridge    n= 39 median   0.12 s (min  0.12 max   0.12) from {'honest-001': 39}
+[honest_sop_d10_a047_l12_s1]   -> honest-002         n= 36 median  12.12 s (min 12.12 max  12.12) from {'relay-chain-7': 36}
+[honest_sop_d10_a047_l12_s1]   -> attacker-bridge    n= 25 median  12.00 s (min 12.00 max  12.00) from {'relay-chain-1': 25}
+[honest_sop_d10_a047_l12_s1]   -> honest-001         n= 25 median  12.12 s (min 12.12 max  12.12) from {'relay-chain-1': 25}
+[share_sop_a045_f3_s2] run: 20261031_133606_sop_v4_seed2_gamma_72h__share_sop_a045_f3_s2
+[share_sop_a045_f3_s2] Progress: 7% — simulated: 04:40:57.483/72:00:00, realtime: 00:25:00
+[share_sop_a045_f3_s2] monerod: 16  avail GiB: 3
+[share_sop_a045_f3_s2]   -> attacker-bridge    n= 52 median   3.00 s (min  3.00 max   3.00) from {'honest-002': 52}
+[share_sop_a045_f3_s2]   -> attacker-bridge-2  n= 52 median   0.00 s (min  0.00 max   0.00) from {'honest-001': 52}
+[share_sop_a045_f3_s2]   -> honest-002         n= 52 median   3.00 s (min  3.00 max   3.00) from {'relay-slow-1': 52}
+[share_sop_a045_f3_s2]   -> attacker-bridge    n= 45 median   0.00 s (min  0.00 max   0.00) from {'honest-002': 45}
+[share_sop_a045_f3_s2]   -> attacker-bridge-2  n= 45 median   3.00 s (min  3.00 max   3.00) from {'relay-slow-1': 45}
+[share_sop_a045_f3_s2]   -> honest-001         n= 45 median   3.00 s (min  3.00 max   3.00) from {'relay-slow-1': 45}
