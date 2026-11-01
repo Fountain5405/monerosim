@@ -1511,6 +1511,7 @@ in the d = 5 cell):
 | rule | slow miner's blocks lost | lost with the winner found first | lost although found first | of those, gap > 20 s |
 |---|---|---|---|---|
 | stock | 30 / 597 (5.0 %) | 18 | 12 | 1 |
+| stock, seed 2 (03:40Z) | 34 / 591 (5.8 %) | 20 | 14 | 3 |
 | SoP d = 5 | 63 / 591 (10.7 %) | 35 | 28 | 24 |
 | SoP d = 5, seed 2 (18:30Z) | 89 / 607 (14.7 %) | 35 | 54 | 40 |
 | SoP d = 10 | 67 / 600 (11.2 %) | 34 | 33 | 27 |
@@ -1609,7 +1610,7 @@ never removes the cascade.
 
 | cost of SoP | d = 5 | d = 10 | d = 20 | stock rule |
 |---|---|---|---|---|
-| slow miner's blocks lost, 6 s path | 10.7 / 14.7 % (2 seeds) | 11.2 % | 10.8 % | 5.0 % |
+| slow miner's blocks lost, 6 s path | 10.7 / 14.7 % (2 seeds) | 11.2 % | 10.8 % | 5.0 / 5.8 % (2 seeds) |
 | slow miner's blocks lost, 12 s path | 25.9 % | 25.8 % | 18.8 % | 13.9 % |
 | network-advantage attacker share, 6 s path, alpha 0.45 | 0.699 / 0.721 (2 seeds) | 0.763 | 0.746 | 0.649 measured, 0.681 formula |
 | param attacker share, alpha 0.45 | 0.405 (2 seeds) | 0.393 | 0.398 | (above 0.45) |
