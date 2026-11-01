@@ -22,7 +22,24 @@ chain and the strategy sees the recruited hashrate as its own lead).
 Attributes (via --attributes KEY VALUE):
     strategy            "honest" | "eyal_sirer" | "trail_stubborn" |
                         "equal_fork_stubborn" | "lead_stubborn" |
-                        "window_stubborn" | "deep_hunt"  (default "honest")
+                        "window_stubborn" | "deep_hunt" | "learned" |
+                        "param_stubborn"  (default "honest")
+    policy_file         learned (2026-10-25): the gzip-JSON policy table
+                        scripts/sop_rl.py trained, a diff against the
+                        window_stubborn noown rule (relative to the repository
+                        root unless absolute); the strategy needs weigh "sop",
+                        window_rule "20261020", window_objects 32 and
+                        give_up_objects 5 as the training settings had. A
+                        missing or unreadable file fails the run at once.
+    alpha               learned: the cell's attacker share of the hashrate
+                        (optional); must equal the policy file's training alpha.
+    publish_lead, reveal_margin, reveal_depth, block_deficit, hold_shares
+                        param_stubborn (2026-10-26): the knobs L, M, R, B, Z of
+                        scripts/sop_policy.py::param_stubborn, the window_stubborn
+                        noown rule with knobs searched in the race model
+                        (docs/20261026_sop_attacker_search.md); G is
+                        give_up_objects (required >= 0). Defaults 0/1/1/0/0 are
+                        the plain rule.
     bridges             comma-separated bridge agent ids (required)
     bridge_agent        single-bridge alias for `bridges` (phase-1 configs)
     islands             comma-separated ISLAND bridge agent ids (optional;
@@ -39,6 +56,17 @@ Attributes (via --attributes KEY VALUE):
                         window_stubborn -- see agents/selfish_strategy.py.
     give_up_depth       window_stubborn, deep_hunt: give up once honest leads by
                         this many blocks (default 2).
+    give_up_objects     window_stubborn, deep_hunt (2026-10-23): -1 (default)
+                        keeps the block-depth give-up; >= 0 replaces it with
+                        the race model's (sop_race_model.py give_up_objects,
+                        tevador's attacker): give up once the honest branch
+                        holds MORE THAN this many work objects more than the
+                        private one since the fork -- blocks, their embedded
+                        shares, and the pending tip-pool shares on each tip
+                        (own ones included, whatever count_own_tip_shares
+                        says: they are the attacker's work). Needs weigh
+                        "sop". The block rule strands the attacker past the
+                        window (docs/20261023_sop_scale_n300_smoke.md).
     release_depth       deep_hunt: reveal only once the honest branch holds this
                         many blocks past the fork (default 10), so every reveal
                         orphans at least that many honest blocks.
@@ -169,6 +197,21 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.island_cash_lead = int(self.attributes.get("island_cash_lead", "2") or 2)
         self.attack_start_height = int(self.attributes.get("attack_start_height", "0") or 0)
         self.reaction_delay_ms = int(self.attributes.get("reaction_delay_ms", "200") or 200)
+        # Which bridge the honest chain is read through: "first" (the first
+        # id in `bridges`, the default) or "best" (whichever bridge is ahead
+        # this tick: the network-advantage topology puts one bridge beside
+        # each honest group, so the attacker hears every honest block from
+        # the bridge next to its finder instead of waiting for the slow path).
+        self.read_bridge = (self.attributes.get("read_bridge") or "first").strip()
+        # feed_parents (2026-10-28): a bridge isolated from the public network
+        # (the network-advantage topology: bridge 1 peers only with the slow
+        # honest miner) lacks the public parents of a reveal and would reject
+        # it; with "true" every release first submits, from the attacker's own
+        # daemon, the public blocks from two below that bridge's height up to
+        # the fork. Off by default: every other topology's bridges are synced.
+        self.feed_parents = (self.attributes.get("feed_parents") or "false").strip().lower() == "true"
+        if self.read_bridge not in ("first", "best"):
+            raise ValueError(f"read_bridge must be 'first' or 'best', got {self.read_bridge!r}")
         kw = self.strategy_kwargs(self.attributes)
         self.trail_depth = kw["trail_depth"]
         self.release_lead = kw["release_lead"]
@@ -176,6 +219,11 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.give_up_depth = kw["give_up_depth"]
         self.release_depth = kw["release_depth"]
         self.window_rule = kw["window_rule"]
+        self.give_up_objects = kw["give_up_objects"]
+        self.policy_file = kw["policy_file"]
+        self.alpha = kw["alpha"]
+        self.publish_lead, self.reveal_margin, self.reveal_depth = kw["publish_lead"], kw["reveal_margin"], kw["reveal_depth"]
+        self.block_deficit, self.hold_shares = kw["block_deficit"], kw["hold_shares"]
         self.embedded_shares = str(self.attributes.get("embedded_shares", "false")).strip().lower() in ("1", "true", "yes")
         self.weigh = self.attributes.get("weigh", "sop") or "sop"      # window_stubborn only
         self.sop_w = int(self.attributes.get("sop_w", "16") or 16)     # window_stubborn "sop" weigh only
@@ -183,6 +231,8 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         self.use_honest_shares = str(self.attributes.get("use_honest_shares", "false")).strip().lower() in ("1", "true", "yes")
         self.tip_shares = str(self.attributes.get("tip_shares", "false")).strip().lower() in ("1", "true", "yes")
         self.count_own_tip_shares = str(self.attributes.get("count_own_tip_shares", "true")).strip().lower() in ("1", "true", "yes")
+        if self.give_up_objects >= 0 and self.weigh != "sop":
+            raise ValueError(f"give_up_objects needs weigh 'sop', got weigh {self.weigh!r}")
         self._tip_delivery = None
         self._hs_tip = None            # miner tip whose shares _hs_sent covers (use_honest_shares)
         self._hs_sent = set()          # share ids already handed to the miner on _hs_tip
@@ -234,6 +284,14 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             "give_up_depth": int(attributes.get("give_up_depth", "2") or 2),        # window_stubborn, deep_hunt
             "release_depth": int(attributes.get("release_depth", "10") or 10),      # deep_hunt only
             "window_rule": attributes.get("window_rule", "v3") or "v3",            # window_stubborn, deep_hunt
+            "give_up_objects": int(attributes.get("give_up_objects", "-1") or -1),  # window_stubborn, deep_hunt; -1 = block rule
+            "policy_file": attributes.get("policy_file") or None,                    # learned only
+            "alpha": float(attributes["alpha"]) if attributes.get("alpha") else None,   # learned only
+            "publish_lead": int(attributes.get("publish_lead", "0") or 0),            # param_stubborn only (L)
+            "reveal_margin": int(attributes.get("reveal_margin", "1") or 1),          # param_stubborn only (M)
+            "reveal_depth": int(attributes.get("reveal_depth", "1") or 1),            # param_stubborn only (R)
+            "block_deficit": int(attributes.get("block_deficit", "0") or 0),          # param_stubborn only (B)
+            "hold_shares": int(attributes.get("hold_shares", "0") or 0),              # param_stubborn only (Z)
         }
 
     def _ensure_strategy(self, start_height: int) -> None:
@@ -244,7 +302,23 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                                             window_objects=self.window_objects,
                                             give_up_depth=self.give_up_depth,
                                             release_depth=self.release_depth,
-                                            window_rule=self.window_rule)
+                                            window_rule=self.window_rule,
+                                            give_up_objects=self.give_up_objects,
+                                            policy_file=self.policy_file,
+                                            alpha=self.alpha,
+                                            publish_lead=self.publish_lead, reveal_margin=self.reveal_margin,
+                                            reveal_depth=self.reveal_depth, block_deficit=self.block_deficit,
+                                            hold_shares=self.hold_shares)
+            if self.strategy.name == "param_stubborn":
+                s = self.strategy
+                self.logger.info(f"param_stubborn: G={s.give_up_objects} L={s.publish_lead} M={s.reveal_margin} "
+                                 f"R={s.reveal_depth} B={s.block_deficit} Z={s.hold_shares} window={s.window_objects}")
+            if self.strategy.name == "learned":
+                # the one place a placeholder policy (an empty diff: the stubborn attacker under the
+                # learned name) shows: the file, its entries, and the meta the trainer wrote
+                meta = self.strategy.policy_meta or {}
+                self.logger.info(f"learned: policy_file={self.policy_file} entries={len(self.strategy.policy)} "
+                                 f"env={meta.get('env')} alpha={meta.get('alpha')} share={meta.get('share')}")
 
     @staticmethod
     def _header_difficulty(h) -> int:
@@ -277,9 +351,19 @@ class SelfishMinerAgent(AutonomousMinerAgent):
     def _branch_weights(self, fork: int, priv_height: int, pub_height: int):
         """window_stubborn's work-object count and weight, per MRL #146: each
         recent block weighs `unit * (1 + its valid embedded shares)`, with
-        `unit = max(1, difficulty // sop_w)`. Returns
-        (att_objects, att_weight, hon_weight), or None (with a logged
-        warning) on an RPCError or a header count mismatch on either side.
+        `unit = max(1, difficulty // sop_w)`. Returns, for weigh="sop",
+        (att_objects, att_weight, hon_weight, att_objects above the first
+        attacker block, honest objects above the first honest block,
+        att_objects + the attacker's pending tip-pool shares, hon_objects +
+        the honest pending tip-pool shares, hon_objects) -- [5] and [6] are
+        the give-up currency of `give_up_objects` (pool shares only when
+        tip_shares is on; the own-tip ones count here whatever
+        count_own_tip_shares says, which governs the reveal-test WEIGHT
+        only); [7] (2026-10-25, the learned strategy) is the honest objects
+        behind hon_weight without pending, so [6] - [7] is the honest
+        pending count and [0] - [7] the objects weight difference; for
+        weigh="difficulty", (att_objects, att_weight, hon_weight). None (with a logged warning)
+        on an RPCError or a header count mismatch on either side.
 
         weigh="sop" (default): attacker shares per block are
         `minor_version - major_version` (sop_share_count) when
@@ -317,16 +401,41 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             hon_weight += unit * (1 + m)
             if i == 0:
                 hon_first = 1 + m
+        att_pool = hon_pool = 0
         if self.tip_shares:
+            # A share-only attacker branch (a == 0) still has pending shares: they sit on
+            # the fork block, the empty branch's tip. Without this the agent read pa = 0 at
+            # every race start (2026-10-26, cell a047: 980 of 980) where the race model has
+            # a median of 12, and abandoned the share race at once.
+            att_tip = att_headers or self._fork_header(fork)
+            att_pool = self._tip_pool_count(self.daemon_rpc, att_tip, priv_height)
+            hon_pool = self._tip_pool_count(self.bridge_rpc, hon_headers, pub_height)
             if self.count_own_tip_shares:
-                att_weight += self._tip_pool_weight(self.daemon_rpc, att_headers, priv_height)
-            hon_weight += self._tip_pool_weight(self.bridge_rpc, hon_headers, pub_height)
-        return att_objects, att_weight, hon_weight, att_objects - att_first, hon_objects - hon_first
+                att_weight += self._tip_unit(att_tip) * att_pool
+            hon_weight += self._tip_unit(hon_headers) * hon_pool
+        return (att_objects, att_weight, hon_weight, att_objects - att_first, hon_objects - hon_first,
+                att_objects + att_pool, hon_objects + hon_pool, hon_objects)
 
-    def _tip_pool_weight(self, rpc, headers, height: int) -> int:
-        """unit * the counted pool shares on the branch's tip (MRL #146
-        2026-10-20; counted only under the objective score, which is the only
-        regime the reveal test is reached in)."""
+    def _tip_unit(self, headers) -> int:
+        return max(1, self._header_difficulty(headers[-1]) // self.sop_w) if headers else 0
+
+    def _fork_header(self, fork: int):
+        """The header of the block before the fork (index fork - 1) from the
+        attacker's daemon: the tip of an empty attacker branch, where a
+        share-only branch's pending shares sit. [] at genesis or on an RPC
+        error (the pool then counts as 0, as before 2026-10-26)."""
+        if fork <= 0:
+            return []
+        try:
+            return list(self.daemon_rpc.get_block_headers_range(fork - 1, fork - 1))[-1:]
+        except RPCError as e:
+            self.logger.warning(f"_branch_weights: fork header read failed: {e}")
+            return []
+
+    def _tip_pool_count(self, rpc, headers, height: int) -> int:
+        """The counted pool shares on the branch's tip (MRL #146 2026-10-20;
+        counted only under the objective score, which is the only regime the
+        reveal test is reached in). Weight = _tip_unit(headers) * this."""
         if not headers:
             return 0
         tip = headers[-1]
@@ -336,8 +445,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
             self._share_rpc_failed("read tip shares", e)
             return 0
         major = int(tip.get("major_version", 0))
-        unit = max(1, self._header_difficulty(tip) // self.sop_w)
-        return unit * sop_pool_count([s for s in shares if int(s.get("height", height)) == height], major)
+        return sop_pool_count([s for s in shares if int(s.get("height", height)) == height], major)
 
     def _queue_tip_delivery(self, tip_hash: str, height: int) -> None:
         """After a reveal: publish the miner's shares on its (now public) tip
@@ -396,6 +504,27 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                 self.logger.info(f"{what} connected: {bid} at {host}:{port}")
             else:
                 self.logger.debug(f"{what} {bid} not yet in registry")
+
+    def _select_read_bridge(self):
+        """The bridge the honest chain is read through this tick: the first
+        bridge, or with `read_bridge: best` the one with the greatest height
+        (the current bridge on a tie; an unreachable bridge is skipped)."""
+        if self.read_bridge != "best" or len(self.bridge_rpcs) < 2:
+            self.bridge_rpc = self.bridge_rpcs[0] if self.bridge_rpcs else None
+            return self.bridge_rpc
+        best, best_h = self.bridge_rpc, -1
+        for rpc in self.bridge_rpcs:
+            try:
+                h = int(rpc.get_info().get("height", 0))
+            except RPCError as e:
+                self.logger.debug(f"read bridge: {e}")
+                continue
+            if h > best_h or (h == best_h and rpc is self.bridge_rpc):
+                best, best_h = rpc, h
+        if best is not self.bridge_rpc:
+            self.logger.info(f"read bridge -> bridge {self.bridge_rpcs.index(best) + 1} (height {best_h})")
+        self.bridge_rpc = best
+        return best
 
     def _connect_bridges(self) -> bool:
         """Connect any bridge in `bridge_agent_ids` not yet connected. Returns
@@ -691,6 +820,9 @@ class SelfishMinerAgent(AutonomousMinerAgent):
         the reveal submit an empty range and the attacker could never win
         (review C1)."""
         start = max(release_from, self._released_index + 1)
+        if self.feed_parents:
+            for rpc in self.bridge_rpcs:
+                self._feed_parents(rpc, release_from)
         for idx in range(start, release_index + 1):
             try:
                 blk = self.daemon_rpc.get_block(height=idx)
@@ -707,6 +839,29 @@ class SelfishMinerAgent(AutonomousMinerAgent):
                         # Expected for equal-height alts (gamma=0) and already-present blocks.
                         self.logger.debug(f"release private block {idx}: {e}")
             self._released_index = max(self._released_index, idx)
+
+    def _feed_parents(self, rpc, release_from: int) -> None:
+        """Submit to `rpc` the public blocks it may lack below the fork: from
+        two below its height (its own block at a height may differ from the
+        public one; an already-known block is a harmless error) to release_from
+        - 1, in order, from the attacker's own daemon (which holds the public
+        chain it forwarded into itself)."""
+        try:
+            bh = int(rpc.get_info().get("height", 0))
+        except RPCError as e:
+            self.logger.debug(f"feed parents: bridge height: {e}")
+            return
+        fed = 0
+        for idx in range(max(bh - 2, 0), release_from):
+            try:
+                blob = self.daemon_rpc.get_block(height=idx).get("blob")
+                if blob:
+                    rpc.submit_block(blob)
+                    fed += 1
+            except RPCError as e:
+                self.logger.debug(f"feed parent {idx}: {e}")
+        if fed > 2:
+            self.logger.info(f"fed {fed} public parents ({max(bh - 2, 0)}..{release_from - 1}) to a bridge at height {bh}")
 
     def _same_block(self, height: int):
         """True/False: the miner and the first bridge hold the same block at
@@ -914,6 +1069,7 @@ class SelfishMinerAgent(AutonomousMinerAgent):
 
         # 3/4. Read both chains (height + honest tip hash for reorg detection).
         try:
+            self._select_read_bridge()
             pub_info = self.bridge_rpc.get_info()
             pub_height = int(pub_info.get("height", 0))
             pub_tip_hash = pub_info.get("top_block_hash")
@@ -955,12 +1111,26 @@ class SelfishMinerAgent(AutonomousMinerAgent):
 
         # 5. Strategy decision first: forward_to (below) depends on it.
         decision = self.strategy.update(pub_height, priv_height, branch_weights=self._branch_weights)
-        if (self.strategy_name in ("window_stubborn", "deep_hunt") and decision.release_to is not None
+        if self.strategy.name in ("learned", "param_stubborn") and self.strategy.last_learned is not None:
+            obs, key, act, stored = self.strategy.last_learned
+            self.strategy.last_learned = None
+            self.logger.debug(f"learned: obs={obs} key={key} action={act} stored={stored}")
+            n = self.strategy.learned_decisions + self.strategy.fallback_decisions
+            if n % 200 == 0:
+                self.logger.info(f"learned: decisions={n} stored={self.strategy.learned_decisions} "
+                                 f"fallback={self.strategy.fallback_decisions} "
+                                 f"clipped={self.strategy.clipped_decisions} "
+                                 f"suppressed_reveals={self.strategy.suppressed_reveals}")
+        if (self.strategy_name in ("window_stubborn", "deep_hunt", "learned", "param_stubborn")
+                and decision.release_to is not None
                 and pub_height >= self.strategy.start_height):   # warm-up publishes everything
             fork = decision.release_from
-            att_objects, att_weight, hon_weight = self.strategy.last_weights[:3]
+            att_objects, att_weight, hon_weight = (self.strategy.last_weights or (0, 0, 0))[:3]
+            # the check gate counts "<strategy>: reveal" lines; a learned/param release with no
+            # honest block (publish_lead) orphans nothing and is logged as a publish instead
+            kind = "publish" if (self.strategy_name in ("learned", "param_stubborn") and pub_height == fork) else "reveal"
             self.logger.info(
-                f"{self.strategy_name}: reveal fork={fork} a={priv_height - fork} "
+                f"{self.strategy_name}: {kind} fork={fork} a={priv_height - fork} "
                 f"h={pub_height - fork} objects={att_objects} weight={att_weight} "
                 f"honest_weight={hon_weight}")
 

@@ -367,7 +367,7 @@ def test_window_stubborn_default_branch_weights_uses_block_count_fallback():
     assert priv == 48
     assert d.release_to == priv - 1 and s.fork == priv
     assert d.adopt_public is False
-    assert s.last_weights == (48, 48, 47, 47, 46)
+    assert s.last_weights == (48, 48, 47, 47, 46, 48, 47)
 
 
 # --- deep_hunt (2026-10-19): an attacker after a deep reorg, not revenue ---
@@ -478,7 +478,202 @@ def test_window_rule_20261020_either_branch():
     assert d.release_to == 103
 
 
+def test_window_rule_20261020_with_difficulty_weights_falls_back_to_v3():
+    """A stock attacker (weigh difficulty) gets a 3-tuple from _branch_weights.
+    Before 2026-10-25 the 20261020 branch then never set `past`, so the
+    attacker held forever (sop_v4_o5_stock_72h: 0 reveals in 6 x 72 h)."""
+    s = _ws("20261020", objects=0)
+    # ahead by difficulty: reveal
+    d = s.update(pub_height=101, priv_height=103, branch_weights=lambda f, p, q: (3, 3000, 1000))
+    assert d.release_to == 102
+    s = _ws("20261020", objects=0)
+    # not ahead: hold
+    d = s.update(pub_height=103, priv_height=104, branch_weights=lambda f, p, q: (4, 4000, 4000))
+    assert d.release_to is None
+
+
 def test_window_rule_v3_unchanged():
     s = _ws("v3", objects=48)
     d = s.update(pub_height=101, priv_height=103, branch_weights=lambda f, p, q: (60, 6000, 1600, 20, 0))
     assert d.release_to == 102          # v3: 60 >= 48 counts the first block
+
+
+# --- give_up_objects: the race model's objects give-up (2026-10-23) ---
+
+def _wo(o, d=5):
+    s = SelfishStrategy("window_stubborn", start_height=0, window_objects=32,
+                        give_up_depth=d, window_rule="20261020", give_up_objects=o)
+    s.fork = 100
+    return s
+
+
+def _w7(att, hon, att_tot, hon_tot, att_w=1000, hon_w=2000):
+    return lambda f, p, q: (att, att_w, hon_w, max(att - 1, 0), max(hon - 1, 0), att_tot, hon_tot)
+
+
+def test_give_up_objects_default_is_off():
+    assert SelfishStrategy("window_stubborn", 0).give_up_objects == -1
+
+
+def test_give_up_objects_gives_up_once_honest_exceeds_by_more_than_o():
+    s = _wo(5)
+    d = s.update(pub_height=102, priv_height=102, branch_weights=_w7(30, 35, 30, 35))   # ahead by 5: hold
+    assert d.adopt_public is False and d.release_to is None and s.fork == 100
+    d = s.update(pub_height=102, priv_height=102, branch_weights=_w7(30, 35, 30, 36))   # by 6: give up
+    assert d.adopt_public is True and d.release_to is None and d.forward_to is None and s.fork == 102
+
+
+def test_give_up_objects_counts_pending_pool_shares():
+    s = _wo(5)
+    # branch objects equal; the honest tip pool holds 6 more pending shares -> give up
+    d = s.update(pub_height=102, priv_height=102, branch_weights=_w7(30, 30, 30, 36))
+    assert d.adopt_public is True and s.fork == 102
+
+
+def test_give_up_objects_replaces_the_block_depth_rule():
+    s = _wo(5, d=1)
+    # honest leads by 2 blocks (the block rule at d=1 would give up) but not by objects: hold
+    d = s.update(pub_height=103, priv_height=101, branch_weights=_w7(40, 36, 40, 36))
+    assert d.adopt_public is False and s.fork == 100
+
+
+def test_give_up_objects_still_adopts_when_no_private_block():
+    s = _wo(5)
+
+    def _boom(f, p, q):
+        raise AssertionError("branch_weights must not be called when a == 0")
+
+    d = s.update(pub_height=101, priv_height=100, branch_weights=_boom)   # a=0, h=1
+    assert d.adopt_public is True and s.fork == 101
+
+
+def test_give_up_objects_holds_on_short_or_missing_weights():
+    s = _wo(5)
+    d = s.update(pub_height=102, priv_height=102, branch_weights=lambda f, p, q: (30, 3000, 1000))
+    assert d.adopt_public is False and d.release_to is None
+    d = s.update(pub_height=102, priv_height=102, branch_weights=lambda f, p, q: None)
+    assert d.adopt_public is False and d.release_to is None
+
+
+def test_give_up_objects_then_reveals_when_past_window_and_heavier():
+    s = _wo(5)
+    d = s.update(pub_height=102, priv_height=103,
+                 branch_weights=lambda f, p, q: (50, 5000, 3000, 34, 30, 50, 40))
+    assert d.release_to == 102 and d.release_from == 100 and s.fork == 103
+
+
+# ---- learned strategy (docs/superpowers/plans/2026-10-25-sop-rl-attacker.md, Task 5) ----
+
+def _policy_file(tmp_path, entries, alpha=0.45, key_clip=None):
+    import gzip
+    import json
+    p = tmp_path / "p.json.gz"
+    with gzip.open(p, "wt") as f:
+        json.dump({"meta": {"alpha": alpha, "env": "race"},
+                   "key_clip": key_clip or {"d": 128, "p": 48, "d_bin": 1},
+                   "fallback": "sim_stubborn", "policy": entries}, f)
+    return str(p)
+
+
+def test_learned_keys_through_the_policy_files_pending_bins(tmp_path):
+    # key_clip p_bin 2: the observation (1, 2, 32, 5, 1, 32, 1) keys as (1, 2, 32, 2, 1, 32, 0),
+    # where the file says hold; sim_stubborn (and an unbinned lookup) would reveal
+    pf = _policy_file(tmp_path, {"1,2,32,2,1,32,0": "hold"},
+                      key_clip={"d": 128, "p": 48, "d_bin": 1, "p_bin": 2})
+    s = SelfishStrategy("learned", start_height=0, window_objects=32, window_rule="20261020",
+                        give_up_objects=5, policy_file=pf)
+    s.fork = 100
+    d = s.update(pub_height=101, priv_height=101, branch_weights=lambda f, p, q: (3, 3, 1, 32, 0, 8, 2, 1))
+    assert d.release_to is None and s.learned_decisions == 1 and s.fallback_decisions == 0
+    assert s.last_learned[0] == (1, 2, 32, 5, 1, 32, 1) and s.last_learned[1] == (1, 2, 32, 2, 1, 32, 0)
+
+
+# ---- param_stubborn strategy (docs/20261026_sop_attacker_search.md, the searched family in the sim) ----
+
+def test_param_stubborn_strategy_follows_the_knobs():
+    # hold_shares 1: a pending-shares-only branch (a = 0) against an honest block is held, not given up
+    s = SelfishStrategy("param_stubborn", start_height=0, window_objects=32, window_rule="20261020",
+                        give_up_objects=8, hold_shares=1)
+    s.fork = 100
+    # a=0, h=1: D = 0 - 2 = -2, pa = 4, ph = 3 - 2 = 1 -> objects deficit 2 + 1 - 4 = -1 <= 8 -> hold
+    d = s.update(pub_height=101, priv_height=100, branch_weights=lambda f, p, q: (0, 0, 2, 0, 0, 4, 3, 2))
+    assert d.adopt_public is False and d.release_to is None and s.learned_decisions == 1
+    s0 = SelfishStrategy("param_stubborn", start_height=0, window_objects=32, window_rule="20261020",
+                         give_up_objects=8)
+    s0.fork = 100
+    d = s0.update(pub_height=101, priv_height=100, branch_weights=lambda f, p, q: (0, 0, 2, 0, 0, 4, 3, 2))
+    assert d.adopt_public is True                      # hold_shares 0: the sim's rule gives up
+
+
+def test_param_stubborn_publish_lead_and_reveal_margin():
+    s = SelfishStrategy("param_stubborn", start_height=0, window_objects=32, window_rule="20261020",
+                        give_up_objects=8, publish_lead=2, reveal_margin=4)
+    s.fork = 100
+    d = s.update(pub_height=100, priv_height=102, branch_weights=lambda f, p, q: (4, 4, 0, 2, 0, 4, 0, 0))   # a=2, h=0
+    assert d.release_to == 101 and d.release_from == 100 and s.fork == 102
+    s.fork = 100
+    # a=2, h=1, past the window, D - ph = 3 - 1 = 2 < margin 4 although the network accepts (6 > 3 + 1): hold
+    d = s.update(pub_height=101, priv_height=102, branch_weights=lambda f, p, q: (6, 6, 3, 32, 0, 6, 4, 3))
+    assert d.release_to is None and s.suppressed_reveals == 0
+    s.reveal_margin = 2
+    d = s.update(pub_height=101, priv_height=102, branch_weights=lambda f, p, q: (6, 6, 3, 32, 0, 6, 4, 3))
+    assert d.release_to == 101
+
+
+def test_param_stubborn_rejects_bad_knobs():
+    with pytest.raises(ValueError):
+        SelfishStrategy("param_stubborn", start_height=0, give_up_objects=-1)     # needs the objects give-up
+    with pytest.raises(ValueError):
+        SelfishStrategy("param_stubborn", start_height=0, give_up_objects=5, reveal_margin=0)
+
+
+def test_learned_requires_a_loadable_policy_file(tmp_path):
+    with pytest.raises(ValueError):
+        SelfishStrategy("learned", start_height=0)
+    with pytest.raises(ValueError):
+        SelfishStrategy("learned", start_height=0, policy_file=str(tmp_path / "missing.json.gz"))
+    with pytest.raises(ValueError):
+        SelfishStrategy("learned", start_height=0, policy_file=_policy_file(tmp_path, {}, alpha=0.40), alpha=0.45)
+
+
+def test_learned_observation_matches_sop_mdp():
+    from scripts import sop_mdp as M
+    # fork at 100; attacker 2 blocks (3 and 1 embedded shares), 2 pending; honest 1 block (0 shares), 5 pending
+    w = (6, 6, 1, 2, 0, 8, 6, 1)
+    assert SelfishStrategy.observation(2, 1, w) == (2, 5, 2, 2, 1, 0, 5)
+    s = M.event(M.event(M.event(M.START, True, True, M.Caps()), True, False, M.Caps()), True, False, M.Caps())
+    # one attacker block then two attacker shares: a=1, D=1, pa=2
+    assert SelfishStrategy.observation(1, 0, (1, 1, 0, 0, 0, 3, 0, 0)) == s
+
+
+def test_learned_uses_table_then_falls_back_to_sim_stubborn(tmp_path):
+    s = SelfishStrategy("learned", start_height=0, window_objects=32, window_rule="20261020",
+                        give_up_objects=5, policy_file=_policy_file(tmp_path, {"1,2,32,0,1,32,1": "hold"}))
+    s.fork = 100
+    # stored state says hold where sim_stubborn would reveal (both x collapse to 32)
+    d = s.update(pub_height=101, priv_height=101, branch_weights=lambda f, p, q: (3, 3, 1, 32, 0, 3, 2, 1))
+    assert d.release_to is None and s.learned_decisions == 1 and s.fallback_decisions == 0
+    # unseen state: sim_stubborn reveals (past window, D 3 > ph 1)
+    d = s.update(pub_height=101, priv_height=101, branch_weights=lambda f, p, q: (4, 4, 1, 32, 0, 4, 2, 1))
+    assert d.release_to == 100 and s.fallback_decisions == 1
+
+
+def test_learned_reveal_is_suppressed_when_own_test_fails_and_publish_skips_it(tmp_path):
+    pf = _policy_file(tmp_path, {"1,2,32,0,1,32,3": "reveal", "1,2,0,0,0,0,10": "publish"})
+    s = SelfishStrategy("learned", start_height=0, window_objects=32, window_rule="20261020",
+                        give_up_objects=5, policy_file=pf)
+    s.fork = 100
+    d = s.update(pub_height=101, priv_height=101, branch_weights=lambda f, p, q: (3, 3, 4, 32, 0, 3, 4, 1))   # weight 3 <= 4
+    assert d.release_to is None and s.suppressed_reveals == 1
+    s.fork = 100
+    d = s.update(pub_height=100, priv_height=101, branch_weights=lambda f, p, q: (3, 3, 10, 0, 0, 3, 11, 1))  # h == 0, honest pending heavy
+    assert d.release_to == 100 and d.release_from == 100
+
+
+def test_learned_clips_out_of_range_observations(tmp_path):
+    pf = _policy_file(tmp_path, {"1,128,0,0,1,0,48": "give_up"})
+    s = SelfishStrategy("learned", start_height=0, window_objects=32, window_rule="20261020",
+                        give_up_objects=5, policy_file=pf)
+    s.fork = 100
+    d = s.update(pub_height=101, priv_height=101, branch_weights=lambda f, p, q: (300, 300, 1, 0, 0, 300, 100, 1))
+    assert d.adopt_public is True and s.clipped_decisions == 1

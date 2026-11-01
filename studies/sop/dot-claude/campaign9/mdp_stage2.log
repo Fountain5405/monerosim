@@ -1,0 +1,17 @@
+### 2026-10-24T18:23:18Z validation: stubborn chain, caps 5/5/96/32/32
+  round 25: 668,531 states, frontier 128,206  [0s]
+  round 50: 21,974,160 states, frontier 2,033,392  [109s]
+exit 137
+  round 25: 668,531 states, frontier 128,206  [0s]
+  round 50: 21,974,160 states, frontier 2,033,392  [111s]
+exit 137
+### 2026-10-24T19:01:05Z enumerate 4/4/64/24/24
+  round 25: 563,581 states, frontier 105,095  [0s]
+  round 50: 15,339,470 states, frontier 1,253,092  [79s]
+  round 75: 58,490,446 states, frontier 1,701,979  [695s]
+  round 100: 82,910,537 states, frontier 338,554  [1910s]
+  round 125: 85,103,053 states, frontier 2,702  [3264s]
+exit 137
+### 2026-10-24T20:06:20Z enumerate 5/5/96/32/32
+  round 25: 947,401 states, frontier 186,138  [1s]
+  round 50: 35,094,001 states, frontier 3,302,365  [197s]

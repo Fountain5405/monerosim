@@ -1,0 +1,4 @@
+runs=2 decisions=10153
+n_f rule alt: switch=1970 (subjective 60, objective 1910); would switch straight back=860; tie on the way back=0
+    fwd_objective:rev_subjective: 860
+n_f rule either: switch=1970 (subjective 60, objective 1910); would switch straight back=0; tie on the way back=0

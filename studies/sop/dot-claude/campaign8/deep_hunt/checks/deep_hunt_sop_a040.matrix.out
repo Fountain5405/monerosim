@@ -1,0 +1,11 @@
+[matrix] share_sop2_a040_d2: share 0.010
+commit: `8c1b653b`
+# Matrix deep_hunt_sop_a040
+
+- base: `/scratch/monerosim_dev/monerosim/test_configs/selfish_micro_sop.yaml`  seed: 13582  stop_time: 240h
+- cells: 1  failures: 0
+
+| arm | countermeasure | alpha | depth | alpha | share | share_h | ctrl | gamma | att_orph | net_orph | msb_z | blocks | verdicts | health | run |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| share | sop2 | a040 | d2 | 0.400 | 0.010 | 0.010 | - | 0.000 | 0.985 | 0.407 | 81.043 | 6932 | FAIL (3) | ok | 20261019_114819_deep_hunt_sop_a040__share_sop2_a040_d2 |
+

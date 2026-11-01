@@ -1,0 +1,16 @@
+stage 1 start 2026-09-26T18:14:56Z
+pop_exact_h10 finished=2026-09-26T19:56:16Z results=yes
+pop_exact_h10_rep finished=2026-09-26T19:56:16Z results=yes
+stage 2 start 2026-09-26T20:31:39Z
+pop_exact_mid finished=2026-09-27T01:46:20Z results=yes
+pop_exact_mid_rep finished=2026-09-27T01:46:20Z results=yes
+STAGE2_DONE 2026-09-27T01:46:20Z
+stage 3 start 2026-09-27T01:47:32Z
+relay start 2026-09-27T03:27:40Z
+pop_dettie_mid finished=2026-09-27T04:12:12Z results=yes
+pop_dettie_mid_rep finished=2026-09-27T04:38:12Z results=yes
+STAGE3_DONE 2026-09-27T04:38:12Z
+pop_exact_relay finished=2026-09-27T06:12:20Z results=yes
+pop_exact_relay_rep finished=2026-09-27T06:12:20Z results=yes
+RELAY_DONE 2026-09-27T06:12:20Z
+fbridge start 2026-09-27T13:02:22Z

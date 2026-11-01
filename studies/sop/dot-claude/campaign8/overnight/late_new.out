@@ -1,0 +1,23 @@
+scanned 2 dirs in 0 s
+before_online                      0
+capped_logs                        0
+decisions                          272
+late_by_1                          2
+late_nodes_12d                     1
+late_nodes_40d                     1
+mined_before_banner                0
+never_online                       0
+nodes_12d                          11
+nodes_40d                          39
+runs_12d                           1
+runs_40d                           1
+runs_with_late_12d                 1
+runs_with_late_40d                 1
+started_after_first_block_12d      1
+late node kinds: {'monero-relay': 2}
+12d first block after start: n=1 min 55 s, median 55 s, <30 s 0, <60 s 1, <260 s 1
+40d first block after start: n=1 min 261 s, median 261 s, <30 s 0, <60 s 0, <260 s 0
+as run vs spec, differing (run, host, hf, db, online, as run, spec):
+h0 check failures (after-queue build):
+no banner (run, host, decisions, start s, first adds):
+in range (run, host, hf, online, nf, nf_main, base, proposed):

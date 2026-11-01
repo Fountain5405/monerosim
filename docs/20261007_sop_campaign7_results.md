@@ -1,3 +1,5 @@
+Status (2026-11-01): superseded by docs/20261022_sop_v4_results.md (MRL #146 revised 2026-10-15 and 2026-10-20); the current findings are in docs/20261026_sop_attacker_search.md.
+
 # Share-or-Perish (MRL #146) on the corrected simulator: campaign 7 results (2026-09-30 to 2026-10-07)
 
 **Status: DRAFT, 2026-10-08, revised the same day after an independent

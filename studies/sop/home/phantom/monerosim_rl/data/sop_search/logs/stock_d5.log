@@ -1,0 +1,9 @@
+12 runs to do, 0 already in data/sop_search/stock_crossing_d5.jsonl
+  10/12 done [9s]
+  12/12 done [9s]
+alpha  | d=5     
+ 0.33  | 0.2620  
+ 0.36  | 0.3146  
+ 0.40  | 0.3941  
+ 0.45  | 0.5051  
+crossing d=5: 0.4048

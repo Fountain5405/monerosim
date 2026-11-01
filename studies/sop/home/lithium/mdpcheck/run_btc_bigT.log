@@ -1,0 +1,7 @@
+2026-10-31T05:45:03Z start btc --alpha 0.45 --gamma 0 --T 200 --bound lower --T-policy 0 --no-library
+2026-10-31T06:03:43Z exit 0 btc --alpha 0.45 --gamma 0 --T 200 --bound lower --T-policy 0 --no-library
+2026-10-31T06:03:43Z start btc --alpha 0.475 --gamma 0 --T 200 --bound lower --T-policy 0 --no-library
+2026-10-31T06:52:24Z exit 0 btc --alpha 0.475 --gamma 0 --T 200 --bound lower --T-policy 0 --no-library
+2026-10-31T06:52:24Z start btc --alpha 0.475 --gamma 0 --T 300 --bound lower --T-policy 0 --no-library
+2026-10-31T11:23:44Z exit 0 btc --alpha 0.475 --gamma 0 --T 300 --bound lower --T-policy 0 --no-library
+2026-10-31T11:23:44Z queue btc_bigT done

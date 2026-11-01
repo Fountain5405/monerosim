@@ -1,3 +1,5 @@
+Status (2026-11-01): superseded by docs/20261022_sop_v4_results.md (MRL #146 revised 2026-10-20).
+
 # Share-or-Perish (MRL #146) under the 2026-10-15 revision: campaign 8 results (2026-10-14 to 2026-10-19)
 
 **Status: DRAFT, 2026-10-19.** Every number below comes from finished,

@@ -1,0 +1,55 @@
+# sop_v4_param_1h_72h (2026-10-28): the honest-miner-count trend at the DEFAULT
+# window (K=3, w=16; the headline). The validated sop_v4_param_72h a047 cell
+# (G=6 L=1 M=1 R=1 Z=1; N=2 honest miners: 0.451 / 0.514 / 0.478, model 0.477
+# with the perish rule) with the honest hashrate on ONE miner: honest-001
+# 5.29, honest-002 a full node at 0.01 h/s (0 is rejected). At K=6 one honest
+# miner removed the sims' excess over the model (0.373 / 0.382 vs 0.454 /
+# 0.436 with two). 12 daemons: fits a 16 GB box.
+name: sop_v4_param_1h_72h
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: param_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          window_objects: '32'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          count_own_tip_shares: 'false'
+          give_up_depth: '5'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    sop2_param:
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+  alpha:
+    a047:
+      attacker:
+        hashrate: 4.7
+        attributes: {give_up_objects: '6', hold_shares: '1', publish_lead: '1', reveal_margin: '1', reveal_depth: '1', block_deficit: '0'}
+      honest: {hashrate: [5.29, 0.01]}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+    s2:
+      attacker:
+        attributes:
+          sample: '2'

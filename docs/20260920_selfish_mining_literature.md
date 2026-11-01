@@ -1,3 +1,5 @@
+Status (2026-11-01): current.
+
 # Selfish-mining literature review — moneroresearch.info harvest (2026-09-20)
 
 **Why this exists.** Before branching into selfish-mining experiments, we

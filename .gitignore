@@ -122,3 +122,4 @@ docs/literature/*.pdf
 # Matrix runner workdirs (configs are reproducible from the committed spec
 # + base; the runs themselves archive under archived_runs/ like any run)
 matrix_runs/
+mdp_out/

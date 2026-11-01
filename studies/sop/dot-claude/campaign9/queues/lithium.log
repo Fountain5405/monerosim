@@ -1,0 +1,41 @@
+2026-10-30T19:31:32Z chain start (2 queued)
+2026-10-30T23:50:25Z launch sop_v4_dsweep_param_72h share_sop2_param_d10_a047_s1
+local commit: a5d8c534 (0 dirty files)
+box HEAD 8d1c2a09; synced files differing from it: 60
+fix markers in agents/selfish_miner.py: 2
+no marker for share_sop2_param_d10_a047_s1
+launching () sop_v4_dsweep_param_72h: share_sop2_param_d10_a047_s1
+driver pid: 132262 
+132265 /home/selfishmining/monerosim/venv/bin/python scripts/selfish_matrix.py test_configs/matrix/sop_v4_dswe
+2026-10-30 23:50:27Z sop_v4_dsweep_param_72h queue start lanes=1 cells=share_sop2_param_d10_a047_s1 box=lithium
+2026-10-30 23:50:27Z sop_v4_dsweep_param_72h lane 1 start sop_v4_dsweep_param_72h/share_sop2_param_d10_a047_s1
+2026-10-31T05:35:52Z launch sop_v4_dsweep_param_72h share_sop2_param_d10_a045_s1
+local commit: 18584ece (0 dirty files)
+box HEAD 8d1c2a09; synced files differing from it: 62
+fix markers in agents/selfish_miner.py: 2
+no marker for share_sop2_param_d10_a045_s1
+launching () sop_v4_dsweep_param_72h: share_sop2_param_d10_a045_s1
+driver pid: 249640 
+249643 /home/selfishmining/monerosim/venv/bin/python scripts/selfish_matrix.py test_configs/matrix/sop_v4_dswe
+2026-10-31 05:35:54Z sop_v4_dsweep_param_72h queue start lanes=1 cells=share_sop2_param_d10_a045_s1 box=lithium
+2026-10-31 05:35:54Z sop_v4_dsweep_param_72h lane 1 start sop_v4_dsweep_param_72h/share_sop2_param_d10_a045_s1
+2026-10-31T11:55:18Z launch sop_v4_adopt_lowalpha_72h share_k1_a030_s1
+local commit: 0755f143 (0 dirty files)
+box HEAD 8d1c2a09; synced files differing from it: 62
+fix markers in agents/selfish_miner.py: 2
+no marker for share_k1_a030_s1
+launching () sop_v4_adopt_lowalpha_72h: share_k1_a030_s1
+driver pid: 379359 
+379362 /home/selfishmining/monerosim/venv/bin/python scripts/selfish_matrix.py test_configs/matrix/sop_v4_adop
+2026-10-31 11:55:20Z sop_v4_adopt_lowalpha_72h queue start lanes=1 cells=share_k1_a030_s1 box=lithium
+2026-10-31 11:55:20Z sop_v4_adopt_lowalpha_72h lane 1 start sop_v4_adopt_lowalpha_72h/share_k1_a030_s1
+2026-10-31T17:18:30Z launch sop_v4_adopt_nodrop_72h share_k2_nodrop_a045_s1
+local commit: adf90d27 (0 dirty files)
+box HEAD 8d1c2a09; synced files differing from it: 62
+fix markers in agents/selfish_miner.py: 2
+no marker for share_k2_nodrop_a045_s1
+launching () sop_v4_adopt_nodrop_72h: share_k2_nodrop_a045_s1
+driver pid: 490024 
+490027 /home/selfishmining/monerosim/venv/bin/python scripts/selfish_matrix.py test_configs/matrix/sop_v4_adop
+2026-10-31 17:18:31Z sop_v4_adopt_nodrop_72h queue start lanes=1 cells=share_k2_nodrop_a045_s1 box=lithium
+2026-10-31 17:18:31Z sop_v4_adopt_nodrop_72h lane 1 start sop_v4_adopt_nodrop_72h/share_k2_nodrop_a045_s1

@@ -185,7 +185,7 @@ index c168f48a7..7ab202621 100644
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_uncle, TX_EXTRA_TAG_SIM_UNCLE);
 +VARIANT_TAG(binary_archive, cryptonote::tx_extra_sim_workshare, TX_EXTRA_TAG_SIM_WORKSHARE);
 diff --git a/src/cryptonote_core/blockchain.cpp b/src/cryptonote_core/blockchain.cpp
-index 3608364dd..c262eedc6 100644
+index 3608364dd..d0967a988 100644
 --- a/src/cryptonote_core/blockchain.cpp
 +++ b/src/cryptonote_core/blockchain.cpp
 @@ -70,6 +70,7 @@
@@ -364,7 +364,7 @@ index 3608364dd..c262eedc6 100644
      CHECK_AND_ASSERT_MES(cumulative_weight == txs_weight + get_transaction_weight(b.miner_tx), false, "unexpected case: cumulative_weight=" << cumulative_weight << " is not equal txs_cumulative_weight=" << txs_weight << " + get_transaction_weight(b.miner_tx)=" << get_transaction_weight(b.miner_tx));
  #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
      MDEBUG("Creating block template: miner tx weight " << coinbase_weight <<
-@@ -1866,6 +1996,1100 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
+@@ -1866,6 +1996,1118 @@ bool Blockchain::build_alt_chain(const crypto::hash &prev_id, std::list<block_ex
  // if that chain is long enough to become the main chain and re-org accordingly
  // if so.  If not, we need to hang on to the block in case it becomes part of
  // a long forked chain eventually.
@@ -1380,6 +1380,24 @@ index 3608364dd..c262eedc6 100644
 +        << (m_sim_sop_rejudge ? "rejudge" : "whole_branch") << ")");
 +}
 +
++// SIMULATION ONLY (Share-or-Perish, 2026-10-30 knob): the protocol handler
++// calls this when a block notification (fluffy or full block) arrives, after
++// the header parses and before any missing-transaction round trip. With the
++// knob on, the block's first-seen time is this moment; add_new_block's own
++// stamp then finds the entry and keeps it (emplace). A block that later
++// fails verification loses the stamp there; one that arrives before its
++// parent keeps it (the header did show up). Without the knob: no-op.
++void Blockchain::sim_sop_note_block_notify(const crypto::hash &id)
++{
++  if (!m_sim_sop_enabled || !m_sim_sop_seen_at_notify)
++    return;
++  CRITICAL_REGION_LOCAL(m_blockchain_lock);
++  const uint64_t now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
++      std::chrono::system_clock::now().time_since_epoch()).count();
++  if (m_sim_recv.emplace(id, now_ms).second)
++    MINFO("SIM-SoP: block " << id << " first seen at notify, t=" << now_ms);
++}
++
 +// SIMULATION ONLY (Share-or-Perish): #146 h_0, "the block height when the
 +// node came online", is the node's tip once it has caught up and follows the
 +// network live. The node comes online when monerod first counts it as
@@ -1465,7 +1483,7 @@ index 3608364dd..c262eedc6 100644
  bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id,
    block_verification_context& bvc, pool_supplement& extra_block_txs)
  {
-@@ -1891,7 +3115,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -1891,7 +3133,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
      return false;
    }
  
@@ -1476,7 +1494,7 @@ index 3608364dd..c262eedc6 100644
    const uint8_t hf_version = m_hardfork->get_ideal_version(block_height);
    if (!m_hardfork->check_for_height(b, block_height))
    {
-@@ -2102,7 +3328,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
+@@ -2102,7 +3346,9 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
  
        return r;
      }
@@ -1487,7 +1505,7 @@ index 3608364dd..c262eedc6 100644
      {
        //do reorganize!
        MGINFO_GREEN("###### REORGANIZE on height: " << alt_chain.front().height << " of " << m_db->height() - 1 << " with cum_difficulty " << m_db->get_block_cumulative_difficulty(m_db->height() - 1) << std::endl << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty);
-@@ -4089,7 +5317,9 @@ leave:
+@@ -4089,7 +5335,9 @@ leave:
      MCLOG_RED(level, "global", "**********************************************************************");
    }
  
@@ -1498,7 +1516,7 @@ index 3608364dd..c262eedc6 100644
    const uint8_t hf_version = get_current_hard_fork_version();
    if (!m_hardfork->check(bl))
    {
-@@ -4513,6 +5743,16 @@ leave:
+@@ -4513,6 +5761,16 @@ leave:
    bvc.m_added_to_main_chain = true;
    ++m_sync_counter;
  
@@ -1515,7 +1533,7 @@ index 3608364dd..c262eedc6 100644
    // appears to be a NOP *and* is called elsewhere.  wat?
    m_tx_pool.on_blockchain_inc(new_height, id);
    get_difficulty_for_next_block(); // just to cache it
-@@ -4691,18 +5931,56 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
+@@ -4691,18 +5949,61 @@ bool Blockchain::add_new_block(const block& bl, block_verification_context& bvc,
      return false;
    }
  
@@ -1533,6 +1551,10 @@ index 3608364dd..c262eedc6 100644
 +  // that does qualify then sets it. Shadow's clock does not move inside
 +  // this call, so the recorded time is the time of qualifying.
 +  const bool sim_unseen_on_reject = sim_recorded && m_sim_sop_enabled;
++  // Knob (2026-10-30): a stamp set at the P2P notification (sim_recorded is
++  // then false) survives an orphan verdict (the header did arrive) and is
++  // dropped only if the block fails verification.
++  const bool sim_unseen_on_invalid = !sim_recorded && m_sim_sop_enabled && m_sim_sop_seen_at_notify;
 +  // SIMULATION ONLY diagnostics (review F5b): which received blocks carry
 +  // embedded uncle headers, so a fork decision's COUNTED/REJECTED lines can
 +  // be matched against them.
@@ -1559,7 +1581,8 @@ index 3608364dd..c262eedc6 100644
      rtxn_guard.stop();
 -    return handle_alternative_block(bl, id, bvc, extra_block_txs);
 +    const bool r = handle_alternative_block(bl, id, bvc, extra_block_txs);
-+    if (sim_unseen_on_reject && (bvc.m_marked_as_orphaned || bvc.m_verifivation_failed))
++    if ((sim_unseen_on_reject && (bvc.m_marked_as_orphaned || bvc.m_verifivation_failed))
++        || (sim_unseen_on_invalid && bvc.m_verifivation_failed))
 +      m_sim_recv.erase(id);
 +    return r;
      //never relay alternative blocks
@@ -1568,14 +1591,14 @@ index 3608364dd..c262eedc6 100644
    rtxn_guard.stop();
 -  return handle_block_to_main_chain(bl, id, bvc, extra_block_txs);
 +  const bool r = handle_block_to_main_chain(bl, id, bvc, extra_block_txs);
-+  if (sim_unseen_on_reject && bvc.m_verifivation_failed)
++  if ((sim_unseen_on_reject || sim_unseen_on_invalid) && bvc.m_verifivation_failed)
 +    m_sim_recv.erase(id);
 +  return r;
  
    }
    catch (const std::exception &e)
 diff --git a/src/cryptonote_core/blockchain.h b/src/cryptonote_core/blockchain.h
-index 35079e858..37ecd55da 100644
+index 35079e858..277eb3e51 100644
 --- a/src/cryptonote_core/blockchain.h
 +++ b/src/cryptonote_core/blockchain.h
 @@ -45,6 +45,7 @@
@@ -1586,7 +1609,7 @@ index 35079e858..37ecd55da 100644
  #include <unordered_set>
  
  #include "span.h"
-@@ -896,6 +897,47 @@ namespace cryptonote
+@@ -896,6 +897,53 @@ namespace cryptonote
       */
      void set_show_time_stats(bool stats) { m_show_time_stats = stats; }
  
@@ -1629,12 +1652,18 @@ index 35079e858..37ecd55da 100644
 +    // SIMULATION ONLY (step 3): arm the SoP weight table on the PoP engine.
 +    void set_sim_sop(uint64_t w, uint64_t delay_ms, uint64_t k, bool rejudge_displaced = false);
 +    bool sim_sop_enabled() const { return m_sim_sop_enabled; }
++    // SIMULATION ONLY (2026-10-30 knob): stamp a block's first-seen time at
++    // its P2P notification (fluffy / full block), before any missing-tx
++    // round trip, instead of when the full block qualifies in add_new_block.
++    void set_sim_sop_seen_at_notify(bool on) { m_sim_sop_seen_at_notify = on; }
++    bool sim_sop_seen_at_notify() const { return m_sim_sop_seen_at_notify; }
++    void sim_sop_note_block_notify(const crypto::hash &id);
 +    void sim_sop_on_synchronized(bool offline = false);   // #146 h0: the tip at the first sync (--offline: at startup)
 +
      /**
       * @brief gets the hardfork voting state object
       *
-@@ -1210,6 +1252,72 @@ namespace cryptonote
+@@ -1210,6 +1258,73 @@ namespace cryptonote
      blockchain_db_sync_mode m_db_sync_mode;
      bool m_fast_sync;
      bool m_show_time_stats;
@@ -1688,6 +1717,7 @@ index 35079e858..37ecd55da 100644
 +    uint64_t m_sim_sop_h0 = 0;             // block height when this node came online (#146 h0)
 +    bool m_sim_sop_online = false;         // h0 set (first sync, or startup if --offline); objective until then
 +    bool m_sim_sop_rejudge = false;        // re-judge displaced blocks one at a time (implementation-hazard arm)
++    bool m_sim_sop_seen_at_notify = false; // first-seen stamped at the P2P notification (knob, default off)
 +    uint64_t m_sim_sop_reinsert_depth = 0; // > 0 while a reorg re-inserts displaced blocks
 +    std::map<std::pair<crypto::hash, crypto::hash>, bool> m_sim_sop_tie_draws;   // (alt tip, main tip) -> switch
 +    bool sim_sop_should_switch(const std::list<block_extended_info> &alt_chain, const block_extended_info &bei);
@@ -1708,10 +1738,10 @@ index 35079e858..37ecd55da 100644
      bool m_db_sync_on_blocks;
      uint64_t m_db_sync_threshold;
 diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
-index 3e3f7a824..1b8bde240 100644
+index 3e3f7a824..083648f21 100644
 --- a/src/cryptonote_core/cryptonote_core.cpp
 +++ b/src/cryptonote_core/cryptonote_core.cpp
-@@ -212,6 +212,69 @@ namespace cryptonote
+@@ -212,6 +212,79 @@ namespace cryptonote
    , "Simulation only: relay a locally-submitted block even when it is accepted as an alternative (equal-height) block instead of extending the main chain. Off by default. Only affects blocks submitted locally (submit_block RPC / miner), never P2P-received blocks."
    , false
    };
@@ -1771,6 +1801,16 @@ index 3e3f7a824..1b8bde240 100644
 +  , "Simulation only: Share-or-Perish re-judges each block a reorg displaces, one at a time, as monerod re-inserts it. Default off: displaced blocks are stored without judging, so branches are compared whole (docs/20260930_sop_conformance.md)."
 +  , false
 +  };
++  static const command_line::arg_descriptor<bool> arg_sim_no_drop_score = {
++    "sim-no-drop-score"
++  , "Simulation only: do not score (and eventually ban) peers whose chain height drops, as every Share-or-Perish node already does, on a node that keeps the stock fork rule; for mixed-adoption experiments (2026-10-30). Read by the protocol handler."
++  , false
++  };
++  static const command_line::arg_descriptor<bool> arg_sim_sop_seen_at_notify = {
++    "sim-sop-seen-at-notify"
++  , "Simulation only: Share-or-Perish stamps a block's first-seen time when its P2P block notification (fluffy or full block) arrives, after the header parses and before any missing-transaction round trip, instead of when the full block qualifies in add_new_block (PoW passes, parent known). Default off (2026-10-30 knob)."
++  , false
++  };
 +  // Lookup key only — the flag itself is registered by miner::init_options
 +  // ("sim-sop-w"); core reads the same variable_map without re-registering.
 +  static const command_line::arg_descriptor<uint64_t> arg_sim_sop_w_key = {
@@ -1781,7 +1821,7 @@ index 3e3f7a824..1b8bde240 100644
    static const command_line::arg_descriptor<size_t> arg_max_txpool_weight  = {
      "max-txpool-weight"
    , "Set maximum txpool weight in bytes."
-@@ -355,6 +418,16 @@ namespace cryptonote
+@@ -355,6 +428,18 @@ namespace cryptonote
      command_line::add_arg(desc, arg_stagenet_on);
      command_line::add_arg(desc, arg_regtest_on);
      command_line::add_arg(desc, arg_sim_relay_alt_blocks);
@@ -1795,10 +1835,12 @@ index 3e3f7a824..1b8bde240 100644
 +  command_line::add_arg(desc, arg_sim_sop_delay_s);
 +  command_line::add_arg(desc, arg_sim_sop_k);
 +  command_line::add_arg(desc, arg_sim_sop_rejudge_displaced);
++  command_line::add_arg(desc, arg_sim_sop_seen_at_notify);
++  command_line::add_arg(desc, arg_sim_no_drop_score);
      command_line::add_arg(desc, arg_keep_fakechain);
      command_line::add_arg(desc, arg_fixed_difficulty);
      command_line::add_arg(desc, arg_fakechain_hard_forks);
-@@ -801,6 +874,37 @@ namespace cryptonote
+@@ -801,6 +886,40 @@ namespace cryptonote
  
      bool show_time_stats = command_line::get_arg(vm, arg_show_time_stats) != 0;
      m_blockchain_storage.set_show_time_stats(show_time_stats);
@@ -1828,6 +1870,9 @@ index 3e3f7a824..1b8bde240 100644
 +          command_line::get_arg(vm, arg_sim_sop_delay_s) * 1000,
 +          command_line::get_arg(vm, arg_sim_sop_k),
 +          command_line::get_arg(vm, arg_sim_sop_rejudge_displaced));
++      m_blockchain_storage.set_sim_sop_seen_at_notify(command_line::get_arg(vm, arg_sim_sop_seen_at_notify));
++      MINFO("SIM-SoP: first-seen stamped at " << (command_line::get_arg(vm, arg_sim_sop_seen_at_notify)
++            ? "P2P notification (--sim-sop-seen-at-notify)" : "full-block qualification (default)"));
 +      // #146 h0: an --offline node counts as synchronized from startup (its
 +      // protocol handler starts synchronized) and never syncs.
 +      if (m_offline)
@@ -1836,7 +1881,7 @@ index 3e3f7a824..1b8bde240 100644
      CHECK_AND_ASSERT_MES(r, false, "Failed to initialize blockchain storage");
  
      block_sync_size = command_line::get_arg(vm, arg_block_sync_size);
-@@ -1453,6 +1557,59 @@ namespace cryptonote
+@@ -1453,6 +1572,59 @@ namespace cryptonote
      return true;
    }
    //-----------------------------------------------------------------------------------------------
@@ -1896,7 +1941,7 @@ index 3e3f7a824..1b8bde240 100644
    bool core::is_synchronized() const
    {
      return m_pprotocol != nullptr && m_pprotocol->is_synchronized();
-@@ -1460,6 +1617,7 @@ namespace cryptonote
+@@ -1460,6 +1632,7 @@ namespace cryptonote
    //-----------------------------------------------------------------------------------------------
    void core::on_synchronized()
    {
@@ -1904,7 +1949,7 @@ index 3e3f7a824..1b8bde240 100644
      m_miner.on_synchronized();
    }
    //-----------------------------------------------------------------------------------------------
-@@ -1541,6 +1699,22 @@ namespace cryptonote
+@@ -1541,6 +1714,22 @@ namespace cryptonote
      add_new_block(*b, bvc, extra_block_txs);
      if(update_miner_blocktemplate && bvc.m_added_to_main_chain)
         update_miner_block_template();
@@ -1996,7 +2041,7 @@ index 0b860f1a8..118919184 100644
    /*                                                                      */
    /************************************************************************/
 diff --git a/src/cryptonote_protocol/cryptonote_protocol_handler.h b/src/cryptonote_protocol/cryptonote_protocol_handler.h
-index 1719d8c43..c45262e11 100644
+index 1719d8c43..a5e2481b8 100644
 --- a/src/cryptonote_protocol/cryptonote_protocol_handler.h
 +++ b/src/cryptonote_protocol/cryptonote_protocol_handler.h
 @@ -95,6 +95,7 @@ namespace cryptonote
@@ -2020,11 +2065,42 @@ index 1719d8c43..c45262e11 100644
      //----------------------------------------------------------------------------------
      //bool get_payload_sync_data(HANDSHAKE_DATA::request& hshd, cryptonote_connection_context& context);
      bool should_drop_connection(cryptonote_connection_context& context, uint32_t next_stripe);
+@@ -191,6 +194,7 @@ namespace cryptonote
+     uint64_t m_sync_download_chain_size, m_sync_download_objects_size;
+     size_t m_block_download_max_size;
+     bool m_sync_pruned_blocks;
++    bool m_sim_no_drop_score = false;   // SIMULATION ONLY: --sim-no-drop-score (mixed-adoption experiment)
+ 
+     // Values for sync time estimates
+     boost::posix_time::ptime m_sync_start_time;
 diff --git a/src/cryptonote_protocol/cryptonote_protocol_handler.inl b/src/cryptonote_protocol/cryptonote_protocol_handler.inl
-index 3ad26a3de..2baf4ce05 100644
+index 3ad26a3de..dff89c4d9 100644
 --- a/src/cryptonote_protocol/cryptonote_protocol_handler.inl
 +++ b/src/cryptonote_protocol/cryptonote_protocol_handler.inl
-@@ -2661,6 +2661,50 @@ skip:
+@@ -195,6 +195,11 @@ namespace cryptonote
+   template<class t_core>
+   bool t_cryptonote_protocol_handler<t_core>::init(const boost::program_options::variables_map& vm)
+   {
++    // SIMULATION ONLY (2026-10-30): a stock-rule node that, like every SoP
++    // node, does not score peers whose height drops (registered by core).
++    m_sim_no_drop_score = vm.count("sim-no-drop-score") && vm["sim-no-drop-score"].as<bool>();
++    if (m_sim_no_drop_score)
++      MINFO("SIM: peer height drops not scored (--sim-no-drop-score)");
+     m_sync_timer.pause();
+     m_sync_timer.reset();
+     m_add_timer.pause();
+@@ -621,6 +626,10 @@ namespace cryptonote
+     MLOG_P2P_MESSAGE(context << "Received NOTIFY_NEW_FLUFFY_BLOCK " << new_block_hash << " (height "
+       << arg.current_blockchain_height << ", " << arg.b.txs.size() << " txes)");
+ 
++    // SIMULATION ONLY (Share-or-Perish, 2026-10-30 knob): first-seen at the
++    // notification, before the missing-tx round trip (no-op unless armed).
++    m_core.get_blockchain_storage().sim_sop_note_block_notify(new_block_hash);
++
+     // Pause mining and resume after block verification to prevent wasted mining cycles while
+     // validating the next block. Needs more research into if this is a DoS vector or not. Invalid
+     // block validation will cause disconnects and bans, so it might not be that bad.
+@@ -2661,6 +2670,50 @@ skip:
      return true;
    }
    //------------------------------------------------------------------------------------------------------------------------
@@ -2075,7 +2151,7 @@ index 3ad26a3de..2baf4ce05 100644
    template<class t_core>
    bool t_cryptonote_protocol_handler<t_core>::relay_transactions(NOTIFY_NEW_TRANSACTIONS::request& arg, const boost::uuids::uuid& source, epee::net_utils::zone zone, relay_method tx_relay)
    {
-@@ -2695,6 +2739,17 @@ skip:
+@@ -2695,6 +2748,20 @@ skip:
        MERROR("Negative score hit");
        return;
      }
@@ -2085,7 +2161,10 @@ index 3ad26a3de..2baf4ce05 100644
 +    // blocks but more share weight. Scoring it dropped connections with ban
 +    // score 5 and, through the host fail score that never decays, banned
 +    // honest peers for 24 h (stubborn_h10_banlog runs, 2026-10-07).
-+    if (m_core.get_blockchain_storage().sim_sop_enabled())
++    // --sim-no-drop-score (2026-10-30) gives a stock-rule node the same
++    // exemption, so a mixed network can be run without stock nodes banning
++    // their SoP peers for 24 h (sop_v4_adopt cells, 10-30).
++    if (m_core.get_blockchain_storage().sim_sop_enabled() || m_sim_no_drop_score)
 +    {
 +      MCLOG(el::Level::Info, "blockchain", el::Color::Default, context << "SIM-SoP: peer height drop not scored");
 +      return;

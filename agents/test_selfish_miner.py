@@ -1014,6 +1014,28 @@ def test_window_stubborn_attributes_parse_overrides():
     assert a.strategy.window_objects == 10 and a.strategy.give_up_depth == 3
 
 
+def test_give_up_objects_attribute_default_off_and_override():
+    a = SelfishMinerAgent(agent_id="atk", attributes=[["strategy", "window_stubborn"], ["bridges", "b1"]])
+    a.logger = MagicMock()
+    assert a.give_up_objects == -1
+    a._ensure_strategy(0)
+    assert a.strategy.give_up_objects == -1
+    b = SelfishMinerAgent(agent_id="atk", attributes=[
+        ["strategy", "window_stubborn"], ["bridges", "b1"], ["give_up_objects", "5"]])
+    b.logger = MagicMock()
+    assert b.give_up_objects == 5
+    b._ensure_strategy(0)
+    assert b.strategy.give_up_objects == 5
+    assert SelfishMinerAgent.strategy_kwargs({})["give_up_objects"] == -1
+
+
+def test_give_up_objects_rejects_difficulty_weigh():
+    with pytest.raises(ValueError):
+        SelfishMinerAgent(agent_id="atk", attributes=[
+            ["strategy", "window_stubborn"], ["bridges", "b1"],
+            ["give_up_objects", "5"], ["weigh", "difficulty"]])
+
+
 def test_branch_weights_sop_mode_without_embedded_shares():
     a = _make_agent(strategy="window_stubborn")
     assert a.embedded_shares is False
@@ -1029,7 +1051,7 @@ def test_branch_weights_sop_mode_without_embedded_shares():
     result = a._branch_weights(5, 8, 7)
     # attacker shares ignored (embedded_shares off): objects=3, weight=1+2+3=6
     # honest shares always counted: unit*(1+m) = 1*6 + 2*2 = 10
-    assert result == (3, 6, 10, 2, 2)
+    assert result == (3, 6, 10, 2, 2, 3, 8, 8)   # totals: no tip_shares -> branch objects; [7] honest objects
     a.daemon_rpc.get_block_headers_range.assert_called_once_with(5, 7)
     a.bridge_rpc.get_block_headers_range.assert_called_once_with(5, 6)
 
@@ -1044,7 +1066,7 @@ def test_branch_weights_sop_mode_with_embedded_shares():
     a.bridge_rpc.get_block_headers_range.return_value = []
     result = a._branch_weights(5, 7, 5)
     # objects = (1+2)+(1+3) = 7; weight = 1*3 + 2*4 = 11; honest range empty -> 0
-    assert result == (7, 11, 0, 4, 0)
+    assert result == (7, 11, 0, 4, 0, 7, 0, 0)
     a.bridge_rpc.get_block_headers_range.assert_not_called()
 
 
@@ -1067,7 +1089,7 @@ def test_branch_weights_wide_difficulty_fallback():
     a.bridge_rpc.get_block_headers_range.return_value = []
     result = a._branch_weights(5, 6, 5)
     # difficulty 16 // sop_w(16) = 1, unit=max(1,1)=1, weight=1*(1+0)=1
-    assert result == (1, 1, 0, 0, 0)
+    assert result == (1, 1, 0, 0, 0, 1, 0, 0)
 
 
 def test_branch_weights_none_on_rpc_error_from_daemon():
@@ -1098,7 +1120,7 @@ def test_branch_weights_empty_honest_range():
         {"difficulty": 16, "major_version": 16, "minor_version": 16 + 0},
     ]
     result = a._branch_weights(5, 6, 5)   # pub_height == fork: empty honest range
-    assert result == (1, 1, 0, 0, 0)
+    assert result == (1, 1, 0, 0, 0, 1, 0, 0)
     a.bridge_rpc.get_block_headers_range.assert_not_called()
 
 
@@ -1151,13 +1173,22 @@ def _s(slot, recv, i=0):
 
 
 class _FakeRPC:
-    def __init__(self, blocks=(), pool=(), tip_hash="tip"):
-        self.blocks, self.pool, self.tip_hash = list(blocks), list(pool), tip_hash
+    """A daemon whose chain is `base - 1` common blocks (no embedded shares)
+    followed by `blocks` (embedded shares per block) from index `base`;
+    get_block_headers_range serves exactly the requested indexes."""
+
+    def __init__(self, blocks=(), pool=(), tip_hash="tip", base=100):
+        self.blocks, self.pool, self.tip_hash, self.base = list(blocks), list(pool), tip_hash, base
         self.submitted = []
 
     def get_block_headers_range(self, lo, hi):
-        return [{"hash": f"h{lo + i}", "difficulty": 1600, "major_version": 16,
-                 "minor_version": 16 + n} for i, n in enumerate(self.blocks)]
+        out = []
+        for idx in range(lo, hi + 1):
+            n = self.blocks[idx - self.base] if self.base <= idx < self.base + len(self.blocks) else 0
+            if idx >= self.base + len(self.blocks):
+                raise RPCError(f"no block at index {idx}")
+            out.append({"hash": f"h{idx}", "difficulty": 1600, "major_version": 16, "minor_version": 16 + n})
+        return out
 
     def get_info(self):
         return {"top_block_hash": self.tip_hash}
@@ -1194,9 +1225,24 @@ def test_branch_weights_tip_shares(make_miner):
     m = make_miner(attributes={"weigh": "sop", "embedded_shares": "true", "tip_shares": "true"},
                    priv_blocks=[15, 15], pub_blocks=[15, 15],
                    pub_pool=[16, 17, 18, 19, 20], priv_pool=[16, 17, 18])
-    att_objects, att_w, hon_w, att_x1, hon_x1 = m._branch_weights(fork=100, priv_height=102, pub_height=102)
-    assert (att_objects, att_x1, hon_x1) == (32, 16, 16)
+    att_objects, att_w, hon_w, att_x1, hon_x1, att_tot, hon_tot, hon_objects = m._branch_weights(fork=100, priv_height=102, pub_height=102)
+    assert (att_objects, att_x1, hon_x1, hon_objects) == (32, 16, 16, 32)
     assert att_w == 3200 + 300 and hon_w == 3200 + 500
+    assert (att_tot, hon_tot) == (32 + 3, 32 + 5)     # give-up objects include the pending pool shares
+
+
+def test_branch_weights_counts_the_attackers_pool_shares_on_an_empty_branch(make_miner):
+    # 2026-10-26, cell a047: at a == 0 the agent read its own pending shares as 0 (the tip-pool
+    # lookup needs a header and an empty branch has none), so every share race started at pa 0
+    # where the race model has a median of 12 and 55% were abandoned at once. The empty branch's
+    # tip is the fork block (index fork - 1); its pool shares are the attacker's pending.
+    m = make_miner(attributes={"weigh": "sop", "embedded_shares": "true", "tip_shares": "true",
+                               "count_own_tip_shares": "false"},
+                   priv_blocks=[], pub_blocks=[15], pub_pool=[16, 17], priv_pool=[16, 17, 18])
+    w = m._branch_weights(fork=100, priv_height=100, pub_height=101)
+    assert w[0] == 0 and w[5] - w[0] == 3           # pa: three pending shares on the fork tip
+    assert w[6] - w[7] == 2 and w[7] == 16          # ph 2; the honest block carries 15 shares
+    assert w[1] == 0                                # own tip shares stay out of the reveal weight
 
 
 def test_branch_weights_without_tip_shares_is_v3(make_miner):
@@ -1215,8 +1261,9 @@ def test_branch_weights_own_tip_shares_excluded(make_miner):
                                "count_own_tip_shares": "false"},
                    priv_blocks=[15, 15], pub_blocks=[15, 15],
                    pub_pool=[16, 17, 18, 19, 20], priv_pool=[16, 17, 18])
-    att_objects, att_w, hon_w, att_x1, hon_x1 = m._branch_weights(fork=100, priv_height=102, pub_height=102)
-    assert att_w == 3200 and hon_w == 3200 + 500
+    att_objects, att_w, hon_w, att_x1, hon_x1, att_tot, hon_tot, hon_objects = m._branch_weights(fork=100, priv_height=102, pub_height=102)
+    assert att_w == 3200 and hon_w == 3200 + 500 and hon_tot - hon_objects == 5
+    assert (att_tot, hon_tot) == (32 + 3, 32 + 5)     # own pool shares still count as the attacker's work
 
 
 def test_tip_shares_wait_for_bridge_tip(make_miner):
@@ -1230,3 +1277,164 @@ def test_tip_shares_wait_for_bridge_tip(make_miner):
     assert [r for (_, _, r) in m.bridge_rpc.submitted] == [True, True]
     m._deliver_tip_shares()
     assert len(m.bridge_rpc.submitted) == 2                  # delivered once
+
+
+# ---- learned strategy plumbing (docs/superpowers/plans/2026-10-25-sop-rl-attacker.md, Task 5) ----
+
+def test_branch_weights_eighth_field_is_honest_objects_without_pending():
+    """Same fork as test_window_stubborn_reveal_is_logged (attacker 2 blocks,
+    honest 1 block, no embedded shares, no tip shares): the new field [7] is
+    the honest objects behind weights[2] (blocks + embedded shares, no
+    pending), so weights[6] - weights[7] is the honest pending share count."""
+    a = _make_agent(strategy="window_stubborn", start_height=0)
+    a._start_synced = True
+    a.daemon_rpc.get_block_headers_range.return_value = [
+        {"difficulty": 16, "major_version": 16, "minor_version": 16 + 3},
+        {"difficulty": 16, "major_version": 16, "minor_version": 16 + 1},
+    ]
+    a.bridge_rpc.get_block_headers_range.return_value = [
+        {"difficulty": 16, "major_version": 16, "minor_version": 16 + 2},
+    ]
+    a.embedded_shares = True
+    w = a._branch_weights(0, 2, 1)
+    assert len(w) == 8
+    assert w[7] == 3                       # 1 block + 2 embedded shares
+    assert w[6] - w[7] == 0                # no tip shares read: no pending
+    assert w[0] == 6 and w[5] - w[0] == 0  # attacker: 2 blocks + 3 + 1 shares, no pending
+
+
+def test_learned_strategy_attributes_are_plumbed(tmp_path):
+    import gzip
+    import json
+    pf = tmp_path / "p.json.gz"
+    with gzip.open(pf, "wt") as f:
+        json.dump({"meta": {"alpha": 0.45, "env": "race"}, "key_clip": {"d": 128, "p": 48, "d_bin": 1},
+                   "fallback": "sim_stubborn", "policy": {}}, f)
+    a = _make_agent(strategy="learned", start_height=0,
+                    extra=(("policy_file", str(pf)), ("alpha", "0.45"), ("window_rule", "20261020"),
+                           ("window_objects", "32"), ("give_up_objects", "5"), ("weigh", "sop"),
+                           ("count_own_tip_shares", "false")))
+    a._ensure_strategy(0)
+    assert a.strategy.name == "learned" and a.strategy.alpha == 0.45
+    assert a.strategy.policy == {}
+
+
+def test_param_stubborn_reveal_is_logged():
+    # the check gate and the campaign scripts count reveals from the "<strategy>: reveal fork=" line;
+    # the 6 h smoke of 2026-10-26 showed reveals=0 for a run that did reveal (only window_stubborn
+    # and deep_hunt logged it)
+    a = _make_agent(strategy="param_stubborn", start_height=0,
+                    extra=(("window_rule", "20261020"), ("window_objects", "1"), ("give_up_objects", "8"),
+                           ("weigh", "sop")))
+    a._start_synced = True
+    a.daemon_rpc.get_block.side_effect = lambda height: {
+        "blob": f"priv{height}", "block_header": {"hash": f"ph{height}"}}
+    a.bridge_rpc.get_block.side_effect = lambda height: {
+        "blob": f"pub{height}", "block_header": {"hash": f"hh{height}"}}
+    a.daemon_rpc.get_block_headers_range.return_value = [
+        {"difficulty": 16, "major_version": 16, "minor_version": 16 + 0},
+        {"difficulty": 16, "major_version": 16, "minor_version": 16 + 0},
+    ]
+    a.bridge_rpc.get_block_headers_range.return_value = [
+        {"difficulty": 16, "major_version": 16, "minor_version": 16 + 0},
+    ]
+    # a=2 (fork 0..1), h=1: past the 1-object window, D 1 > ph 0 -> reveal
+    a.bridge_rpc.get_info.return_value = {"height": 1}
+    a.daemon_rpc.get_info.return_value = {"height": 2}
+    a.run_iteration()
+    messages = [c.args[0] for c in a.logger.info.call_args_list]
+    assert any("param_stubborn: reveal fork=0 a=2 h=1 objects=2 weight=2 honest_weight=1" in m
+               for m in messages), messages
+
+
+def test_param_stubborn_attributes_are_plumbed_and_logged():
+    a = _make_agent(strategy="param_stubborn", start_height=0,
+                    extra=(("window_rule", "20261020"), ("window_objects", "32"), ("give_up_objects", "8"),
+                           ("weigh", "sop"), ("publish_lead", "2"), ("reveal_margin", "3"), ("reveal_depth", "2"),
+                           ("block_deficit", "4"), ("hold_shares", "1")))
+    s = a.strategy
+    assert (s.name, s.give_up_objects, s.publish_lead, s.reveal_margin, s.reveal_depth, s.block_deficit,
+            s.hold_shares) == ("param_stubborn", 8, 2, 3, 2, 4, 1)
+    messages = [c.args[0] for c in a.logger.info.call_args_list]
+    assert any("param_stubborn: G=8 L=2 M=3 R=2 B=4 Z=1" in m for m in messages), messages
+
+
+def test_learned_strategy_logs_the_policy_size_at_start(tmp_path):
+    # a placeholder policy (empty diff) runs the stubborn attacker under the learned name; the only
+    # place that shows is this line, so it must name the file, its entries, the meta env and alpha
+    import gzip
+    import json
+    pf = tmp_path / "p.json.gz"
+    with gzip.open(pf, "wt") as f:
+        json.dump({"meta": {"alpha": 0.45, "env": "placeholder"}, "key_clip": {"d": 128, "p": 48, "d_bin": 1},
+                   "fallback": "sim_stubborn", "policy": {"1,2,32,0,1,32,1": "hold"}}, f)
+    a = _make_agent(strategy="learned", start_height=0,
+                    extra=(("policy_file", str(pf)), ("alpha", "0.45"), ("window_rule", "20261020"),
+                           ("window_objects", "32"), ("give_up_objects", "5"), ("weigh", "sop")))
+    messages = [c.args[0] for c in a.logger.info.call_args_list]
+    assert any("learned: policy" in m and "entries=1" in m and "env=placeholder" in m and "alpha=0.45" in m
+               for m in messages), messages
+
+
+def _two_bridge_agent(read_bridge=None):
+    extra = [["bridges", "b1,b2"]] + ([["read_bridge", read_bridge]] if read_bridge else [])
+    a = SelfishMinerAgent(agent_id="atk", attributes=[["strategy", "honest"]] + extra)
+    a.logger = MagicMock()
+    b1, b2 = MagicMock(name="b1"), MagicMock(name="b2")
+    b1.get_info.return_value = {"height": 10, "top_block_hash": "a" * 64}
+    b2.get_info.return_value = {"height": 12, "top_block_hash": "b" * 64}
+    a.bridge_rpcs = [b1, b2]
+    a.bridge_rpc = b1
+    return a, b1, b2
+
+
+def test_read_bridge_best_reads_from_the_bridge_that_is_ahead():
+    """The network-advantage topology puts one bridge beside each honest
+    group; `read_bridge: best` makes the attacker see the honest chain
+    through whichever bridge is ahead this tick (height, then the current
+    bridge on a tie), instead of the first bridge only."""
+    a, b1, b2 = _two_bridge_agent("best")
+    assert a._select_read_bridge() is b2 and a.bridge_rpc is b2
+    b1.get_info.return_value = {"height": 12, "top_block_hash": "c" * 64}
+    assert a._select_read_bridge() is b2          # tie: keep the current one
+    b1.get_info.return_value = {"height": 13, "top_block_hash": "d" * 64}
+    assert a._select_read_bridge() is b1
+    b2.get_info.side_effect = RPCError("down")
+    assert a._select_read_bridge() is b1          # an unreachable bridge is skipped
+
+
+def test_read_bridge_defaults_to_the_first_bridge():
+    a, b1, b2 = _two_bridge_agent()
+    assert a.read_bridge == "first"
+    assert a._select_read_bridge() is b1 and a.bridge_rpc is b1
+    assert not b2.get_info.called
+
+
+def test_release_feeds_missing_public_parents_to_an_isolated_bridge():
+    """The network-advantage topology isolates bridge 1 from the public
+    network (it peers only with the slow honest miner), so it lacks the public
+    parents of the attacker's reveal and would reject it. With
+    `feed_parents: true` the release first submits, from the attacker's own
+    daemon, every public block from two below the bridge's height up to the
+    fork (an already-known block is a harmless error), then the private ones."""
+    a = _two_bridge_agent()[0]
+    a.daemon_rpc = MagicMock()
+    a.feed_parents = True
+    b1, b2 = a.bridge_rpcs
+    b1.get_info.return_value = {"height": 5}
+    b2.get_info.return_value = {"height": 8}
+    a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"blk{height}"}
+    a._release_up_to(8, 9)
+    assert [c.args[0] for c in b1.submit_block.call_args_list] == ["blk3", "blk4", "blk5", "blk6", "blk7", "blk8", "blk9"]
+    assert [c.args[0] for c in b2.submit_block.call_args_list] == ["blk6", "blk7", "blk8", "blk9"]
+
+
+def test_release_feeds_nothing_by_default():
+    a = _two_bridge_agent()[0]
+    a.daemon_rpc = MagicMock()
+    assert a.feed_parents is False
+    b1, b2 = a.bridge_rpcs
+    a.daemon_rpc.get_block.side_effect = lambda height: {"blob": f"blk{height}"}
+    a._release_up_to(8, 9)
+    assert [c.args[0] for c in b1.submit_block.call_args_list] == ["blk8", "blk9"]
+    assert not b1.get_info.called

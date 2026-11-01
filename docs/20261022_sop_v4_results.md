@@ -1,3 +1,5 @@
+Status (2026-11-01): superseded by docs/20261026_sop_attacker_search.md (the 'collapse' here was mostly the attacker's give-up rule; see this doc's 2026-10-23 caveat).
+
 # Share-or-Perish (MRL #146) under the 2026-10-20 revision: v4 campaign results (2026-10-21 to 2026-10-22)
 
 First campaign on the rule as revised 2026-10-20 (log v4; the issue body has
@@ -5,6 +7,17 @@ not changed since — edit history checked 2026-10-22). Companion to
 `docs/20261019_sop_campaign8_results.md`, which measured the 2026-10-15 text
 (log v3) on the same cells. Design: `docs/superpowers/specs/2026-10-21-sop-rev20261020-design.md`;
 conformance: `docs/20260930_sop_conformance.md` (revised 2026-10-20 section).
+
+> **Caveat (2026-10-23):** the attacker in every run below gives up only
+> when honest leads by `give_up_depth` *blocks*; past the window and behind
+> by weight its block count keeps pace with honest's, so it sat stranded
+> (no reveal, no concession, every block orphaned) for 17-27 h of each 72 h
+> alpha-0.45 run. Measured 2026-10-23 (`sop_v4_o5_72h`, two 72 h draws):
+> the same cell with the objects give-up (`give_up_objects 5`) earns
+> **0.209 and 0.210** against the 0.054 below, with 0 h stranded; the race
+> model says 0.36. The collapse below is therefore mostly the attacker's
+> give-up rule, not the revision alone; see
+> `docs/20261023_sop_scale_n300_smoke.md` §3.1.
 
 ## Summary
 
@@ -103,6 +116,8 @@ variants, w/k sweeps, learned policies) needs multiple samples per cell.
   noise presumably scales with the share, but only the 0.10 cell is measured.
 - Whether the model's central values hold at other cells (it sat below the
   sim on cell 4, above it on noown, both within noise).
+- How much of the alpha-0.45 collapse is the block-depth give-up: the
+  attacker was stranded 17-27 h per run (2026-10-23 caveat above).
 - The scale question: all of the above is 12 daemons. `sop_scale_n1000`
   (1000 nodes, 300-node smoke first) is the pending test of the same rule
   at realistic fan-out.

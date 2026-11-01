@@ -1,3 +1,5 @@
+Status (2026-11-01): current (decision log and oracle through the MRL #146 revision of 2026-10-20).
+
 # Share-or-Perish conformance: decision log and spec oracle (2026-09-30)
 
 Every Share-or-Perish (SoP) fork-choice evaluation in `monerod-sim` logs its

@@ -1,0 +1,10 @@
+pop_dettie_mid pid=524179 started=2026-09-27T01:47:32Z
+pop_dettie_mid_rep pid=524835 started=2026-09-27T01:47:52Z
+pop_exact_relay pid=557712 started=2026-09-27T03:27:40Z
+pop_exact_relay_rep pid=559159 started=2026-09-27T03:28:00Z
+pop_sop2_h10_fbridge pid=692514 started=2026-09-27T13:02:22Z
+pop_sop2_h10_fbridge_rep pid=692873 started=2026-09-27T13:02:42Z
+pop_exact_h10_fbridge pid=693279 started=2026-09-27T13:03:02Z
+pop_exact_h10_fbridge_rep pid=694510 started=2026-09-27T13:03:22Z
+pop_exact_mid_fbridge pid=695982 started=2026-09-27T13:03:42Z
+pop_exact_mid_fbridge_rep pid=697112 started=2026-09-27T13:04:02Z

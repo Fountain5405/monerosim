@@ -1,0 +1,12 @@
+{"d": 5, "alpha": 0.45, "seed": 1, "days": 2000.0, "share": 0.506102196290918, "reveals": 174078, "mean_reorg": 1.5960086857615552, "att_orphan_rate": 0.18657370007151672, "net_orphan_rate": 0.27698251392319745}
+{"d": 5, "alpha": 0.45, "seed": 2, "days": 2000.0, "share": 0.5028789661483566, "reveals": 172846, "mean_reorg": 1.5984575865221065, "att_orphan_rate": 0.19059966983270388, "net_orphan_rate": 0.27745778356877393}
+{"d": 5, "alpha": 0.4, "seed": 3, "days": 2000.0, "share": 0.3944474718865015, "reveals": 145646, "mean_reorg": 1.5261387199099186, "att_orphan_rate": 0.2752824488676885, "net_orphan_rate": 0.26457367022421885}
+{"d": 5, "alpha": 0.4, "seed": 2, "days": 2000.0, "share": 0.39216801236251797, "reveals": 144635, "mean_reorg": 1.5331213053548587, "att_orphan_rate": 0.27737252956687464, "net_orphan_rate": 0.26469554587821836}
+{"d": 5, "alpha": 0.33, "seed": 1, "days": 2000.0, "share": 0.2632162342647653, "reveals": 109811, "mean_reorg": 1.3901430639917676, "att_orphan_rate": 0.39082702687926724, "net_orphan_rate": 0.2352208311271761}
+{"d": 5, "alpha": 0.33, "seed": 2, "days": 2000.0, "share": 0.2601224331963887, "reveals": 108848, "mean_reorg": 1.3879354696457444, "att_orphan_rate": 0.39494448092462114, "net_orphan_rate": 0.23484535939268922}
+{"d": 5, "alpha": 0.4, "seed": 1, "days": 2000.0, "share": 0.3957715746929511, "reveals": 145366, "mean_reorg": 1.5377942572541035, "att_orphan_rate": 0.2731527841653578, "net_orphan_rate": 0.26469370199436615}
+{"d": 5, "alpha": 0.33, "seed": 3, "days": 2000.0, "share": 0.2627808490020262, "reveals": 109599, "mean_reorg": 1.3893831148094418, "att_orphan_rate": 0.3918056253297488, "net_orphan_rate": 0.23522976841877155}
+{"d": 5, "alpha": 0.36, "seed": 2, "days": 2000.0, "share": 0.3129519280723714, "reveals": 123762, "mean_reorg": 1.4520935343643444, "att_orphan_rate": 0.34500965448924076, "net_orphan_rate": 0.24867185400082928}
+{"d": 5, "alpha": 0.45, "seed": 3, "days": 2000.0, "share": 0.5062041821174649, "reveals": 174179, "mean_reorg": 1.5913571670522852, "att_orphan_rate": 0.1879106378124393, "net_orphan_rate": 0.2771851959895676}
+{"d": 5, "alpha": 0.36, "seed": 1, "days": 2000.0, "share": 0.31576868464018276, "reveals": 124679, "mean_reorg": 1.4502682889660647, "att_orphan_rate": 0.34184568636751, "net_orphan_rate": 0.24883994346678673}
+{"d": 5, "alpha": 0.36, "seed": 3, "days": 2000.0, "share": 0.31522364586706136, "reveals": 124594, "mean_reorg": 1.4498129925999648, "att_orphan_rate": 0.3433486154551779, "net_orphan_rate": 0.24921201816421418}

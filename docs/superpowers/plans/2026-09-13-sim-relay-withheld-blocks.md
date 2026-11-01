@@ -1,3 +1,5 @@
+Status (2026-11-01): current (implemented).
+
 # Sim-Only Relay of Withheld Blocks (γ>0 selfish mining) Implementation Plan
 
 > **STATUS: COMPLETE (2026-09-18).** All tasks shipped. Tasks 1/2/4/5 landed

@@ -1,0 +1,17 @@
+2026-10-31T05:45:03Z start btc --alpha 0.4 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T06:11:24Z exit 0 btc --alpha 0.4 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T06:11:24Z start btc --alpha 0.425 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T06:40:09Z exit 0 btc --alpha 0.425 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T06:40:09Z start btc --alpha 0.45 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T17:35:50Z exit 0 btc --alpha 0.45 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T17:35:50Z start btc --alpha 0.475 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T18:25:55Z exit 0 btc --alpha 0.475 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T18:25:55Z start btc --alpha 0.3333333333333333 --gamma 0.5 --T-policy 400 --policies-only
+2026-10-31T18:30:52Z exit 0 btc --alpha 0.3333333333333333 --gamma 0.5 --T-policy 400 --policies-only
+2026-10-31T18:30:52Z start btc --alpha 0.35 --gamma 0.5 --T-policy 400 --policies-only
+2026-10-31T18:36:23Z exit 0 btc --alpha 0.35 --gamma 0.5 --T-policy 400 --policies-only
+2026-10-31T18:36:23Z start btc --alpha 0.375 --gamma 0.5 --T-policy 400 --policies-only
+2026-10-31T18:42:57Z exit 0 btc --alpha 0.375 --gamma 0.5 --T-policy 400 --policies-only
+2026-10-31T18:42:57Z start btc --alpha 0.4 --gamma 0.5 --T-policy 400 --policies-only
+2026-10-31T18:50:58Z exit 0 btc --alpha 0.4 --gamma 0.5 --T-policy 400 --policies-only
+2026-10-31T18:50:58Z queue btc2 done

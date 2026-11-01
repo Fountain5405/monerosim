@@ -1,0 +1,36 @@
+2026-10-21 19:58:53Z queue start lanes=2
+2026-10-21 19:58:53Z lane 1 start cell 1 share_sop2_built_a033_d2
+2026-10-21 19:58:53Z lane 2 start cell 2 share_sop2_hs_a045_d5
+2026-10-22 01:22:13Z lane 1 finished share_sop2_built_a033_d2 rc=0 wall=5.39 h
+2026-10-22 01:22:48Z check share_sop2_built_a033_d2 rc=2: CHECK 20261021_195854_sop_v4_h10_72h__share_sop2_built_a033_d2 oracle=0mm/12nodes a3=0 reveals=0 a3_undelivered=0 alt_shares=38 probes=ok lateness=ok reveal_stats=ok embed=ok -> WARN  # A3 untested: attacker made no reveal
+2026-10-22 01:22:48Z lane 1 start cell 3 share_sop2_hs_a040_d2
+2026-10-22 02:10:09Z lane 2 finished share_sop2_hs_a045_d5 rc=0 wall=6.19 h
+2026-10-22 02:11:14Z check share_sop2_hs_a045_d5 rc=0: CHECK 20261021_195854_sop_v4_h10_72h__share_sop2_hs_a045_d5 oracle=0mm/12nodes a3=62 reveals=54 a3_undelivered=46 alt_shares=56 probes=ok lateness=ok reveal_stats=ok embed=ok -> PASS
+2026-10-22 02:11:14Z lane 2 start cell 4 share_sop2_hs_a045_d2
+2026-10-22 07:14:46Z lane 1 finished share_sop2_hs_a040_d2 rc=0 wall=5.87 h
+2026-10-22 07:15:32Z check share_sop2_hs_a040_d2 rc=0: CHECK 20261022_012250_sop_v4_h10_72h__share_sop2_hs_a040_d2 oracle=0mm/12nodes a3=12 reveals=23 a3_undelivered=11 a3_shares=0 rejected=11 alt_shares=81 probes=ok lateness=ok reveal_stats=ok embed=ok -> PASS
+2026-10-22 08:23:57Z lane 2 finished share_sop2_hs_a045_d2 rc=0 wall=6.21 h
+2026-10-22 08:25:41Z check share_sop2_hs_a045_d2 rc=0: CHECK 20261022_021115_sop_v4_h10_72h__share_sop2_hs_a045_d2 oracle=0mm/12nodes a3=37 reveals=67 a3_undelivered=30 a3_shares=8 rejected=30 alt_shares=45 probes=ok lateness=ok reveal_stats=ok embed=ok -> PASS
+2026-10-22 08:25:41Z queue done
+2026-10-22 10:30:28Z noown start cell share_sop2_noown_hs_a045_d2
+2026-10-22 15:01:20Z reps queue start (wait_pid=2668666)
+2026-10-22 15:01:20Z reps lane 1 start cell 1 sop_v4_h10_72h_s2/share_sop2_hs_a045_d2
+2026-10-22 16:37:17Z noown finished share_sop2_noown_hs_a045_d2 rc=0 wall=6.11 h
+2026-10-22 16:38:58Z noown check share_sop2_noown_hs_a045_d2 rc=0: CHECK 20261022_103029_sop_v4_noown_72h__share_sop2_noown_hs_a045_d2 oracle=0mm/12nodes a3=41 reveals=41 a3_undelivered=0 a3_shares=21 rejected=0 alt_shares=37 probes=ok lateness=ok reveal_stats=ok embed=ok -> PASS
+2026-10-22 16:39:20Z reps lane 2 start cell 2 sop_v4_noown_72h_s2/share_sop2_noown_hs_a045_d2
+2026-10-22 21:07:47Z reps lane 1 finished sop_v4_h10_72h_s2/share_sop2_hs_a045_d2 rc=0 wall=6.11 h
+2026-10-22 21:08:55Z reps check sop_v4_h10_72h_s2/share_sop2_hs_a045_d2 rc=0: CHECK 20261022_150121_sop_v4_h10_72h_s2__share_sop2_hs_a045_d2 oracle=0mm/12nodes a3=52 reveals=77 a3_undelivered=25 a3_shares=20 rejected=25 alt_shares=57 probes=ok lateness=ok reveal_stats=ok embed=ok -> PASS
+2026-10-22 22:48:17Z reps lane 2 finished sop_v4_noown_72h_s2/share_sop2_noown_hs_a045_d2 rc=0 wall=6.15 h
+2026-10-22 22:49:51Z reps check sop_v4_noown_72h_s2/share_sop2_noown_hs_a045_d2 rc=0: CHECK 20261022_163921_sop_v4_noown_72h_s2__share_sop2_noown_hs_a045_d2 oracle=0mm/12nodes a3=36 reveals=37 a3_undelivered=1 a3_shares=11 rejected=1 alt_shares=40 probes=ok lateness=ok reveal_stats=ok embed=ok -> PASS
+2026-10-22 22:49:51Z reps queue done
+2026-10-23 02:57:04Z scale smoke start sop_scale_n300_hs_a045_d5_8h/share_sop2_a045 (pinning off, 313 hosts, alone on the box)
+2026-10-23 07:08:15Z scale smoke finished sop_scale_n300_hs_a045_d5_8h/share_sop2_a045 rc=0 wall=4.19 h ratio=1.911 peakRAM=83 GB peakswap=0.3 GB
+2026-10-23 07:08:24Z scale check sop_scale_n300_hs_a045_d5_8h/share_sop2_a045 rc=2: CHECK 20261023_025705_sop_scale_n300_hs_a045_d5_8h__share_sop2_a045 oracle=0mm/312nodes a3=0 reveals=0 a3_undelivered=0 a3_shares=0 rejected=0 alt_shares=2 probes=ok lateness=ok reveal_stats=ok embed=ok -> WARN  # A3 untested: attacker made no reveal
+2026-10-23 11:13:06Z o5 queue start lanes=2 (sop_v4_o5_72h)
+2026-10-23 11:13:06Z o5 lane 1 start sop_v4_o5_72h/share_sop2_a045_s1
+2026-10-23 11:13:06Z o5 lane 2 start sop_v4_o5_72h/share_sop2_a045_s2
+2026-10-23 17:22:05Z o5 lane 1 finished sop_v4_o5_72h/share_sop2_a045_s1 rc=0 wall=6.15 h
+2026-10-23 17:23:07Z o5 lane 2 finished sop_v4_o5_72h/share_sop2_a045_s2 rc=0 wall=6.17 h
+2026-10-23 17:23:09Z o5 check sop_v4_o5_72h/share_sop2_a045_s1 rc=0: CHECK 20261023_111307_sop_v4_o5_72h__share_sop2_a045_s1 oracle=0mm/12nodes a3=110 reveals=174 a3_undelivered=64 a3_shares=34 rejected=64 alt_shares=76 probes=ok lateness=ok reveal_stats=ok embed=ok -> PASS
+2026-10-23 17:24:09Z o5 check sop_v4_o5_72h/share_sop2_a045_s2 rc=0: CHECK 20261023_111307_sop_v4_o5_72h__share_sop2_a045_s2 oracle=0mm/12nodes a3=103 reveals=160 a3_undelivered=57 a3_shares=44 rejected=57 alt_shares=55 probes=ok lateness=ok reveal_stats=ok embed=ok -> PASS
+2026-10-23 17:24:09Z o5 queue done

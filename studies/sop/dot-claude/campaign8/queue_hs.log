@@ -1,0 +1,34 @@
+2026-10-20 16:58:51 queue start (share-aware attacker)
+2026-10-20 16:58:51 start scripts/selfish_matrix.py test_configs/matrix/sop_v3_hs_h10_72h.yaml --parallel 1 --cells hs_a045_d5
+2026-10-20 17:00:51 start scripts/selfish_matrix.py test_configs/matrix/sop_v3_hs_h10_72h.yaml --parallel 1 --cells hs_a045_d2
+2026-10-20 17:42:32 [v2] queue v2 start: adopts v1's running cells, bootfast for the rest, tail smoke + pair
+2026-10-20 17:42:32 [v2] start scripts/selfish_matrix.py test_configs/matrix/sop_v3_hs_tail_smoke.yaml --parallel 1 --cells hs_a045_d5
+2026-10-20 17:42:32 [v2] lane 1: waiting on running sop_v3_hs_h10_72h hs_a045_d5 (pid 2223909)
+2026-10-20 17:42:32 [v2] lane 2: waiting on running sop_v3_hs_h10_72h hs_a045_d2 (pid 2225287)
+2026-10-20 17:42:34 [v2] done sop_v3_hs_tail_smoke hs_a045_d5 rc=1 0.00 h
+2026-10-20 17:42:34 [v2] check smoke tail rc=2
+2026-10-20 17:42:34 [v2] check smoke oracle rc=2
+2026-10-20 17:42:34 [v2] check smoke embed rc=0
+2026-10-20 17:42:34 [v2] tail smoke FAIL: tail=False oracle=False attacker gossiped shares embedded=0
+2026-10-20 17:43:21 [v2] queue v2 start: adopts v1's running cells, bootfast for the rest, tail smoke + pair
+2026-10-20 17:43:21 [v2] start scripts/selfish_matrix.py test_configs/matrix/sop_v3_hs_tail_smoke.yaml --parallel 1 --cells hs_a045_d5
+2026-10-20 17:43:21 [v2] lane 1: waiting on running sop_v3_hs_h10_72h hs_a045_d5 (pid 2223909)
+2026-10-20 17:43:21 [v2] lane 2: waiting on running sop_v3_hs_h10_72h hs_a045_d2 (pid 2225287)
+2026-10-20 17:54:31 [v2] done sop_v3_hs_tail_smoke hs_a045_d5 rc=0 0.19 h
+2026-10-20 17:54:31 [v2] check smoke tail rc=0
+2026-10-20 17:54:32 [v2] check smoke oracle rc=0
+2026-10-20 17:54:34 [v2] check smoke embed rc=0
+2026-10-20 17:54:34 [v2] tail smoke PASS: tail=True oracle=True attacker gossiped shares embedded=334
+2026-10-20 23:04:21 [v2] done (adopted) sop_v3_hs_h10_72h hs_a045_d2
+2026-10-20 23:04:21 [v2] start scripts/selfish_matrix.py test_configs/matrix/sop_v3_hs_tail_h10_72h.yaml --parallel 1 --cells hs_a045_d5
+2026-10-20 23:32:21 [v2] done (adopted) sop_v3_hs_h10_72h hs_a045_d5
+2026-10-20 23:32:21 [v2] start scripts/selfish_matrix.py test_configs/matrix/sop_v3_hs_h10_72h.yaml --parallel 1 --cells built_a045_d5
+2026-10-21 05:54:12 [v2] done sop_v3_hs_tail_h10_72h hs_a045_d5 rc=0 6.83 h
+2026-10-21 05:54:12 [v2] start scripts/selfish_matrix.py test_configs/matrix/sop_v3_hs_tail_h10_72h.yaml --parallel 1 --cells built_a045_d5
+2026-10-21 05:54:44 [v2] done sop_v3_hs_h10_72h built_a045_d5 rc=0 6.37 h
+2026-10-21 05:54:44 [v2] start scripts/selfish_matrix.py test_configs/matrix/sop_v3_hs_h10_72h.yaml --parallel 1 --cells hs_a040_d2
+2026-10-21 10:49:48 [scale] holding the n300 scale smoke (sop_scale_n300_hs_a045_d5_8h) until queue v2 (pid 2233636) has finished
+2026-10-21 11:37:08 [v2] done sop_v3_hs_h10_72h hs_a040_d2 rc=0 5.71 h
+2026-10-21 11:37:08 [v2] start scripts/selfish_matrix.py test_configs/matrix/sop_v3_hs_h10_72h.yaml --parallel 1 --cells built_a040_d2
+2026-10-21 12:33:06 [v2] done sop_v3_hs_tail_h10_72h built_a045_d5 rc=0 6.65 h
+2026-10-21 12:33:06 [v2] start scripts/selfish_matrix.py test_configs/matrix/deep_hunt_sop_hs_a040.yaml --parallel 1

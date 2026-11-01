@@ -1,0 +1,63 @@
+# sop_v4_window_k6_h4_72h (2026-10-28): the honest-miner-count trend, N=4.
+# K=6 at 0.47 as in sop_v4_window_72h's k6 a047 cells (G=4, same seeds), on
+# base selfish_micro_sop_h4.yaml: the same honest hashrate (5.3) split over
+# four honest miners. N=1 (sop_v4_window_k6_1h_72h) s1 ran 0.373 with the
+# model's reveal and orphan rates; N=2 ran 0.454 / 0.436 / 0.428 (model 0.399,
+# 35% more reveals). If honest shares are lost between honest miners, N=4
+# runs above N=2.
+name: sop_v4_window_k6_h4_72h
+seed: 27791
+base: test_configs/selfish_micro_sop_h4.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: param_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          count_own_tip_shares: 'false'
+          give_up_depth: '5'
+          hold_shares: '1'
+          publish_lead: '1'
+          reveal_margin: '1'
+          block_deficit: '0'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    k6:
+      attacker:
+        attributes: {window_objects: '80', give_up_objects: '4', reveal_depth: '1'}
+        daemon_options: {sim-sop-k: 6}
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16, sim-sop-k: 6}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16, sim-sop-k: 6}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16, sim-sop-k: 6}
+  alpha:
+    a047:
+      attacker: {hashrate: 4.7}
+      honest: {hashrate: [1.325, 1.325, 1.325, 1.325]}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+    s2:
+      attacker:
+        attributes:
+          sample: '2'
+    s3:
+      attacker:
+        attributes:
+          sample: '3'

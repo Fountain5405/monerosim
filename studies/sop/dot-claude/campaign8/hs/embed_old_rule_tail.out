@@ -1,0 +1,21 @@
+== 20261021_055413_sop_v3_hs_tail_h10_72h__share_sop2_built_a045_d5
+daemon_logs/monero-attacker-miner/bitmonero.log                  21217   287215        0          0
+daemon_logs/monero-honest-001/bitmonero.log                      25687   173671   167043         46
+daemon_logs/monero-honest-002/bitmonero.log                      25674   170169   170432         49
+shadow.data/hosts/attacker-miner/monerod-sim.1000.stdout         21217   287215        0          0
+shadow.data/hosts/honest-001/monerod-sim.1000.stdout             25687   173671   167043         46
+shadow.data/hosts/honest-002/monerod-sim.1000.stdout             25674   170169   170432         49
+== 20261021_055445_sop_v3_hs_h10_72h__share_sop2_hs_a040_d2
+daemon_logs/monero-attacker-miner/bitmonero.log                  24118   228136    49356         30
+daemon_logs/monero-honest-001/bitmonero.log                      26170   187732   187749         54
+daemon_logs/monero-honest-002/bitmonero.log                      26171   191228   184333         69
+shadow.data/hosts/attacker-miner/monerod-sim.1000.stdout         24118   228136    49356         30
+shadow.data/hosts/honest-001/monerod-sim.1000.stdout             26170   187732   187749         54
+shadow.data/hosts/honest-002/monerod-sim.1000.stdout             26171   191228   184333         69
+== 20261021_113709_sop_v3_hs_h10_72h__share_sop2_built_a040_d2
+daemon_logs/monero-attacker-miner/bitmonero.log                  18016   199571        0          0
+daemon_logs/monero-honest-001/bitmonero.log                      27210   204225   191783         66
+daemon_logs/monero-honest-002/bitmonero.log                      27233   195868   200462         59
+shadow.data/hosts/attacker-miner/monerod-sim.1000.stdout         18016   199571        0          0
+shadow.data/hosts/honest-001/monerod-sim.1000.stdout             27210   204225   191783         66
+shadow.data/hosts/honest-002/monerod-sim.1000.stdout             27233   195868   200462         59

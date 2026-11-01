@@ -1,0 +1,1 @@
+CHECK 20261023_111307_sop_v4_o5_72h__share_sop2_a045_s1 oracle=0mm/12nodes a3=110 reveals=174 a3_undelivered=64 a3_shares=34 rejected=64 alt_shares=76 probes=ok lateness=ok reveal_stats=ok embed=ok -> PASS

@@ -1,0 +1,812 @@
+=== K=2 w=8 baseline
+1 combos x 4 alphas x 2 seeds at 1000 d (K 2, w 8): 8 runs to do, 0 already in data/sop_search/kw_sweep.jsonl
+  8/8 done [12s]
+alpha 0.40 (honest 0.4000):
+  0.1968  defaults [K=2 w=8]           seeds 2  reveals 28466/run  att_orphan 0.679  net_orphan 0.347  reorg 1.91/16
+alpha 0.45 (honest 0.4500):
+  0.3851  defaults [K=2 w=8]           seeds 2  reveals 53655/run  att_orphan 0.443  net_orphan 0.349  reorg 2.02/16
+alpha 0.48 (honest 0.4800):
+  0.5146  defaults [K=2 w=8]           seeds 2  reveals 71464/run  att_orphan 0.295  net_orphan 0.343  reorg 2.03/18
+alpha 0.50 (honest 0.5000):
+  0.5962  defaults [K=2 w=8]           seeds 2  reveals 83362/run  att_orphan 0.209  net_orphan 0.337  reorg 2.01/19
+crossings (share passes alpha; interpolated):
+  0.4696  defaults [K=2 w=8]
+=== K=2 w=8 family
+12 combos x 4 alphas x 2 seeds at 1000 d (K 2, w 8): 96 runs to do, 8 already in data/sop_search/kw_sweep.jsonl
+  10/96 done [16s]
+  20/96 done [29s]
+  30/96 done [32s]
+  40/96 done [48s]
+  50/96 done [59s]
+  60/96 done [65s]
+  70/96 done [82s]
+  80/96 done [89s]
+  90/96 done [98s]
+  96/96 done [101s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2669  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 15465/run  att_orphan 0.514  net_orphan 0.272  reorg 3.09/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4153  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 33560/run  att_orphan 0.380  net_orphan 0.328  reorg 3.38/22
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7207  G=16 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51406/run  att_orphan 0.231  net_orphan 0.467  reorg 4.92/64
+  0.7127  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 62852/run  att_orphan 0.224  net_orphan 0.456  reorg 3.94/29
+  0.7035  G=16 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 65296/run  att_orphan 0.238  net_orphan 0.458  reorg 3.74/65
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+  0.4645  G=4 L=0 M=1 R=3 Z=1 [K=2 w=8]
+  0.4696  defaults [K=2 w=8]
+  0.4735  G=16 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=2 w=16 baseline
+1 combos x 4 alphas x 2 seeds at 1000 d (K 2, w 16): 8 runs to do, 104 already in data/sop_search/kw_sweep.jsonl
+  8/8 done [24s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2669  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 15465/run  att_orphan 0.514  net_orphan 0.272  reorg 3.09/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4153  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 33560/run  att_orphan 0.380  net_orphan 0.328  reorg 3.38/22
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7207  G=16 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51406/run  att_orphan 0.231  net_orphan 0.467  reorg 4.92/64
+  0.7127  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 62852/run  att_orphan 0.224  net_orphan 0.456  reorg 3.94/29
+  0.7035  G=16 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 65296/run  att_orphan 0.238  net_orphan 0.458  reorg 3.74/65
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+  0.4645  G=4 L=0 M=1 R=3 Z=1 [K=2 w=8]
+  0.4696  defaults [K=2 w=8]
+  0.4735  G=16 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=2 w=16 family
+12 combos x 4 alphas x 2 seeds at 1000 d (K 2, w 16): 96 runs to do, 112 already in data/sop_search/kw_sweep.jsonl
+  10/96 done [33s]
+  20/96 done [59s]
+  30/96 done [66s]
+  40/96 done [99s]
+  50/96 done [119s]
+  60/96 done [133s]
+  70/96 done [166s]
+  80/96 done [181s]
+  90/96 done [199s]
+  96/96 done [202s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2823  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16] seeds 2  reveals 8745/run  att_orphan 0.445  net_orphan 0.214  reorg 2.94/12
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4153  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 33560/run  att_orphan 0.380  net_orphan 0.328  reorg 3.38/22
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+  0.7278  G=32 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 44222/run  att_orphan 0.244  net_orphan 0.481  reorg 5.84/85
+  0.7207  G=16 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51406/run  att_orphan 0.231  net_orphan 0.467  reorg 4.92/64
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+  0.4645  G=4 L=0 M=1 R=3 Z=1 [K=2 w=8]
+  0.4652  G=8 L=1 M=1 R=3 Z=1 [K=2 w=16]
+=== K=2 w=32 baseline
+1 combos x 4 alphas x 2 seeds at 1000 d (K 2, w 32): 8 runs to do, 208 already in data/sop_search/kw_sweep.jsonl
+  8/8 done [46s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2823  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16] seeds 2  reveals 8745/run  att_orphan 0.445  net_orphan 0.214  reorg 2.94/12
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4153  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 33560/run  att_orphan 0.380  net_orphan 0.328  reorg 3.38/22
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+  0.7278  G=32 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 44222/run  att_orphan 0.244  net_orphan 0.481  reorg 5.84/85
+  0.7207  G=16 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51406/run  att_orphan 0.231  net_orphan 0.467  reorg 4.92/64
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+  0.4645  G=4 L=0 M=1 R=3 Z=1 [K=2 w=8]
+  0.4652  G=8 L=1 M=1 R=3 Z=1 [K=2 w=16]
+=== K=2 w=32 family
+12 combos x 4 alphas x 2 seeds at 1000 d (K 2, w 32): 96 runs to do, 216 already in data/sop_search/kw_sweep.jsonl
+  10/96 done [68s]
+  20/96 done [121s]
+  30/96 done [135s]
+  40/96 done [203s]
+  50/96 done [242s]
+  60/96 done [273s]
+  70/96 done [343s]
+  80/96 done [365s]
+  90/96 done [408s]
+  96/96 done [415s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2823  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16] seeds 2  reveals 8745/run  att_orphan 0.445  net_orphan 0.214  reorg 2.94/12
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4153  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 33560/run  att_orphan 0.380  net_orphan 0.328  reorg 3.38/22
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+  0.7280  G=16 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 62694/run  att_orphan 0.243  net_orphan 0.480  reorg 4.12/29
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+  0.4645  G=4 L=0 M=1 R=3 Z=1 [K=2 w=8]
+  0.4652  G=8 L=1 M=1 R=3 Z=1 [K=2 w=16]
+=== K=3 w=8 baseline
+1 combos x 4 alphas x 2 seeds at 1000 d (K 3, w 8): 8 runs to do, 312 already in data/sop_search/kw_sweep.jsonl
+  8/8 done [13s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2823  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16] seeds 2  reveals 8745/run  att_orphan 0.445  net_orphan 0.214  reorg 2.94/12
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4153  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 33560/run  att_orphan 0.380  net_orphan 0.328  reorg 3.38/22
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+  0.7280  G=16 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 62694/run  att_orphan 0.243  net_orphan 0.480  reorg 4.12/29
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+  0.4645  G=4 L=0 M=1 R=3 Z=1 [K=2 w=8]
+  0.4652  G=8 L=1 M=1 R=3 Z=1 [K=2 w=16]
+=== K=3 w=8 family
+12 combos x 4 alphas x 2 seeds at 1000 d (K 3, w 8): 96 runs to do, 320 already in data/sop_search/kw_sweep.jsonl
+  10/96 done [17s]
+  20/96 done [30s]
+  30/96 done [33s]
+  40/96 done [50s]
+  50/96 done [61s]
+  60/96 done [67s]
+  70/96 done [85s]
+  80/96 done [92s]
+  90/96 done [101s]
+  96/96 done [102s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+  0.7280  G=16 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 62694/run  att_orphan 0.243  net_orphan 0.480  reorg 4.12/29
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=3 w=16 baseline
+1 combos x 4 alphas x 2 seeds at 1000 d (K 3, w 16): 8 runs to do, 416 already in data/sop_search/kw_sweep.jsonl
+  8/8 done [25s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+  0.7280  G=16 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 62694/run  att_orphan 0.243  net_orphan 0.480  reorg 4.12/29
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=3 w=16 family
+12 combos x 4 alphas x 2 seeds at 1000 d (K 3, w 16): 96 runs to do, 424 already in data/sop_search/kw_sweep.jsonl
+  10/96 done [33s]
+  20/96 done [60s]
+  30/96 done [66s]
+  40/96 done [100s]
+  50/96 done [121s]
+  60/96 done [134s]
+  70/96 done [167s]
+  80/96 done [182s]
+  90/96 done [199s]
+  96/96 done [203s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+  0.7280  G=16 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 62694/run  att_orphan 0.243  net_orphan 0.480  reorg 4.12/29
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=3 w=32 baseline
+1 combos x 4 alphas x 2 seeds at 1000 d (K 3, w 32): 8 runs to do, 520 already in data/sop_search/kw_sweep.jsonl
+  8/8 done [49s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+  0.7280  G=16 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 62694/run  att_orphan 0.243  net_orphan 0.480  reorg 4.12/29
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=3 w=32 family
+12 combos x 4 alphas x 2 seeds at 1000 d (K 3, w 32): 96 runs to do, 528 already in data/sop_search/kw_sweep.jsonl
+  10/96 done [68s]
+  20/96 done [122s]
+  30/96 done [135s]
+  40/96 done [203s]
+  50/96 done [244s]
+  60/96 done [271s]
+  70/96 done [340s]
+  80/96 done [364s]
+  90/96 done [404s]
+  96/96 done [410s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7307  G=32 L=0 M=1 R=3 Z=1 [K=3 w=32] seeds 2  reveals 47702/run  att_orphan 0.243  net_orphan 0.482  reorg 5.45/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=4 w=8 baseline
+1 combos x 4 alphas x 2 seeds at 1000 d (K 4, w 8): 8 runs to do, 624 already in data/sop_search/kw_sweep.jsonl
+  8/8 done [13s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7307  G=32 L=0 M=1 R=3 Z=1 [K=3 w=32] seeds 2  reveals 47702/run  att_orphan 0.243  net_orphan 0.482  reorg 5.45/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=4 w=8 family
+12 combos x 4 alphas x 2 seeds at 1000 d (K 4, w 8): 96 runs to do, 632 already in data/sop_search/kw_sweep.jsonl
+  10/96 done [17s]
+  20/96 done [30s]
+  30/96 done [34s]
+  40/96 done [51s]
+  50/96 done [61s]
+  60/96 done [68s]
+  70/96 done [85s]
+  80/96 done [91s]
+  90/96 done [101s]
+  96/96 done [103s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7307  G=32 L=0 M=1 R=3 Z=1 [K=3 w=32] seeds 2  reveals 47702/run  att_orphan 0.243  net_orphan 0.482  reorg 5.45/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=4 w=16 baseline
+1 combos x 4 alphas x 2 seeds at 1000 d (K 4, w 16): 8 runs to do, 728 already in data/sop_search/kw_sweep.jsonl
+  8/8 done [25s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7307  G=32 L=0 M=1 R=3 Z=1 [K=3 w=32] seeds 2  reveals 47702/run  att_orphan 0.243  net_orphan 0.482  reorg 5.45/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=4 w=16 family
+12 combos x 4 alphas x 2 seeds at 1000 d (K 4, w 16): 96 runs to do, 736 already in data/sop_search/kw_sweep.jsonl
+  10/96 done [34s]
+  20/96 done [62s]
+  30/96 done [68s]
+  40/96 done [103s]
+  50/96 done [123s]
+  60/96 done [137s]
+  70/96 done [172s]
+  80/96 done [183s]
+  90/96 done [205s]
+  96/96 done [209s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7307  G=32 L=0 M=1 R=3 Z=1 [K=3 w=32] seeds 2  reveals 47702/run  att_orphan 0.243  net_orphan 0.482  reorg 5.45/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=4 w=32 baseline
+1 combos x 4 alphas x 2 seeds at 1000 d (K 4, w 32): 8 runs to do, 832 already in data/sop_search/kw_sweep.jsonl
+  8/8 done [49s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7307  G=32 L=0 M=1 R=3 Z=1 [K=3 w=32] seeds 2  reveals 47702/run  att_orphan 0.243  net_orphan 0.482  reorg 5.45/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=4 w=32 family
+12 combos x 4 alphas x 2 seeds at 1000 d (K 4, w 32): 96 runs to do, 840 already in data/sop_search/kw_sweep.jsonl
+  10/96 done [68s]
+  20/96 done [121s]
+  30/96 done [136s]
+  40/96 done [202s]
+  50/96 done [242s]
+  60/96 done [271s]
+  70/96 done [340s]
+  80/96 done [363s]
+  90/96 done [406s]
+  96/96 done [419s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7307  G=32 L=0 M=1 R=3 Z=1 [K=3 w=32] seeds 2  reveals 47702/run  att_orphan 0.243  net_orphan 0.482  reorg 5.45/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=6 w=8 baseline
+1 combos x 4 alphas x 2 seeds at 1000 d (K 6, w 8): 8 runs to do, 936 already in data/sop_search/kw_sweep.jsonl
+  8/8 done [13s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7307  G=32 L=0 M=1 R=3 Z=1 [K=3 w=32] seeds 2  reveals 47702/run  att_orphan 0.243  net_orphan 0.482  reorg 5.45/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=6 w=8 family
+12 combos x 4 alphas x 2 seeds at 1000 d (K 6, w 8): 96 runs to do, 944 already in data/sop_search/kw_sweep.jsonl
+  10/96 done [17s]
+  20/96 done [31s]
+  30/96 done [34s]
+  40/96 done [50s]
+  50/96 done [62s]
+  60/96 done [67s]
+  70/96 done [84s]
+  80/96 done [91s]
+  90/96 done [100s]
+  96/96 done [102s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7307  G=32 L=0 M=1 R=3 Z=1 [K=3 w=32] seeds 2  reveals 47702/run  att_orphan 0.243  net_orphan 0.482  reorg 5.45/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=6 w=16 baseline
+1 combos x 4 alphas x 2 seeds at 1000 d (K 6, w 16): 8 runs to do, 1040 already in data/sop_search/kw_sweep.jsonl
+  8/8 done [25s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7307  G=32 L=0 M=1 R=3 Z=1 [K=3 w=32] seeds 2  reveals 47702/run  att_orphan 0.243  net_orphan 0.482  reorg 5.45/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=6 w=16 family
+12 combos x 4 alphas x 2 seeds at 1000 d (K 6, w 16): 96 runs to do, 1048 already in data/sop_search/kw_sweep.jsonl
+  10/96 done [34s]
+  20/96 done [61s]
+  30/96 done [68s]
+  40/96 done [102s]
+  50/96 done [122s]
+  60/96 done [136s]
+  70/96 done [171s]
+  80/96 done [183s]
+  90/96 done [203s]
+  96/96 done [205s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7307  G=32 L=0 M=1 R=3 Z=1 [K=3 w=32] seeds 2  reveals 47702/run  att_orphan 0.243  net_orphan 0.482  reorg 5.45/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=6 w=32 baseline
+1 combos x 4 alphas x 2 seeds at 1000 d (K 6, w 32): 8 runs to do, 1144 already in data/sop_search/kw_sweep.jsonl
+  8/8 done [50s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7307  G=32 L=0 M=1 R=3 Z=1 [K=3 w=32] seeds 2  reveals 47702/run  att_orphan 0.243  net_orphan 0.482  reorg 5.45/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K=6 w=32 family
+12 combos x 4 alphas x 2 seeds at 1000 d (K 6, w 32): 96 runs to do, 1152 already in data/sop_search/kw_sweep.jsonl
+  10/96 done [67s]
+  20/96 done [121s]
+  30/96 done [134s]
+  40/96 done [201s]
+  50/96 done [239s]
+  60/96 done [270s]
+  70/96 done [338s]
+  80/96 done [358s]
+  90/96 done [402s]
+  96/96 done [408s]
+alpha 0.40 (honest 0.4000):
+  0.3310  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 18138/run  att_orphan 0.346  net_orphan 0.210  reorg 2.84/15
+  0.3132  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 13070/run  att_orphan 0.392  net_orphan 0.224  reorg 3.68/15
+  0.2992  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 9546/run  att_orphan 0.413  net_orphan 0.216  reorg 3.79/15
+alpha 0.45 (honest 0.4500):
+  0.4561  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 36685/run  att_orphan 0.253  net_orphan 0.263  reorg 2.93/15
+  0.4415  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 29078/run  att_orphan 0.297  net_orphan 0.284  reorg 3.73/14
+  0.4261  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8] seeds 2  reveals 24955/run  att_orphan 0.312  net_orphan 0.273  reorg 3.85/16
+alpha 0.48 (honest 0.4800):
+  0.5729  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8] seeds 2  reveals 51595/run  att_orphan 0.347  net_orphan 0.453  reorg 4.00/25
+  0.5706  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 70114/run  att_orphan 0.323  net_orphan 0.431  reorg 2.83/27
+  0.5642  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8] seeds 2  reveals 79659/run  att_orphan 0.309  net_orphan 0.412  reorg 2.39/18
+alpha 0.50 (honest 0.5000):
+  0.7354  G=32 L=0 M=1 R=3 Z=1 [K=2 w=32] seeds 2  reveals 52131/run  att_orphan 0.240  net_orphan 0.484  reorg 5.03/57
+  0.7307  G=32 L=0 M=1 R=3 Z=1 [K=3 w=32] seeds 2  reveals 47702/run  att_orphan 0.243  net_orphan 0.482  reorg 5.45/57
+  0.7302  G=16 L=0 M=1 R=3 Z=1 [K=2 w=16] seeds 2  reveals 58412/run  att_orphan 0.231  net_orphan 0.473  reorg 4.41/38
+crossings (share passes alpha; interpolated):
+  0.4459  G=4 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4533  G=4 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4591  G=4 L=1 M=1 R=1 Z=1 [K=3 w=8]
+  0.4592  G=4 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4601  G=4 L=1 M=1 R=3 Z=1 [K=3 w=8]
+  0.4602  G=8 L=1 M=1 R=1 Z=1 [K=2 w=8]
+  0.4615  G=8 L=1 M=1 R=1 Z=1 [K=2 w=16]
+  0.4619  G=8 L=0 M=1 R=1 Z=1 [K=2 w=8]
+  0.4621  G=8 L=1 M=1 R=3 Z=1 [K=2 w=8]
+  0.4642  G=8 L=0 M=1 R=3 Z=1 [K=2 w=8]
+=== K/w sweep done

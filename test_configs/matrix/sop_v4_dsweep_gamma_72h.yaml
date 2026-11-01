@@ -1,0 +1,72 @@
+# sop_v4_dsweep_gamma_72h (2026-10-30): the d sweep on the network-advantage
+# attacker (owner 10-30: "run the d sweep"). At d = 5 s the param attacker at
+# 0.45 with bridges beside both miners scored 0.699 on the 6 s honest path and
+# 0.486 on the 3 s path: the gain is the lateness rule. These cells repeat the
+# 6 s cell at d = 10 and 20 s: with the honest path inside d the share should
+# fall back toward the 3 s value. Identical to share_sop_a045_f6_s1 except
+# sim-sop-delay-s on every SoP daemon (test pins it).
+name: sop_v4_dsweep_gamma_72h
+seed: 27791
+base: test_configs/selfish_micro_sop_gamma.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes: {strategy: param_stubborn, reject_aware: 'true', embedded_shares: 'true', window_rule: '20261020',
+          window_objects: '32', weigh: sop, use_honest_shares: 'true', tip_shares: 'true', count_own_tip_shares: 'false',
+          give_up_depth: '5', give_up_objects: '6', hold_shares: '1', publish_lead: '1', reveal_margin: '1',
+          reveal_depth: '1', block_deficit: '0'}
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+  countermeasure:
+    sop:
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      honest-002:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+  delay:
+    d10:
+      attacker:
+        daemon_options: {sim-sop-delay-s: 10}
+      honest:
+        daemon_options: {sim-sop-delay-s: 10}
+      honest-002:
+        daemon_options: {sim-sop-delay-s: 10}
+      relays:
+        daemon_options: {sim-sop-delay-s: 10}
+      bridges:
+        daemon_options: {sim-sop-delay-s: 10}
+    d20:
+      attacker:
+        daemon_options: {sim-sop-delay-s: 20}
+      honest:
+        daemon_options: {sim-sop-delay-s: 20}
+      honest-002:
+        daemon_options: {sim-sop-delay-s: 20}
+      relays:
+        daemon_options: {sim-sop-delay-s: 20}
+      bridges:
+        daemon_options: {sim-sop-delay-s: 20}
+  alpha:
+    a045:
+      attacker: {hashrate: 4.5}
+      honest:
+        hashrate: [2.75]
+      honest-002: {hashrate: 2.75}
+  latency:
+    f6:
+      relay-slow-1:
+        peers:
+          exclusive: [relay-slow-2]
+          priority: []
+  sample:
+    s1:
+      attacker:
+        attributes: {sample: '1'}

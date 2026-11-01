@@ -1,0 +1,61 @@
+6 combos x 6 alphas x 3 seeds at 2000 d (K 3, w 16): 108 runs to do, 0 already in data/sop_search/perish_fine.jsonl
+  10/108 done [57s]
+  20/108 done [115s]
+  30/108 done [173s]
+  40/108 done [175s]
+  50/108 done [235s]
+  60/108 done [293s]
+  70/108 done [299s]
+  80/108 done [357s]
+  90/108 done [415s]
+  100/108 done [467s]
+  108/108 done [475s]
+alpha 0.46 (honest 0.4550):
+  0.4105  G=3 L=1 M=1 R=1 Z=1          seeds 3  reveals 41795/run  att_orphan 0.338  net_orphan 0.267  reorg 3.89/19
+  0.4066  G=4 L=1 M=1 R=1 Z=1          seeds 3  reveals 44903/run  att_orphan 0.363  net_orphan 0.287  reorg 3.92/19
+  0.4030  G=5 L=1 M=1 R=1 Z=1          seeds 3  reveals 46973/run  att_orphan 0.383  net_orphan 0.304  reorg 3.97/21
+  0.3989  G=6 L=1 M=1 R=1 Z=1          seeds 3  reveals 48283/run  att_orphan 0.402  net_orphan 0.318  reorg 4.03/21
+  0.3939  G=7 L=1 M=1 R=1 Z=1          seeds 3  reveals 48877/run  att_orphan 0.419  net_orphan 0.329  reorg 4.08/21
+  0.3877  G=8 L=1 M=1 R=1 Z=1          seeds 3  reveals 48847/run  att_orphan 0.437  net_orphan 0.339  reorg 4.14/21
+alpha 0.46 (honest 0.4600):
+  0.4294  G=3 L=1 M=1 R=1 Z=1          seeds 3  reveals 47055/run  att_orphan 0.324  net_orphan 0.276  reorg 3.89/20
+  0.4275  G=4 L=1 M=1 R=1 Z=1          seeds 3  reveals 50393/run  att_orphan 0.346  net_orphan 0.297  reorg 3.93/20
+  0.4256  G=5 L=1 M=1 R=1 Z=1          seeds 3  reveals 52689/run  att_orphan 0.364  net_orphan 0.313  reorg 3.98/21
+  0.4230  G=6 L=1 M=1 R=1 Z=1          seeds 3  reveals 54109/run  att_orphan 0.380  net_orphan 0.327  reorg 4.04/21
+  0.4192  G=7 L=1 M=1 R=1 Z=1          seeds 3  reveals 54782/run  att_orphan 0.396  net_orphan 0.338  reorg 4.09/21
+  0.4146  G=8 L=1 M=1 R=1 Z=1          seeds 3  reveals 54829/run  att_orphan 0.412  net_orphan 0.348  reorg 4.16/21
+alpha 0.47 (honest 0.4650):
+  0.4501  G=4 L=1 M=1 R=1 Z=1          seeds 3  reveals 56201/run  att_orphan 0.328  net_orphan 0.306  reorg 3.94/20
+  0.4498  G=5 L=1 M=1 R=1 Z=1          seeds 3  reveals 58627/run  att_orphan 0.344  net_orphan 0.322  reorg 3.99/20
+  0.4497  G=3 L=1 M=1 R=1 Z=1          seeds 3  reveals 52604/run  att_orphan 0.309  net_orphan 0.286  reorg 3.89/20
+  0.4489  G=6 L=1 M=1 R=1 Z=1          seeds 3  reveals 60197/run  att_orphan 0.358  net_orphan 0.336  reorg 4.05/20
+  0.4467  G=7 L=1 M=1 R=1 Z=1          seeds 3  reveals 60956/run  att_orphan 0.372  net_orphan 0.347  reorg 4.10/22
+  0.4434  G=8 L=1 M=1 R=1 Z=1          seeds 3  reveals 61059/run  att_orphan 0.386  net_orphan 0.356  reorg 4.17/22
+alpha 0.47 (honest 0.4700):
+  0.4769  G=6 L=1 M=1 R=1 Z=1          seeds 3  reveals 66613/run  att_orphan 0.335  net_orphan 0.345  reorg 4.05/21
+  0.4763  G=7 L=1 M=1 R=1 Z=1          seeds 3  reveals 67460/run  att_orphan 0.346  net_orphan 0.355  reorg 4.11/23
+  0.4762  G=5 L=1 M=1 R=1 Z=1          seeds 3  reveals 64924/run  att_orphan 0.323  net_orphan 0.332  reorg 3.99/21
+  0.4744  G=8 L=1 M=1 R=1 Z=1          seeds 3  reveals 67584/run  att_orphan 0.359  net_orphan 0.365  reorg 4.18/21
+  0.4743  G=4 L=1 M=1 R=1 Z=1          seeds 3  reveals 62244/run  att_orphan 0.309  net_orphan 0.316  reorg 3.94/18
+  0.4719  G=3 L=1 M=1 R=1 Z=1          seeds 3  reveals 58410/run  att_orphan 0.292  net_orphan 0.296  reorg 3.90/17
+alpha 0.47 (honest 0.4750):
+  0.5068  G=7 L=1 M=1 R=1 Z=1          seeds 3  reveals 74027/run  att_orphan 0.321  net_orphan 0.364  reorg 4.11/21
+  0.5066  G=8 L=1 M=1 R=1 Z=1          seeds 3  reveals 74257/run  att_orphan 0.331  net_orphan 0.373  reorg 4.18/26
+  0.5059  G=6 L=1 M=1 R=1 Z=1          seeds 3  reveals 73123/run  att_orphan 0.311  net_orphan 0.353  reorg 4.05/21
+  0.5035  G=5 L=1 M=1 R=1 Z=1          seeds 3  reveals 71284/run  att_orphan 0.301  net_orphan 0.341  reorg 3.99/21
+  0.4999  G=4 L=1 M=1 R=1 Z=1          seeds 3  reveals 68443/run  att_orphan 0.289  net_orphan 0.325  reorg 3.94/20
+  0.4952  G=3 L=1 M=1 R=1 Z=1          seeds 3  reveals 64367/run  att_orphan 0.275  net_orphan 0.305  reorg 3.90/17
+alpha 0.48 (honest 0.4800):
+  0.5403  G=8 L=1 M=1 R=1 Z=1          seeds 3  reveals 81015/run  att_orphan 0.303  net_orphan 0.381  reorg 4.18/26
+  0.5390  G=7 L=1 M=1 R=1 Z=1          seeds 3  reveals 80741/run  att_orphan 0.295  net_orphan 0.372  reorg 4.11/22
+  0.5363  G=6 L=1 M=1 R=1 Z=1          seeds 3  reveals 79702/run  att_orphan 0.287  net_orphan 0.362  reorg 4.05/21
+  0.5320  G=5 L=1 M=1 R=1 Z=1          seeds 3  reveals 77770/run  att_orphan 0.279  net_orphan 0.349  reorg 3.99/22
+  0.5265  G=4 L=1 M=1 R=1 Z=1          seeds 3  reveals 74791/run  att_orphan 0.269  net_orphan 0.334  reorg 3.94/19
+  0.5200  G=3 L=1 M=1 R=1 Z=1          seeds 3  reveals 70571/run  att_orphan 0.257  net_orphan 0.315  reorg 3.90/19
+crossings (share passes alpha; interpolated):
+  0.4685  G=6 L=1 M=1 R=1 Z=1
+  0.4685  G=5 L=1 M=1 R=1 Z=1
+  0.4687  G=7 L=1 M=1 R=1 Z=1
+  0.4689  G=4 L=1 M=1 R=1 Z=1
+  0.4692  G=8 L=1 M=1 R=1 Z=1
+  0.4694  G=3 L=1 M=1 R=1 Z=1

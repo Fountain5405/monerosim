@@ -1,0 +1,13 @@
+monero-attacker-bridge         decisions=316 skipped=92 ties=7 mismatches=0
+monero-attacker-miner          decisions=23 skipped=6 ties=5 mismatches=0
+monero-honest-001              decisions=197 skipped=76 ties=9 mismatches=0
+monero-honest-002              decisions=186 skipped=68 ties=7 mismatches=0
+monero-monero-seed-001         decisions=200 skipped=80 ties=7 mismatches=0
+monero-monero-seed-002         decisions=216 skipped=93 ties=7 mismatches=0
+monero-monero-seed-003         decisions=201 skipped=80 ties=7 mismatches=0
+monero-monero-seed-004         decisions=204 skipped=85 ties=7 mismatches=0
+monero-monero-seed-005         decisions=209 skipped=87 ties=7 mismatches=0
+monero-monero-seed-006         decisions=205 skipped=85 ties=7 mismatches=0
+monero-relay-001               decisions=196 skipped=78 ties=7 mismatches=0
+monero-relay-002               decisions=205 skipped=84 ties=7 mismatches=0
+pool-rule all changes 0 outcomes

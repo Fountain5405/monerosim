@@ -1,0 +1,8 @@
+run: archived_runs/20261022_021115_sop_v4_h10_72h__share_sop2_hs_a045_d2
+file                                                         templates      own   remote max remote
+daemon_logs/monero-attacker-miner/bitmonero.log                  24471   316826    19852         31
+daemon_logs/monero-honest-001/bitmonero.log                      27241   217374   213204         49
+daemon_logs/monero-honest-002/bitmonero.log                      27244   217416   213080         58
+shadow.data/hosts/attacker-miner/monerod-sim.1000.stdout         24471   316826    19852         31
+shadow.data/hosts/honest-001/monerod-sim.1000.stdout             27241   217374   213204         49
+shadow.data/hosts/honest-002/monerod-sim.1000.stdout             27244   217416   213080         58

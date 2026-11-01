@@ -1,0 +1,3 @@
+{"model": "btc", "alpha": 0.45, "gamma": 0.0, "T": 200, "bound": "lower", "states": 59900, "hand_written": 0.6699166297912598, "hand_max_sweeps": 6598, "hand_s": 1120.5, "ssz_sm1": 0.65177, "ssz_opt": 0.66891, "ssz_upper": 0.70109}
+{"model": "btc", "alpha": 0.475, "gamma": 0.0, "T": 200, "bound": "lower", "states": 59900, "hand_written": 0.8064637184143066, "hand_max_sweeps": 17285, "hand_s": 2921.0, "ssz_sm1": 0.78254, "ssz_opt": 0.80172, "ssz_upper": 0.90476}
+{"model": "btc", "alpha": 0.475, "gamma": 0.0, "T": 300, "bound": "lower", "states": 134850, "hand_written": 0.8074603080749512, "hand_max_sweeps": 21875, "hand_s": 16279.6, "ssz_sm1": 0.78254, "ssz_opt": 0.80172, "ssz_upper": 0.90476}

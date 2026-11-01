@@ -1,0 +1,53 @@
+# sop_v4_seed2_adopt_72h (2026-10-30): second seed for the 25 % and 50 % adoption
+# cells with the attacker at 0.45 (s1: ~0.88 of all blocks / 0.998 SoP side).
+# Identical to the s1 cells except the attacker's sample attribute.
+name: sop_v4_seed2_adopt_72h
+seed: 27791
+base: test_configs/selfish_micro_sop_h4.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes: {strategy: param_stubborn, reject_aware: 'true', embedded_shares: 'true', window_rule: '20261020',
+          window_objects: '32', weigh: sop, use_honest_shares: 'true', tip_shares: 'true', count_own_tip_shares: 'false',
+          give_up_depth: '5', give_up_objects: '6', hold_shares: '1', publish_lead: '1', reveal_margin: '1',
+          reveal_depth: '1', block_deficit: '0'}
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      honest:
+        wallet_options: {log-level: '0,wallet.wallet2:ERROR'}
+  adoption:
+    k1:
+      honest-001: &id001
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relay-001: &id002
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      monero-seed-001: &id003
+        daemon_options: {sim-share-or-perish: true}
+      monero-seed-002: &id004
+        daemon_options: {sim-share-or-perish: true}
+      monero-seed-003: &id005
+        daemon_options: {sim-share-or-perish: true}
+      bridges: &id006
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+    k2:
+      honest-001: *id001
+      relay-001: *id002
+      monero-seed-001: *id003
+      monero-seed-002: *id004
+      monero-seed-003: *id005
+      bridges: *id006
+      honest-002:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+  alpha:
+    a045:
+      attacker: {hashrate: 4.5}
+      honest:
+        hashrate: [1.375, 1.375, 1.375, 1.375]
+  sample:
+    s2:
+      attacker:
+        attributes: {sample: '2'}

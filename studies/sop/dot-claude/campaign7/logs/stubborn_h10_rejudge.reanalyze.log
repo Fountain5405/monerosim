@@ -1,0 +1,13 @@
+[matrix] share_sop2_rejudge_a040_d2: reanalyzed share 0.035 honest-ref 0.035
+[matrix] share_sop2_rejudge_a045_d2: reanalyzed share 0.208 honest-ref 0.208
+commit: `e4905a2b`
+# Matrix stubborn_h10_rejudge
+
+- base: `/scratch/monerosim_dev/monerosim/test_configs/selfish_micro_sop.yaml`  seed: 12345  stop_time: (base)
+- cells: 2  failures: 0
+
+| arm | countermeasure | alpha | depth | alpha | share | share_h | ctrl | gamma | att_orph | net_orph | msb_z | blocks | verdicts | health | run |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| share | sop2_rejudge | a040 | d2 | 0.400 | 0.035 | 0.035 | - | 0.000 | 0.953 | 0.423 | 8.869 | 113 | FAIL (3) | ok | 20260930_181907_stubborn_h10_rejudge__share_sop2_rejudge_a040_d2 |
+| share | sop2_rejudge | a045 | d2 | 0.450 | 0.208 | 0.208 | - | 0.000 | 0.741 | 0.435 | 8.874 | 101 | FAIL (3) | ok | 20260930_181907_stubborn_h10_rejudge__share_sop2_rejudge_a045_d2 |
+

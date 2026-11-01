@@ -1,0 +1,57 @@
+# sop_v4_slow_72h (2026-10-28, v2): the slow-honest-miner penalty (gap 3 of
+# the "is SoP a good mitigation" list). Share-or-Perish weighs a block at 0
+# when it is first seen more than d = 5 s after the main-chain block at its
+# height and counts a share only if seen more than d before it, so a
+# well-behaved miner on a slow path can lose blocks it would keep on the
+# stock rule. The no-attacker control (sop_v4_control_72h: 4.7 / 2.65 / 2.65,
+# third miner honest and connected) with honest-002 eclipsed behind a chain
+# of 1.5 s relay hops on selfish_micro_sop_slow.yaml: l3 = 2 hops (3 s one
+# way, under the rule), l6 = 4 hops (6 s, just past it), l12 = 8 hops (12 s).
+# v1 used single 3 / 10 / 30 s edges and the miner never connected (monerod's
+# 5 s P2P timeouts). honest-002 is eclipsed, so its hashrate and SoP flag are
+# set by name. Compare honest-002's canonical blocks and orphans, stock vs sop,
+# at each latency and against the control cells (latency 0). 19 daemons, 3 of
+# them mining: ~12 GB, a 16 GB box.
+name: sop_v4_slow_72h
+seed: 27791
+base: test_configs/selfish_micro_sop_slow.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    honest:
+      attacker:
+        attributes: {strategy: honest}
+        daemon_options: {offline: false}
+  countermeasure:
+    stock: {}
+    sop:
+      attacker:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      honest-002:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+  alpha:
+    a047:
+      attacker: {hashrate: 4.7}
+      honest: {hashrate: [2.65]}
+      honest-002: {hashrate: 2.65}
+  latency:
+    l3:
+      honest-002: {topology_node: 1207, peers: {exclusive: [relay-chain-1]}}
+    l6:
+      honest-002: {topology_node: 1209, peers: {exclusive: [relay-chain-3]}}
+    l12:
+      honest-002: {topology_node: 1213, peers: {exclusive: [relay-chain-7]}}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'

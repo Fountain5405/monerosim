@@ -149,10 +149,16 @@ def _merge_stanza(stanza: dict, overlay: dict, where: str) -> None:
 def apply_overlay(cfg: dict, overlay: dict, where: str) -> None:
     targets = _agent_targets(cfg)
     for target, sub in overlay.items():
-        if target not in targets:
+        if target in targets:
+            agents = targets[target]
+        elif target in cfg["agents"]:
+            # A single agent id (partial-adoption specs flag one daemon at a
+            # time); group targets above take precedence over a same-named
+            # agent, so keep agent ids distinct from the group names.
+            agents = [target]
+        else:
             raise SystemExit(f"{where}: unknown overlay target {target!r} "
-                             f"(known: {sorted(targets)})")
-        agents = targets[target]
+                             f"(known: {sorted(targets)} or an agent id)")
         if not agents:
             raise SystemExit(f"{where}: overlay target {target!r} matches no agents")
         for aid in agents:
@@ -191,6 +197,14 @@ def build_config(spec: dict, cell_overlays: dict) -> dict:
         cfg["general"]["stop_time"] = spec["stop_time"]
     if spec.get("seed"):
         cfg["general"]["simulation_seed"] = spec["seed"]
+    # `general:` in a spec deep-merges into the base's general block (one
+    # level of nesting: sub-mappings merge, scalars override), so a rerun can
+    # change e.g. the emission mode without a second base config.
+    for key, val in (spec.get("general") or {}).items():
+        if isinstance(val, dict) and isinstance(cfg["general"].get(key), dict):
+            cfg["general"][key] = {**cfg["general"][key], **copy.deepcopy(val)}
+        else:
+            cfg["general"][key] = copy.deepcopy(val)
     for axis, overlay in cell_overlays.items():
         if not isinstance(overlay, dict):
             raise SystemExit(f"axis {axis!r} overlay must be a mapping, got {overlay!r}")

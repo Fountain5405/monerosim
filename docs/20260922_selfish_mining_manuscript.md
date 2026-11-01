@@ -1,3 +1,5 @@
+Status (2026-11-01): current for selfish mining and PoP (last updated 2026-10-14); its Share-or-Perish findings 9-10 are superseded by docs/20261026_sop_attacker_search.md.
+
 # Selfish mining on Monero — working manuscript and backing-material index
 
 **Status:** working notes for a planned manuscript, started 2026-09-22

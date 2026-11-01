@@ -93,6 +93,13 @@ agents:
     hashrate: 4
     daemon_options:
       offline: true
+    # The attacker's wallet logs 2 WARNING lines per coinbase on every refresh
+    # (the stock wallet cannot parse the SoP share data in tx_extra) and the
+    # agent's branch pops make it refresh constantly: 9 GB of a 12 GB 72 h
+    # archive (2026-10-23). LOG_PRINT_L0 is WARNING, so level 0 would not
+    # silence it; raise the wallet2 category to ERROR. Nothing reads the log.
+    wallet_options:
+      log-level: "0,wallet.wallet2:ERROR"
     attributes:
       strategy: eyal_sirer
       bridge_agent: attacker-bridge

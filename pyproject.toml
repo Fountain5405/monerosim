@@ -83,3 +83,4 @@ ignore_missing_imports = true
 testpaths = ["agents", "scripts", "tests"]
 python_files = "test_*.py"
 addopts = "--verbose --tb=short"
+markers = ["slow: long-running checks (minutes); run with -m slow on a lane box"]

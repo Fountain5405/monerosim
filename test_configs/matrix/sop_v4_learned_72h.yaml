@@ -1,0 +1,71 @@
+# sop_v4_learned_72h (2026-10-25): the LEARNED attacker (strategy learned,
+# scripts/sop_rl.py policy tables, docs/superpowers/plans/2026-10-25-sop-rl-attacker.md
+# Task 6) on the sop_v4_o5_noown_72h network and attacker settings: the
+# policy decides hold/publish/reveal/give-up from the exact-MDP observation
+# and falls back to the window_stubborn noown rule (give_up_objects 5) in
+# unseen states. One policy file per alpha, trained on the race model with
+# the sims' noown settings (data/sop_rl/README.md). Ladder step 5: 72 h
+# cells at 0.45 first (two draws), then 0.48 and 0.40, compared with
+# `sop_rl.py eval`'s prediction for the same policy. The countermeasure name
+# differs from sop2/sop2_noown so cell/run names do not collide.
+name: sop_v4_learned_72h
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 2
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: learned
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          window_objects: '32'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          count_own_tip_shares: 'false'
+          give_up_depth: '5'
+          give_up_objects: '5'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    sop2_learned:
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+  alpha:
+    # policy_file and alpha ride on the alpha axis: one table per alpha, and
+    # the strategy refuses a file trained for another alpha.
+    a040:
+      attacker:
+        hashrate: 4
+        attributes: {policy_file: data/sop_rl/policy_noown_a040.json.gz, alpha: '0.40'}
+      honest: {hashrate: [3, 3]}
+    a045:
+      attacker:
+        hashrate: 4.5
+        attributes: {policy_file: data/sop_rl/policy_noown_a045.json.gz, alpha: '0.45'}
+      honest: {hashrate: [2.75, 2.75]}
+    a048:
+      attacker:
+        hashrate: 4.8
+        attributes: {policy_file: data/sop_rl/policy_noown_a048.json.gz, alpha: '0.48'}
+      honest: {hashrate: [2.6, 2.6]}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+    s2:
+      attacker:
+        attributes:
+          sample: '2'

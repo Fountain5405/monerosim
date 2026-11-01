@@ -1,0 +1,65 @@
+# sop_v4_o5_stock_72h (2026-10-24): the stock-rule control for the o5 attacker.
+# Under SoP (20261020 rule, give_up_objects 5) this attacker measured 0.000/0.002
+# at alpha 0.33, 0.055/0.059 at 0.40 and 0.209/0.210 at 0.45 over 72 h
+# (sop_v4_o5_alpha_72h, sop_v4_o5_72h). Without a stock control the question
+# "how much of that loss is SoP and how much is this strategy" has no answer.
+# Same attacker, same network, the countermeasure axis set to stock the way
+# the campaign's earlier specs did it (sop_rev2_h10_rep, deep_hunt_stock):
+# the attacker weighs by difficulty with the window off, and the honest
+# nodes, relays and bridges keep the base's stock monerod. Shares do not
+# exist on a stock network, so the objects give-up (give_up_objects) is
+# meaningless there: it is disabled (-1) and the block rule give_up_depth 5
+# stands, the same block rule the SoP cells carry underneath. Honest-mining
+# reference = alpha. Two draws per alpha (sample s1/s2), 72 h each.
+# Runs on phantom (a033, a040) and lithium (a045) through run_lane.py.
+name: sop_v4_o5_stock_72h
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 2
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          window_objects: '32'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          give_up_depth: '5'
+          give_up_objects: '5'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    stock:
+      attacker:
+        attributes:
+          weigh: difficulty
+          window_objects: '0'
+          give_up_objects: '-1'
+  alpha:
+    a033:
+      attacker: {hashrate: 3.3}
+      honest: {hashrate: [3.35, 3.35]}
+    a040:
+      attacker: {hashrate: 4}
+      honest: {hashrate: [3, 3]}
+    a045:
+      attacker: {hashrate: 4.5}
+      honest: {hashrate: [2.75, 2.75]}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+    s2:
+      attacker:
+        attributes:
+          sample: '2'
+ksm: true
+bootfast: true

@@ -1,0 +1,18 @@
+== 20261006_033956_stubborn_h10_banlog_rep2__share_sop2_a033_d5_netcn_debug
+  bans logged 57, replayed 57, matched (same host, within 5 ms) 57
+  scored drops: {'score 5 after height-drop hits': 265, 'score 1 after height-drop hits': 2}
+  height-drop hits: {'after a shorter-branch switch by the peer': 645}
+  lag switch -> hit: median 14.4 s, 90th pct 50.2 s, max 63.1 s
+  shorter-branch switches per node: 78 total
+== 20261006_033956_stubborn_h10_banlog__share_sop2_a033_d5_netcn_debug
+  bans logged 10, replayed 10, matched (same host, within 5 ms) 10
+  scored drops: {'score 5 after height-drop hits': 209}
+  height-drop hits: {'after a shorter-branch switch by the peer': 489}
+  lag switch -> hit: median 30.7 s, 90th pct 53.8 s, max 60.9 s
+  shorter-branch switches per node: 45 total
+== 20261006_033956_stubborn_h10_banlog_rep__share_sop2_a033_d5_netcn_debug
+  bans logged 0, replayed 0, matched (same host, within 5 ms) 0
+  scored drops: {}
+  height-drop hits: {'after a shorter-branch switch by the peer': 118}
+  lag switch -> hit: median 44.3 s, 90th pct 50.9 s, max 51.2 s
+  shorter-branch switches per node: 11 total

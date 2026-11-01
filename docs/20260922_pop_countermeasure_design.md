@@ -1,3 +1,5 @@
+Status (2026-11-01): current (PoP design and pre-registration; results in docs/20260922_selfish_mining_manuscript.md).
+
 # Publish-or-Perish as a flag-gated monerod-sim patch — design and pre-registration
 
 **Status:** patch shipped; pilot RUN AND CONFIRMED 2026-09-22 (results in

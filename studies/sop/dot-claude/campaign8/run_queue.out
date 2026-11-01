@@ -1,0 +1,42 @@
+2026-10-14 19:29:02 queue start
+2026-10-14 19:29:02 == stage A: 6 h re-runs (alpha 0.40/0.45) (3 jobs, 1 at a time)
+2026-10-14 19:29:02 start test_configs/matrix/sop_either_h10.yaml --cells share_sop2_a040,share_sop2_a045 --parallel 4
+2026-10-14 20:17:55 done rc=0 0.8 h test_configs/matrix/sop_either_h10.yaml --cells share_sop2_a040,share_sop2_a045 --parallel 4
+    | share | sop2 | a040 | d2 | 0.400 | 0.106 | 0.106 | - | 0.000 | 0.794 | 0.309 | 10.134 | 132 | FAIL (3) | ok | 20261014_192903_sop_either_h10__share_sop2_a040_d2 |
+    | share | sop2 | a040 | d3 | 0.400 | 0.110 | 0.110 | - | 0.000 | 0.839 | 0.385 | 8.081 | 91 | FAIL (3) | ok | 20261014_192903_sop_either_h10__share_sop2_a040_d3 |
+    | share | sop2 | a045 | d2 | 0.450 | 0.359 | 0.359 | - | 0.000 | 0.447 | 0.324 | 9.288 | 117 | FAIL (3) | ok | 20261014_192903_sop_either_h10__share_sop2_a045_d2 |
+2026-10-14 20:17:55 start test_configs/matrix/sop_either_h10_rep.yaml --cells share_sop2_a040,share_sop2_a045 --parallel 4
+2026-10-14 21:06:08 done rc=0 0.8 h test_configs/matrix/sop_either_h10_rep.yaml --cells share_sop2_a040,share_sop2_a045 --parallel 4
+    | share | sop2 | a040 | d2 | 0.400 | 0.321 | 0.321 | - | 0.000 | 0.576 | 0.378 | 8.219 | 112 | FAIL (3) | ok | 20261014_201756_sop_either_h10_rep__share_sop2_a040_d2 |
+    | share | sop2 | a040 | d3 | 0.400 | 0.120 | 0.120 | - | 0.000 | 0.823 | 0.391 | 9.088 | 92 | FAIL (3) | ok | 20261014_201756_sop_either_h10_rep__share_sop2_a040_d3 |
+    | share | sop2 | a045 | d2 | 0.450 | 0.444 | 0.444 | - | 0.077 | 0.325 | 0.320 | 8.331 | 117 | FAIL (3) | ok | 20261014_201756_sop_either_h10_rep__share_sop2_a045_d2 |
+2026-10-14 21:06:08 start test_configs/matrix/sop_either_h10_rep2.yaml --cells share_sop2_a040,share_sop2_a045 --parallel 4
+2026-10-14 21:57:17 done rc=0 0.9 h test_configs/matrix/sop_either_h10_rep2.yaml --cells share_sop2_a040,share_sop2_a045 --parallel 4
+    | share | sop2 | a040 | d2 | 0.400 | 0.155 | 0.155 | - | 0.020 | 0.742 | 0.357 | 9.331 | 110 | FAIL (3) | ok | 20261014_210609_sop_either_h10_rep2__share_sop2_a040_d2 |
+    | share | sop2 | a040 | d3 | 0.400 | 0.155 | 0.155 | - | 0.022 | 0.672 | 0.290 | 9.447 | 142 | FAIL (3) | ok | 20261014_210609_sop_either_h10_rep2__share_sop2_a040_d3 |
+    | share | sop2 | a045 | d2 | 0.450 | 0.564 | 0.564 | - | 0.125 | 0.184 | 0.321 | 7.436 | 110 | PASS (3) | ok | 20261014_210609_sop_either_h10_rep2__share_sop2_a045_d2 |
+2026-10-14 21:57:17 == stage B1: 240 h re-runs, round 1 + 40-daemon speed check (4 jobs, 4 at a time)
+2026-10-14 21:57:17 start test_configs/matrix/sop_either_h10_long.yaml --cells share_sop2 --parallel 1
+2026-10-14 21:57:17 start test_configs/matrix/sop_either_h10_long_rep.yaml --cells share_sop2 --parallel 1
+2026-10-14 21:57:17 start test_configs/matrix/sop_either_h10_long_depth.yaml --cells d3 --parallel 1
+2026-10-14 21:57:17 start test_configs/matrix/sop_either_n40_speed.yaml --parallel 1
+2026-10-15 04:33:17 done rc=0 6.6 h test_configs/matrix/sop_either_n40_speed.yaml --parallel 1
+    |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+    | block | stock | a033 | d2 | 0.330 | 0.419 | 0.419 | - | 0.000 | 0.162 | 0.227 | 5.876 | 136 | PASS (2) | INVALID-CHAIN 1 | 20261015_012354_sop_either_n40_speed__block_stock_a033_d2 |
+    | share | sop2 | a033 | d2 | 0.330 | 0.038 | 0.038 | - | 0.000 | 0.923 | 0.333 | 9.788 | 130 | FAIL (2) | ok | 20261014_215718_sop_either_n40_speed__share_sop2_a033_d2 |
+2026-10-15 16:28:17 done rc=0 18.5 h test_configs/matrix/sop_either_h10_long.yaml --cells share_sop2 --parallel 1
+    | arm | countermeasure | alpha | depth | alpha | share | share_h | ctrl | gamma | att_orph | net_orph | msb_z | blocks | verdicts | health | run |
+    |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+    | share | sop2 | a033 | d2 | 0.330 | 0.020 | 0.020 | - | 0.001 | 0.960 | 0.322 | 61.112 | 7018 | FAIL (2) | ok | 20261014_215718_sop_either_h10_long__share_sop2_a033_d2 |
+2026-10-15 17:47:29 done rc=0 19.8 h test_configs/matrix/sop_either_h10_long_depth.yaml --cells d3 --parallel 1
+    | arm | countermeasure | alpha | depth | alpha | share | share_h | ctrl | gamma | att_orph | net_orph | msb_z | blocks | verdicts | health | run |
+    |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+    | share | sop2 | a033 | d3 | 0.330 | 0.024 | 0.024 | - | 0.002 | 0.952 | 0.333 | 66.245 | 7007 | FAIL (2) | ok | 20261014_215718_sop_either_h10_long_depth__share_sop2_a033_d3 |
+2026-10-15 17:56:04 done rc=0 20.0 h test_configs/matrix/sop_either_h10_long_rep.yaml --cells share_sop2 --parallel 1
+    | arm | countermeasure | alpha | depth | alpha | share | share_h | ctrl | gamma | att_orph | net_orph | msb_z | blocks | verdicts | health | run |
+    |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+    | share | sop2 | a033 | d2 | 0.330 | 0.037 | 0.037 | - | 0.001 | 0.922 | 0.316 | 70.542 | 7018 | FAIL (2) | ok | 20261014_215718_sop_either_h10_long_rep__share_sop2_a033_d2 |
+2026-10-15 17:56:04 == stage B2: 240 h re-runs, round 2 (3 jobs, 3 at a time)
+2026-10-15 17:56:04 start test_configs/matrix/sop_either_h10_long_depth.yaml --cells d5 --parallel 1
+2026-10-15 17:56:04 start test_configs/matrix/sop_either_h10_long_depth_rep.yaml --cells d3 --parallel 1
+2026-10-15 17:56:04 start test_configs/matrix/sop_either_h10_long_depth_rep.yaml --cells d5 --parallel 1

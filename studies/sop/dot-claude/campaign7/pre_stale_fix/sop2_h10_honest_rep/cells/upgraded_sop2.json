@@ -1,0 +1,68 @@
+{
+ "cell": "upgraded_sop2",
+ "values": {
+  "attacker": "upgraded",
+  "countermeasure": "sop2"
+ },
+ "config": "/scratch/monerosim_dev/monerosim/matrix_runs/sop2_h10_honest_rep/configs/upgraded_sop2.yaml",
+ "run_name": "sop2_h10_honest_rep__upgraded_sop2",
+ "returncode": 0,
+ "wall_s": 10059.4,
+ "run_dir": "/scratch/monerosim_dev/monerosim/archived_runs/20260930_181907_sop2_h10_honest_rep__upgraded_sop2",
+ "health": {
+  "ok": true,
+  "summary": "ok",
+  "forks_seen": 14,
+  "reorg_started": 12,
+  "reorg_success": 12,
+  "exceptions": 0,
+  "alt_added": 18,
+  "decisions": 27,
+  "sop_subjective": 27,
+  "share_weighted": 27,
+  "agent_tracebacks": 0
+ },
+ "alpha": 0.4,
+ "alpha_eff": 0.4,
+ "release_lead": 1,
+ "eclipse": false,
+ "share": 0.39215686274509803,
+ "share_honest_ref": 0.39215686274509803,
+ "controlled": null,
+ "gamma": 0.0,
+ "n_ties": 0,
+ "attacker_orphan_rate": 0.0,
+ "network_orphan_rate": 0.00649350649350644,
+ "canonical_blocks": 153,
+ "preload_blocks": 994,
+ "msb_max_z": 1.017008715226602,
+ "honest_ref": {
+  "node": "honest-001",
+  "blocks": 153,
+  "tip": 1147,
+  "bridge_tip": 1147,
+  "differing_heights": 0,
+  "first_divergence": null,
+  "share": 0.39215686274509803
+ },
+ "theory": {
+  "es_gamma0": 0.4837209302325583,
+  "at_measured_gamma": 0.4837209302325583
+ },
+ "verdicts": [
+  [
+   "attacker share vs Eyal-Sirer gamma=0 curve",
+   true
+  ],
+  [
+   "attacker share vs Eyal-Sirer theory at measured gamma",
+   true
+  ],
+  [
+   "attacker beats honest baseline (share > alpha)",
+   false
+  ]
+ ],
+ "all_verdicts_pass": false,
+ "attacker_found": 60
+}

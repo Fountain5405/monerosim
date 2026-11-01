@@ -1,0 +1,371 @@
+{
+ "20261022_103029_sop_v4_noown_72h__share_sop2_noown_hs_a045_d2": {
+  "found_att": 1507,
+  "found_hon": 1829,
+  "found": 3336,
+  "reveals": [
+   {
+    "t": "2000-01-01 00:58:20.449",
+    "split": 1007,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-01 01:26:14.797",
+    "split": 1017,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 6,
+    "applied": 6
+   },
+   {
+    "t": "2000-01-01 01:39:37.736",
+    "split": 1024,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-01 01:55:12.753",
+    "split": 1027,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-01 02:09:37.231",
+    "split": 1031,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 4,
+    "applied": 4
+   },
+   {
+    "t": "2000-01-01 02:44:58.999",
+    "split": 1039,
+    "removed": 9,
+    "honest_orphaned": 9,
+    "att_applied": 10,
+    "applied": 10
+   },
+   {
+    "t": "2000-01-01 15:33:40.663",
+    "split": 1278,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-01 16:22:55.427",
+    "split": 1299,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 6,
+    "applied": 6
+   },
+   {
+    "t": "2000-01-01 16:40:39.826",
+    "split": 1309,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-01 17:03:34.877",
+    "split": 1315,
+    "removed": 5,
+    "honest_orphaned": 5,
+    "att_applied": 11,
+    "applied": 11
+   },
+   {
+    "t": "2000-01-01 19:23:15.352",
+    "split": 1370,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-01 22:13:48.053",
+    "split": 1424,
+    "removed": 3,
+    "honest_orphaned": 3,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-02 02:15:33.358",
+    "split": 1519,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-02 02:29:25.403",
+    "split": 1525,
+    "removed": 3,
+    "honest_orphaned": 3,
+    "att_applied": 7,
+    "applied": 7
+   },
+   {
+    "t": "2000-01-02 03:14:54.229",
+    "split": 1552,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 4,
+    "applied": 4
+   },
+   {
+    "t": "2000-01-02 05:55:47.150",
+    "split": 1619,
+    "removed": 6,
+    "honest_orphaned": 6,
+    "att_applied": 9,
+    "applied": 9
+   },
+   {
+    "t": "2000-01-02 06:27:37.150",
+    "split": 1635,
+    "removed": 5,
+    "honest_orphaned": 5,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-02 06:50:35.713",
+    "split": 1649,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 4,
+    "applied": 4
+   },
+   {
+    "t": "2000-01-02 07:42:30.224",
+    "split": 1681,
+    "removed": 3,
+    "honest_orphaned": 3,
+    "att_applied": 4,
+    "applied": 4
+   },
+   {
+    "t": "2000-01-02 08:01:00.646",
+    "split": 1688,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-02 08:36:34.096",
+    "split": 1710,
+    "removed": 3,
+    "honest_orphaned": 3,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-02 18:33:35.756",
+    "split": 1995,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-02 18:56:43.552",
+    "split": 2009,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 9,
+    "applied": 9
+   },
+   {
+    "t": "2000-01-02 19:08:06.179",
+    "split": 2022,
+    "removed": 6,
+    "honest_orphaned": 6,
+    "att_applied": 6,
+    "applied": 6
+   },
+   {
+    "t": "2000-01-03 03:23:45.986",
+    "split": 2282,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-03 08:28:17.414",
+    "split": 2433,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 2,
+    "applied": 2
+   },
+   {
+    "t": "2000-01-03 09:40:39.785",
+    "split": 2484,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-03 09:51:14.673",
+    "split": 2493,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 4,
+    "applied": 4
+   },
+   {
+    "t": "2000-01-03 11:46:02.397",
+    "split": 2550,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 11,
+    "applied": 11
+   },
+   {
+    "t": "2000-01-03 11:55:06.317",
+    "split": 2563,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-03 14:24:53.138",
+    "split": 2638,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 7,
+    "applied": 7
+   },
+   {
+    "t": "2000-01-03 15:14:31.151",
+    "split": 2670,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-03 15:34:19.825",
+    "split": 2683,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 3,
+    "applied": 3
+   },
+   {
+    "t": "2000-01-03 15:42:21.271",
+    "split": 2686,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 4,
+    "applied": 4
+   },
+   {
+    "t": "2000-01-03 16:57:16.604",
+    "split": 2719,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 4,
+    "applied": 4
+   },
+   {
+    "t": "2000-01-03 17:44:54.738",
+    "split": 2735,
+    "removed": 7,
+    "honest_orphaned": 7,
+    "att_applied": 11,
+    "applied": 11
+   },
+   {
+    "t": "2000-01-03 18:26:08.896",
+    "split": 2760,
+    "removed": 4,
+    "honest_orphaned": 4,
+    "att_applied": 6,
+    "applied": 6
+   },
+   {
+    "t": "2000-01-03 18:51:34.692",
+    "split": 2775,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-03 19:16:12.109",
+    "split": 2792,
+    "removed": 2,
+    "honest_orphaned": 2,
+    "att_applied": 5,
+    "applied": 5
+   },
+   {
+    "t": "2000-01-03 19:44:40.478",
+    "split": 2810,
+    "removed": 3,
+    "honest_orphaned": 3,
+    "att_applied": 4,
+    "applied": 4
+   },
+   {
+    "t": "2000-01-03 23:52:59.113",
+    "split": 2916,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 4,
+    "applied": 4
+   }
+  ],
+  "other_reorgs": [
+   {
+    "t": "2000-01-01 02:44:21.358",
+    "split": 1047,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 0,
+    "applied": 1
+   },
+   {
+    "t": "2000-01-02 05:03:54.267",
+    "split": 1602,
+    "removed": 1,
+    "honest_orphaned": 1,
+    "att_applied": 0,
+    "applied": 1
+   }
+  ],
+  "unknown_old_ids": 0,
+  "depth_hist": {
+   "1": 12,
+   "2": 12,
+   "3": 5,
+   "4": 6,
+   "5": 2,
+   "6": 2,
+   "7": 1,
+   "9": 1
+  },
+  "share": 0.11163032191069575,
+  "canonical_blocks": 1926,
+  "attacker_orphan_rate": 0.8573324485733245,
+  "network_orphan_rate": 0.42266187050359716,
+  "attacker_found": 1507
+ }
+}

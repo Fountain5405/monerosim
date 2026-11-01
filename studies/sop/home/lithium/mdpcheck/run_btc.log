@@ -1,0 +1,81 @@
+2026-10-31T03:06:30Z start btc --alpha 0.3333333333333333 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T03:15:53Z exit 0 btc --alpha 0.3333333333333333 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T03:15:53Z start btc --alpha 0.3333333333333333 --gamma 0 --T 95 --bound upper
+2026-10-31T03:18:33Z exit 0 btc --alpha 0.3333333333333333 --gamma 0 --T 95 --bound upper
+2026-10-31T03:18:33Z start btc --alpha 0.35 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T03:28:21Z exit 0 btc --alpha 0.35 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T03:28:21Z start btc --alpha 0.35 --gamma 0 --T 95 --bound upper
+2026-10-31T03:30:46Z exit 0 btc --alpha 0.35 --gamma 0 --T 95 --bound upper
+2026-10-31T03:30:46Z start btc --alpha 0.375 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T03:40:19Z exit 0 btc --alpha 0.375 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T03:40:19Z start btc --alpha 0.375 --gamma 0 --T 95 --bound upper
+2026-10-31T03:42:42Z exit 0 btc --alpha 0.375 --gamma 0 --T 95 --bound upper
+2026-10-31T03:42:42Z start btc --alpha 0.4 --gamma 0 --T 95 --bound lower --T-policy 400
+Traceback (most recent call last):
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 418, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 414, in main
+    return args.fn(args)
+           ^^^^^^^^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 375, in cmd_btc
+    out[f"{name}_lp"] = lp_share(*fill_illegal(*tabs[:3]), tabs[3])[0]
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 136, in lp_share
+    raise RuntimeError(f"LP failed: {res.message}")
+RuntimeError: LP failed: The HiGHS status code was not recognized. (HiGHS Status 15: model_status is Unknown; primal_status is Infeasible)
+2026-10-31T03:58:28Z exit 0 btc --alpha 0.4 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T03:58:28Z start btc --alpha 0.4 --gamma 0 --T 95 --bound upper
+2026-10-31T04:01:24Z exit 0 btc --alpha 0.4 --gamma 0 --T 95 --bound upper
+2026-10-31T04:01:24Z start btc --alpha 0.425 --gamma 0 --T 95 --bound lower --T-policy 400
+Traceback (most recent call last):
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 418, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 414, in main
+    return args.fn(args)
+           ^^^^^^^^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 375, in cmd_btc
+    out[f"{name}_lp"] = lp_share(*fill_illegal(*tabs[:3]), tabs[3])[0]
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 136, in lp_share
+    raise RuntimeError(f"LP failed: {res.message}")
+RuntimeError: LP failed: (HiGHS Status 0: Not Set)
+2026-10-31T04:20:00Z exit 0 btc --alpha 0.425 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T04:20:00Z start btc --alpha 0.425 --gamma 0 --T 95 --bound upper
+2026-10-31T04:22:48Z exit 0 btc --alpha 0.425 --gamma 0 --T 95 --bound upper
+2026-10-31T04:22:48Z start btc --alpha 0.45 --gamma 0 --T 95 --bound lower --T-policy 400
+Traceback (most recent call last):
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 418, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 414, in main
+    return args.fn(args)
+           ^^^^^^^^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 375, in cmd_btc
+    out[f"{name}_lp"] = lp_share(*fill_illegal(*tabs[:3]), tabs[3])[0]
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 136, in lp_share
+    raise RuntimeError(f"LP failed: {res.message}")
+RuntimeError: LP failed: The HiGHS status code was not recognized. (HiGHS Status 15: model_status is Unknown; primal_status is Infeasible)
+2026-10-31T04:54:22Z exit 0 btc --alpha 0.45 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T04:54:22Z start btc --alpha 0.45 --gamma 0 --T 95 --bound upper
+2026-10-31T04:56:56Z exit 0 btc --alpha 0.45 --gamma 0 --T 95 --bound upper
+2026-10-31T04:56:56Z start btc --alpha 0.475 --gamma 0 --T 95 --bound lower --T-policy 400
+Traceback (most recent call last):
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 418, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 414, in main
+    return args.fn(args)
+           ^^^^^^^^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 375, in cmd_btc
+    out[f"{name}_lp"] = lp_share(*fill_illegal(*tabs[:3]), tabs[3])[0]
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 136, in lp_share
+    raise RuntimeError(f"LP failed: {res.message}")
+RuntimeError: LP failed: (HiGHS Status 0: Not Set)
+2026-10-31T05:36:32Z exit 0 btc --alpha 0.475 --gamma 0 --T 95 --bound lower --T-policy 400
+2026-10-31T05:36:32Z start btc --alpha 0.475 --gamma 0 --T 95 --bound upper
+2026-10-31T05:40:46Z exit 0 btc --alpha 0.475 --gamma 0 --T 95 --bound upper
+2026-10-31T05:40:46Z start btc --alpha 0.3333333333333333 --gamma 0.5 --T-policy 400 --policies-only

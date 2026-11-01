@@ -1,3 +1,5 @@
+Status (2026-11-01): current (the prompt for the campaign-7 review; the report is review_report.md).
+
 # Independent review of the `dev` branch: Share-or-Perish (MRL #146) campaign 7
 
 You are reviewing research done by another agent working with the owner of this repository. The owner wants to know which findings are true and valid before relying on them or reporting them publicly. Be skeptical. The author has already corrected several of its own claims after checking them (listed below), so assume more errors may remain. Your job is to find them, not to defend the work.

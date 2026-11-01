@@ -1,0 +1,29 @@
+[matrix] share_sop2_hs_a045_d5: ERROR: 026-10-20T17:42:34Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.11 to agent attacker-bridge (AS 0, node 0
+commit: `a0f5fc58`
+# Matrix sop_v3_hs_tail_smoke
+
+- base: `/scratch/monerosim_dev/monerosim/test_configs/selfish_micro_sop_tail.yaml`  seed: 25781  stop_time: 2h
+- cells: 1  failures: 1
+
+| arm | countermeasure | shares | alpha | depth | alpha | share | share_h | ctrl | gamma | att_orph | net_orph | msb_z | blocks | verdicts | health | run |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| share | sop2 | hs | a045 | d5 | - | - | - | - | - | - | - | - | - | - | - | - |
+
+## Failed cells
+
+- `share_sop2_hs_a045_d5`: 026-10-20T17:42:34Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 3.0.0.11 to agent attacker-bridge (AS 0, node 0)
+[2026-10-20T17:42:34Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 2.0.0.10 to agent attacker-miner (AS 200, node 200)
+[2026-10-20T17:42:34Z INFO  monerosim::ip::allocator] Assigned AS-aware IP 1.0.0.10 to agent honest-001 (AS 500, node 500)
+[2026-10-20T17:42:34Z INFO  
+
+[matrix] share_sop2_hs_a045_d5: share 0.308
+commit: `a0f5fc58`
+# Matrix sop_v3_hs_tail_smoke
+
+- base: `/scratch/monerosim_dev/monerosim/test_configs/selfish_micro_sop_tail.yaml`  seed: 25781  stop_time: 2h
+- cells: 1  failures: 0
+
+| arm | countermeasure | shares | alpha | depth | alpha | share | share_h | ctrl | gamma | att_orph | net_orph | msb_z | blocks | verdicts | health | run |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| share | sop2 | hs | a045 | d5 | 0.450 | 0.308 | 0.308 | - | 0.273 | 0.556 | 0.447 | 2.723 | 26 | FAIL (3) | ok | 20261020_174322_sop_v3_hs_tail_smoke__share_sop2_hs_a045_d5 |
+

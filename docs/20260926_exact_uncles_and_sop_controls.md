@@ -1,3 +1,5 @@
+Status (2026-11-01): current for the exact-uncle results (section 1); its SoP controls (section 2) are superseded by docs/20261007_sop_campaign7_results.md.
+
 # MRL #144 exact uncles on the h10 base, and the SoP upgrade-transition controls (2026-09-26/27)
 
 Campaign 3 (owner decisions 2026-09-26 17:40Z; `docs/20260926_dev_branch_handoff.md`

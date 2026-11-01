@@ -1,0 +1,71 @@
+# sop_v4_dsweep_param_72h (2026-10-30): the cost side of the d sweep (owner
+# 10-30: "run the d sweep"). A larger d forgives slow honest blocks but also
+# counts fewer shares (a share counts only if seen more than d before the
+# block) and lets later blocks keep their weight, so SoP's protection on the
+# base topology may weaken. These cells repeat the headline param attacker
+# cells (default window, a045 / a047, seed 1; d = 5 gave 0.431 and 0.451) at
+# d = 10 and 20 s. The attacker's knobs were tuned at d = 5 and nothing in the
+# agent depends on d, so these measure the same attacker, a lower bound on how
+# much a larger d gives away. Identical to the d = 5 cells except
+# sim-sop-delay-s on every SoP daemon (test pins it).
+name: sop_v4_dsweep_param_72h
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes: {strategy: param_stubborn, reject_aware: 'true', embedded_shares: 'true', window_rule: '20261020',
+          window_objects: '32', weigh: sop, use_honest_shares: 'true', tip_shares: 'true', count_own_tip_shares: 'false',
+          give_up_depth: '5'}
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+  countermeasure:
+    sop2_param:
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+  delay:
+    d10:
+      attacker:
+        daemon_options: {sim-sop-delay-s: 10}
+      honest:
+        daemon_options: {sim-sop-delay-s: 10}
+      relays:
+        daemon_options: {sim-sop-delay-s: 10}
+      bridges:
+        daemon_options: {sim-sop-delay-s: 10}
+    d20:
+      attacker:
+        daemon_options: {sim-sop-delay-s: 20}
+      honest:
+        daemon_options: {sim-sop-delay-s: 20}
+      relays:
+        daemon_options: {sim-sop-delay-s: 20}
+      bridges:
+        daemon_options: {sim-sop-delay-s: 20}
+  alpha:
+    a045:
+      attacker:
+        hashrate: 4.5
+        attributes: {give_up_objects: '6', hold_shares: '1', publish_lead: '1', reveal_margin: '1', reveal_depth: '1',
+          block_deficit: '0'}
+      honest:
+        hashrate: [2.75, 2.75]
+    a047:
+      attacker:
+        hashrate: 4.7
+        attributes: {give_up_objects: '6', hold_shares: '1', publish_lead: '1', reveal_margin: '1', reveal_depth: '1',
+          block_deficit: '0'}
+      honest:
+        hashrate: [2.65, 2.65]
+  sample:
+    s1:
+      attacker:
+        attributes: {sample: '1'}

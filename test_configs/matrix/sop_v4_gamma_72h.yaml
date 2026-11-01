@@ -1,0 +1,123 @@
+# sop_v4_gamma_72h (2026-10-28, v3): the network-advantage attacker (gap 4 of
+# the "is SoP a good mitigation" list), the one result that could sink the
+# case. On selfish_micro_sop_gamma.yaml the honest path between the two
+# miners runs through 1.5 s relay hops (f3: honest-002 -> relay-slow-1 ->
+# hub, 3 s, under SoP's 5 s rule; f6: -> relay-slow-1 -> 2 -> 3 -> hub, 6 s,
+# past it, so the fast side weighs the slow miner's block at 0 whenever the
+# attacker's reply is there first) while the attacker hears each honest block
+# from the bridge beside its finder and answers through both bridges in about
+# a second: gamma 0.5 in the Eyal-Sirer sense, where the stock threshold is
+# 0.25. v2's single 4 s hop never connected (monerod's 5 s P2P timeouts): the
+# relay was isolated, honest-002 was eclipsed by the attacker and the cell
+# measured a 2-miner majority attack (0.99), not SoP. Stock cells run the
+# stock-optimal depth-2 attacker at 0.30 and 0.35 (both above 0.25, so both
+# should profit); SoP cells the validated param attacker (the G=6 family; the
+# knobs tuned for 0.45-0.47 are used at 0.35 and 0.40 too) at 0.35, 0.40 and
+# 0.45. honest-002 is eclipsed, so its hashrate and flag are set by name.
+# 23 daemons, 3 of them mining: ~13 GB, a 16 GB box.
+name: sop_v4_gamma_72h
+seed: 27791
+base: test_configs/selfish_micro_sop_gamma.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: param_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          window_objects: '32'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          count_own_tip_shares: 'false'
+          give_up_depth: '5'
+          give_up_objects: '6'
+          hold_shares: '1'
+          publish_lead: '1'
+          reveal_margin: '1'
+          reveal_depth: '1'
+          block_deficit: '0'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+    d2:
+      attacker:
+        attributes:
+          strategy: window_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          weigh: difficulty
+          window_objects: '0'
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          give_up_depth: '2'
+          give_up_objects: '-1'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+    # es (10-29): the classic Eyal-Sirer attacker (SM1), which reveals on a
+    # tie, so a propagation edge is exactly what ES's gamma describes. The d2
+    # attacker at 0.30 / f6 scored 0.249 (gamma 0.013): it reveals only when
+    # strictly ahead on work and never races a tie, so it cannot use the edge.
+    es:
+      attacker:
+        attributes:
+          strategy: eyal_sirer
+  countermeasure:
+    stock: {}
+    sop:
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      honest-002:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true}
+  alpha:
+    a030:
+      attacker: {hashrate: 3.0}
+      honest: {hashrate: [3.5]}
+      honest-002: {hashrate: 3.5}
+    a035:
+      attacker: {hashrate: 3.5}
+      honest: {hashrate: [3.25]}
+      honest-002: {hashrate: 3.25}
+    a040:
+      attacker: {hashrate: 4.0}
+      honest: {hashrate: [3.0]}
+      honest-002: {hashrate: 3.0}
+    a045:
+      attacker: {hashrate: 4.5}
+      honest: {hashrate: [2.75]}
+      honest-002: {hashrate: 2.75}
+  latency:
+    f3: {}
+    f6:
+      relay-slow-1: {peers: {exclusive: [relay-slow-2], priority: []}}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+exclude:
+  - {arm: share, countermeasure: stock}
+  - {arm: d2, countermeasure: sop}
+  - {arm: es, countermeasure: sop}
+  - {arm: es, alpha: a040}
+  # es at a045 kept (10-29): the stock d2 attacker at a045 / f6 scored 0.522
+  # with gamma 0.000 (it never races a tie, so the slow path gives it nothing);
+  # the like-for-like stock comparison for the SoP 0.699 is a tie-racing
+  # attacker on the stock rule at the same alpha and path.
+  - {arm: share, alpha: a030}
+  - {arm: d2, alpha: a040}
+  # d2 at a045 kept (10-29): the SoP cell at a045 / f6 scored 0.699, so the
+  # stock rule at the same alpha and path is the direct comparison (ES with
+  # gamma 0.5 predicts ~0.68 there).

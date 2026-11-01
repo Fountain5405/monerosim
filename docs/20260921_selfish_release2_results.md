@@ -1,3 +1,5 @@
+Status (2026-11-01): current.
+
 # Selfish-mining experiment: release-at-lead-2 (2026-09-21)
 
 First experiment on `feat/selfish-mining-experiments`, built on the literature

@@ -1,0 +1,45 @@
+# sop_v4_seed2_slow_72h (2026-10-30): second seed for the slow-miner pair at 6 s
+# (s1: the slow miner lost 5.0 % on stock, 10.7 % under SoP). Identical to the
+# s1 cells of sop_v4_slow_72h except the attacker's sample attribute.
+name: sop_v4_seed2_slow_72h
+seed: 27791
+base: test_configs/selfish_micro_sop_slow.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    honest:
+      attacker:
+        attributes: {strategy: honest}
+        daemon_options: {offline: false}
+  countermeasure:
+    stock: {}
+    sop:
+      attacker:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      honest-002:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+  alpha:
+    a047:
+      attacker: {hashrate: 4.7}
+      honest:
+        hashrate: [2.65]
+      honest-002: {hashrate: 2.65}
+  latency:
+    l6:
+      honest-002:
+        topology_node: 1209
+        peers:
+          exclusive: [relay-chain-3]
+  sample:
+    s2:
+      attacker:
+        attributes: {sample: '2'}

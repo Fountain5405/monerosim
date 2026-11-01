@@ -1,0 +1,45 @@
+2026-10-31T03:06:30Z start sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.45 --bound lower
+2026-10-31T03:13:51Z exit 0 sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.45 --bound lower
+2026-10-31T03:13:51Z start sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.45 --bound lower --own-pending count
+2026-10-31T03:22:45Z exit 0 sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.45 --bound lower --own-pending count
+2026-10-31T03:22:45Z start sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.45 --bound upper
+2026-10-31T03:25:39Z exit 0 sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.45 --bound upper
+2026-10-31T03:25:39Z start sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.40 --bound lower
+2026-10-31T03:32:24Z exit 0 sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.40 --bound lower
+2026-10-31T03:32:24Z start sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.40 --bound lower --own-pending count
+2026-10-31T03:40:09Z exit 0 sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.40 --bound lower --own-pending count
+2026-10-31T03:40:09Z start sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.40 --bound upper
+2026-10-31T03:42:37Z exit 0 sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.40 --bound upper
+2026-10-31T03:42:37Z start sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.45 --stubborn --give-up-objects 5 --test-own-pending count
+2026-10-31T03:44:04Z exit 0 sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.45 --stubborn --give-up-objects 5 --test-own-pending count
+2026-10-31T03:44:04Z start sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.48 --bound lower --own-pending count
+2026-10-31T03:55:31Z exit 0 sop --w-shares 4 --k-objects 12 --a-max 4 --h-max 4 --d-max 16 --p-max 4 --deficit 6 --alpha 0.48 --bound lower --own-pending count
+2026-10-31T03:55:31Z start sop --w-shares 8 --k-objects 24 --a-max 4 --h-max 4 --d-max 24 --p-max 8 --deficit 8 --alpha 0.45 --bound upper
+Traceback (most recent call last):
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 418, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 414, in main
+    return args.fn(args)
+           ^^^^^^^^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 233, in cmd_sop
+    out.update(library_checks(succ, att, hon, probs, args.tol, args.tau))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 147, in library_checks
+    rho, K = lp_share(s, ra, rh, legal, probs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/selfishmining/mdpcheck/scripts/sop_mdp_crosscheck.py", line 133, in lp_share
+    res = linprog(-ra[ni, ai], A_eq=A_eq, b_eq=b[1:], bounds=(0, None), method="highs",
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/selfishmining/mdpcheck/venv/lib/python3.12/site-packages/scipy/optimize/_linprog.py", line 660, in linprog
+    sol = _linprog_highs(lp, solver=highs_solvers[meth],
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/selfishmining/mdpcheck/venv/lib/python3.12/site-packages/scipy/optimize/_linprog_highs.py", line 355, in _linprog_highs
+    res = _highs_wrapper(c, A.indptr, A.indices, A.data, lhs, rhs,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/selfishmining/mdpcheck/venv/lib/python3.12/site-packages/scipy/optimize/_highspy/_highs_wrapper.py", line 206, in _highs_wrapper
+    run_status = highs.run()
+                 ^^^^^^^^^^^
+MemoryError: std::bad_alloc
+2026-10-31T04:07:02Z exit 0 sop --w-shares 8 --k-objects 24 --a-max 4 --h-max 4 --d-max 24 --p-max 8 --deficit 8 --alpha 0.45 --bound upper
+2026-10-31T04:07:02Z queue sop done

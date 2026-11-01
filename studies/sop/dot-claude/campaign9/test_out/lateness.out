@@ -1,0 +1,4 @@
+runs=1 decisions=2938
+n_f rule alt: switch=533 (subjective 4, objective 529); would switch straight back=254; tie on the way back=0
+    fwd_objective:rev_subjective: 254
+n_f rule either: switch=533 (subjective 4, objective 529); would switch straight back=0; tie on the way back=0

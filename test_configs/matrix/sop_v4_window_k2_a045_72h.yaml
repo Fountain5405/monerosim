@@ -1,0 +1,62 @@
+# sop_v4_window_k2_a045_72h (2026-10-27): follow-up to sop_v4_window_72h. Its
+# K=2 cells (window 16 objects) matched the race model at alpha 0.47 (0.546 /
+# 0.493 vs 0.514), but with only that alpha the sims' K=2 crossing (about
+# 0.455) is read through the model's slope. At 0.45 the model puts the best
+# K=2 attacker just below break-even (perish rule on, 2000 d x 3 seeds,
+# data/sop_search/kw_perish_k2_045.jsonl): G=2 R=1 share 0.438, 39.3 reveals
+# per 1,000 found blocks, attacker orphan rate 0.242, network 0.222 (G=1 scores
+# 0.441, a give-up the sim attacker has never run; G=2 is used). With 0.46
+# (0.4704, G=4) the model's K=2 crossing is 0.4547. Same network, options and
+# attacker as the k2 cells except alpha and the give-up threshold.
+name: sop_v4_window_k2_a045_72h
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes:
+          strategy: param_stubborn
+          reject_aware: 'true'
+          embedded_shares: 'true'
+          window_rule: '20261020'
+          weigh: sop
+          use_honest_shares: 'true'
+          tip_shares: 'true'
+          count_own_tip_shares: 'false'
+          give_up_depth: '5'
+          hold_shares: '1'
+          publish_lead: '1'
+          reveal_margin: '1'
+          block_deficit: '0'
+        daemon_options:
+          sim-share-or-perish: true
+          sim-sop-w: 16
+  countermeasure:
+    k2:
+      attacker:
+        attributes: {window_objects: '16', give_up_objects: '2', reveal_depth: '1'}
+        daemon_options: {sim-sop-k: 2}
+      honest:
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16, sim-sop-k: 2}
+      relays:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16, sim-sop-k: 2}
+      bridges:
+        daemon: monerod-sim
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16, sim-sop-k: 2}
+  alpha:
+    a045:
+      attacker: {hashrate: 4.5}
+      honest: {hashrate: [2.75, 2.75]}
+  sample:
+    s1:
+      attacker:
+        attributes:
+          sample: '1'
+    s2:
+      attacker:
+        attributes:
+          sample: '2'

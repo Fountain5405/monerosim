@@ -4,6 +4,7 @@ run/analyze pipeline (with the sim launch and analyzer mocked), and table
 rendering. No simulation is ever started."""
 from pathlib import Path
 
+import copy
 import pytest
 import yaml
 
@@ -80,6 +81,19 @@ def test_overlay_targets_and_eclipsed_victims(tmp_path):
     assert cfg["agents"]["attacker-bridge"]["daemon_options"] == {"y": True, "z": True}
     with pytest.raises(SystemExit, match="unknown overlay target"):
         apply_overlay(cfg, {"islands": {}}, "t")
+
+
+def test_overlay_target_may_name_one_agent():
+    """Partial-adoption specs flag single daemons: an agent id is a target
+    that reaches only that agent; a name that is neither a group nor an
+    agent is still rejected."""
+    cfg = yaml.safe_load(yaml.safe_dump(BASE))
+    apply_overlay(cfg, {"honest-002": {"daemon_options": {"sop": True}},
+                        "honest": {"daemon_options": {"w": 16}}}, "t")
+    assert cfg["agents"]["honest-002"]["daemon_options"] == {"sop": True, "w": 16}
+    assert cfg["agents"]["honest-001"]["daemon_options"] == {"w": 16}
+    with pytest.raises(SystemExit, match="unknown overlay target"):
+        apply_overlay(cfg, {"honest-009": {}}, "t")
 
 
 def test_relays_target_reaches_only_forwarding_nodes():
@@ -847,3 +861,320 @@ def test_run_sim_cmd_passes_ksm_and_bootfast():
     assert run_sim_cmd("c.yaml", "r") == base
     assert run_sim_cmd("c.yaml", "r", ksm=True) == base + ["--ksm"]
     assert run_sim_cmd("c.yaml", "r", ksm=True, bootfast=True) == base + ["--ksm", "--bootfast"]
+
+
+def _load_spec(name):
+    from scripts.selfish_matrix import load_spec
+    return load_spec(REPO / "test_configs" / "matrix" / name)
+
+
+def _cells(spec):
+    return {cell: build_config(spec, overlays) for cell, _, overlays in plan_cells(spec)}
+
+
+def _sop(cfg, aid):
+    return bool(cfg["agents"][aid].get("daemon_options", {}).get("sim-share-or-perish"))
+
+
+def _strip_chain(cfg):
+    """The slow base's seven eclipsed chain relays and honest-002's pin /
+    eclipse / exclusive peer, undone: what the micro base has."""
+    ag = cfg["agents"]
+    for k in range(1, 8):
+        del ag[f"relay-chain-{k}"]
+    for k in ("topology_node", "attributes", "peers"):
+        ag["honest-002"].pop(k, None)
+    ag["honest-002"].get("daemon_options", {}).pop("hide-my-port", None)
+    if ag["honest-002"].get("daemon_options") == {}:
+        del ag["honest-002"]["daemon_options"]
+    return cfg
+
+
+def test_slow_base_differs_from_the_micro_base_only_in_the_graph():
+    """The slow-link base is the micro base on the derived graph plus a chain
+    of 1.5 s relay hops (relay-chain-1..7 on nodes 1206..1212, each peering
+    only with the previous) and honest-002 eclipsed behind it; every link's
+    round trip stays under monerod's 5 s P2P timeouts."""
+    base = yaml.safe_load((REPO / "test_configs/selfish_micro_sop.yaml").read_text())
+    slow = yaml.safe_load((REPO / "test_configs/selfish_micro_sop_slow.yaml").read_text())
+    assert slow["network"]["path"] == "gml_processing/1200_nodes_caida_slow_links.gml"
+    ag = slow["agents"]
+    for k in range(1, 8):
+        r = ag[f"relay-chain-{k}"]
+        assert r["topology_node"] == 1205 + k and r["attributes"] == {"eclipsed": "true"}
+        assert r["daemon_options"] == {"hide-my-port": True}
+        assert r.get("peers") == ({"exclusive": [f"relay-chain-{k - 1}"]} if k > 1
+                                  else {"priority": ["monero-seed-001", "monero-seed-002"]})
+    assert ag["honest-002"]["attributes"] == {"eclipsed": "true"}
+    assert ag["honest-002"]["daemon_options"] == {"hide-my-port": True}
+    assert ag["honest-002"]["topology_node"] == 1207 and ag["honest-002"]["peers"] == {"exclusive": ["relay-chain-1"]}
+    slow = _strip_chain(slow)
+    slow["network"]["path"] = base["network"]["path"]
+    assert slow == base
+
+
+def test_slow_spec_pins_only_the_second_honest_miner():
+    """sop_v4_slow_72h: honest-002 sits 2 / 4 / 8 hops down the chain (3 s /
+    6 s / 12 s one way) peering only with the relay before it; being eclipsed
+    its hashrate and SoP flag are set by name; everything else matches the
+    control spec cell for cell."""
+    cells = _cells(_load_spec("sop_v4_slow_72h.yaml"))
+    ctl = _cells(_load_spec("sop_v4_control_72h.yaml"))
+    assert len(cells) == 6
+    for cell, cfg in cells.items():
+        lat = cell.split("_")[-2]
+        node, relay = {"l3": (1207, 1), "l6": (1209, 3), "l12": (1213, 7)}[lat]
+        h2 = cfg["agents"]["honest-002"]
+        assert h2["topology_node"] == node and h2["peers"] == {"exclusive": [f"relay-chain-{relay}"]}
+        assert h2["hashrate"] == 2.65 and cfg["agents"]["honest-001"]["hashrate"] == 2.65
+        sop = "_sop_" in cell
+        assert _sop(cfg, "honest-002") is sop and _sop(cfg, "honest-001") is sop
+        assert _sop(cfg, "relay-chain-1") is sop and _sop(cfg, "relay-chain-7") is sop
+        assert cfg["agents"]["relay-chain-1"]["daemon"] == ("monerod-sim" if sop else "monerod")
+        ref = ctl[cell.replace(f"_{lat}", "")]
+        assert _strip_chain(cfg)["agents"] == ref["agents"]
+
+
+def test_adopt_spec_flags_k_of_four_miners_and_half_the_fabric():
+    """sop_v4_adopt_72h: adoption kN flags the first N honest miners; in a
+    mixed network relay-001 and seeds 1-3 run SoP and relay-002 / seeds 4-6
+    stay stock (relay-002 vanilla monerod, so it drops shares); k4 is the
+    full countermeasure and k0 the stock network with a vanilla bridge."""
+    cells = _cells(_load_spec("sop_v4_adopt_72h.yaml"))
+    assert sorted(cells) == sorted([
+        "share_k1_a045_s1", "share_k2_a045_s1", "share_k3_a045_s1",
+        "share_k4_a045_s1", "d2_k0_a045_s1", "d2_k2_a045_s1", "honest_k2_a045_s1"])
+    miners = ["honest-001", "honest-002", "honest-003", "honest-004"]
+    for cell, cfg in cells.items():
+        k = int(cell.split("_")[1][1])
+        assert [_sop(cfg, m) for m in miners] == [i < k for i in range(4)], cell
+        assert all(cfg["agents"][m]["hashrate"] == 1.375 for m in miners)
+        assert cfg["agents"]["attacker-miner"]["hashrate"] == 4.5
+        sop_fabric = {a for a in cfg["agents"] if a.startswith(("relay", "monero-seed")) and _sop(cfg, a)}
+        if k == 0:
+            assert sop_fabric == set()
+            assert cfg["agents"]["attacker-bridge"]["daemon"] == "monerod"
+            assert cfg["agents"]["relay-001"]["daemon"] == "monerod"
+        elif k == 4:
+            assert sop_fabric == {"relay-001", "relay-002", "monero-seed-001", "monero-seed-002",
+                                  "monero-seed-003", "monero-seed-004", "monero-seed-005", "monero-seed-006"}
+        else:
+            assert sop_fabric == {"relay-001", "monero-seed-001", "monero-seed-002", "monero-seed-003"}
+            assert cfg["agents"]["relay-001"]["daemon"] == "monerod-sim"
+            assert cfg["agents"]["relay-002"]["daemon"] == "monerod"
+        if k:
+            assert cfg["agents"]["attacker-bridge"]["daemon"] == "monerod-sim" and _sop(cfg, "attacker-bridge")
+        att = cfg["agents"]["attacker-miner"]["attributes"]
+        if cell.startswith("honest"):
+            assert att["strategy"] == "honest" and cfg["agents"]["attacker-miner"]["daemon_options"]["offline"] is False
+        elif cell.startswith("d2"):
+            assert att["strategy"] == "window_stubborn" and att["weigh"] == "difficulty" and att["give_up_depth"] == "2"
+        else:
+            assert att["strategy"] == "param_stubborn" and att["give_up_objects"] == "6"
+
+
+def test_gamma_base_is_the_slow_base_plus_a_second_bridge_and_the_pins():
+    """selfish_micro_sop_gamma.yaml: the slow-link base (chain left out) where
+    honest-002 peers only with relay-slow-1 (1.5 s away, 1.5 s from node 0),
+    relay-slow-2 and -3 extend that into a 6 s detour when a cell chains them,
+    the attacker sits on node 1203 beside honest-002 and bridge 1, 0.5 s from
+    node 0 where honest-001 and bridge 2 are. Nothing else differs."""
+    slow = _strip_chain(yaml.safe_load((REPO / "test_configs/selfish_micro_sop_slow.yaml").read_text()))
+    g = yaml.safe_load((REPO / "test_configs/selfish_micro_sop_gamma.yaml").read_text())
+    ag = g["agents"]
+    att = ag["attacker-miner"]
+    assert att["attributes"]["bridges"] == "attacker-bridge,attacker-bridge-2"
+    assert att["attributes"]["read_bridge"] == "best" and "bridge_agent" not in att["attributes"]
+    assert att["attributes"]["feed_parents"] == "true"
+    assert att["topology_node"] == 1203
+    h2 = ag["honest-002"]
+    assert h2["topology_node"] == 1203 and h2["attributes"] == {"eclipsed": "true"}
+    assert h2["peers"] == {"exclusive": ["relay-slow-1"]}
+    assert ag["attacker-bridge"]["topology_node"] == 1203
+    assert ag["attacker-bridge"]["peers"] == {"exclusive": ["honest-002"]}
+    assert ag["attacker-bridge"]["daemon_options"] == {"hide-my-port": True}
+    assert ag["attacker-bridge-2"] == {"daemon": "monerod", "script": "agents.selfish_bridge",
+                                       "start_time": "0s", "topology_node": 0,
+                                       "peers": {"priority": ["honest-001"]}}
+    hide = {"hide-my-port": True}
+    assert ag["relay-slow-1"] == {"daemon": "monerod", "start_time": "0s", "topology_node": 1214,
+                                  "attributes": {"eclipsed": "true"}, "daemon_options": hide,
+                                  "peers": {"priority": ["monero-seed-001", "monero-seed-002"]}}
+    assert ag["relay-slow-2"] == {"daemon": "monerod", "start_time": "0s", "topology_node": 1215,
+                                  "attributes": {"eclipsed": "true"}, "daemon_options": hide,
+                                  "peers": {"exclusive": ["relay-slow-3"]}}
+    assert ag["relay-slow-3"] == {"daemon": "monerod", "start_time": "0s", "topology_node": 1216,
+                                  "attributes": {"eclipsed": "true"}, "daemon_options": hide,
+                                  "peers": {"priority": ["monero-seed-001", "monero-seed-002"]}}
+    assert h2["daemon_options"] == hide
+    assert ag["honest-001"]["topology_node"] == 0
+    # Undo those and the (chain-less) slow base is what remains.
+    for k in ("bridges", "read_bridge", "feed_parents"): att["attributes"].pop(k)
+    att.pop("topology_node")
+    att["attributes"]["bridge_agent"] = "attacker-bridge"
+    for k in ("topology_node", "attributes", "peers", "daemon_options"): h2.pop(k)
+    for k in ("peers", "topology_node", "daemon_options"): ag["attacker-bridge"].pop(k)
+    for k in ("attacker-bridge-2", "relay-slow-1", "relay-slow-2", "relay-slow-3"): del ag[k]
+    ag["honest-001"].pop("topology_node")
+    assert g == slow
+
+
+def test_gamma_spec_moves_the_slow_relay_and_flags_the_eclipsed_miner():
+    """sop_v4_gamma_72h: stock d2 attacker at 0.30 / 0.35 / 0.45, SM1 (es) at
+    0.30 / 0.35 / 0.45, SoP param attacker at 0.35 / 0.40 / 0.45, each with the honest path 3 s (f3: relay-slow-1
+    peers normally) or 6 s (f6: relay-slow-1 -> 2 -> 3 chained). honest-002 is
+    eclipsed (outside the `honest` target), so the spec sets its hashrate and
+    SoP flag by name."""
+    cells = _cells(_load_spec("sop_v4_gamma_72h.yaml"))
+    assert sorted(cells) == sorted(
+        [f"d2_stock_{a}_{l}_s1" for a in ("a030", "a035", "a045") for l in ("f3", "f6")]
+        + [f"es_stock_{a}_{l}_s1" for a in ("a030", "a035", "a045") for l in ("f3", "f6")]
+        + [f"share_sop_{a}_{l}_s1" for a in ("a035", "a040", "a045") for l in ("f3", "f6")])
+    for cell, cfg in cells.items():
+        ag = cfg["agents"]
+        r1 = ag["relay-slow-1"]
+        if "_f6_" in cell:
+            assert r1["peers"] == {"exclusive": ["relay-slow-2"], "priority": []}
+        else:
+            assert r1["peers"] == {"priority": ["monero-seed-001", "monero-seed-002"]}
+        assert ag["relay-slow-2"]["peers"] == {"exclusive": ["relay-slow-3"]}
+        assert ag["relay-slow-3"]["peers"] == {"priority": ["monero-seed-001", "monero-seed-002"]}
+        assert ag["honest-002"]["topology_node"] == ag["attacker-bridge"]["topology_node"] == 1203
+        assert ag["attacker-miner"]["topology_node"] == 1203
+        assert ag["honest-001"]["topology_node"] == 0 and ag["attacker-bridge-2"]["topology_node"] == 0
+        alpha = int(cell.split("_")[2][1:]) / 100
+        assert ag["attacker-miner"]["hashrate"] == pytest.approx(10 * alpha)
+        assert ag["honest-001"]["hashrate"] == ag["honest-002"]["hashrate"] == pytest.approx(5 - 5 * alpha)
+        sop = cell.startswith("share")
+        for a in ("honest-001", "honest-002", "attacker-bridge", "attacker-bridge-2", "relay-001",
+                  "relay-slow-1", "relay-slow-2", "relay-slow-3", "monero-seed-001"):
+            assert _sop(cfg, a) is sop, (cell, a)
+        for a in ("attacker-bridge", "relay-slow-1"):
+            assert ag[a]["daemon"] == ("monerod-sim" if sop else "monerod")
+        att = ag["attacker-miner"]["attributes"]
+        assert att["bridges"] == "attacker-bridge,attacker-bridge-2" and att["read_bridge"] == "best"
+        assert att["feed_parents"] == "true"
+        assert att["strategy"] == {"share": "param_stubborn", "d2": "window_stubborn", "es": "eyal_sirer"}[cell.split("_")[0]]
+
+
+def test_spec_general_overrides_merge_into_the_base_general_block(tmp_path):
+    """A spec's `general:` mapping is deep-merged into the base config's
+    general block (tail-emission reruns: every cell identical to its original
+    except general.emission); existing keys the spec does not name survive."""
+    spec = _spec(tmp_path, {"arm": {"x": {"attacker": {"attributes": {"strategy": "honest"}}}}},
+                 general={"emission": {"mode": "tail", "from_height": "auto"},
+                          "mining": {"extra": 1}})
+    cfg = build_config(spec, {"arm": spec["axes"]["arm"]["x"]})
+    assert cfg["general"]["emission"] == {"mode": "tail", "from_height": "auto"}
+    assert cfg["general"]["mining"] == {"mode": "native", "extra": 1}
+    assert cfg["general"]["stop_time"] == "6h" and cfg["general"]["simulation_seed"] == 12345
+
+
+def test_tail_reruns_match_their_originals_except_the_emission_mode():
+    """The tail-emission reruns of the pivotal cells (10-28): each cell of a
+    *_tail_72h spec builds the same config as the same-named cell of its
+    original spec, plus general.emission = tail from the snapshot."""
+    pairs = {
+        "sop_v4_param_tail_72h.yaml": "sop_v4_param_72h.yaml",
+        "sop_v4_stock_d2_tail_72h.yaml": "sop_v4_stock_d2_72h.yaml",
+        "sop_v4_param_1h_tail_72h.yaml": "sop_v4_param_1h_72h.yaml",
+        "sop_v4_param_h4_tail_72h.yaml": "sop_v4_param_h4_72h.yaml",
+        "sop_v4_control_tail_72h.yaml": "sop_v4_control_72h.yaml",
+    }
+    expected = {
+        "sop_v4_param_tail_72h.yaml": {"share_sop2_param_a046_s1", "share_sop2_param_a047_s1"},
+        "sop_v4_stock_d2_tail_72h.yaml": {"share_stockd2_a036_s1", "share_stockd2_a038_s1"},
+        "sop_v4_param_1h_tail_72h.yaml": {"share_sop2_param_a047_s1"},
+        "sop_v4_param_h4_tail_72h.yaml": {"share_sop2_param_a047_s1"},
+        "sop_v4_control_tail_72h.yaml": {"honest_sop_a047_s1", "honest_stock_a047_s1"},
+    }
+    for tail, orig in pairs.items():
+        t, o = _cells(_load_spec(tail)), _cells(_load_spec(orig))
+        assert set(t) == expected[tail], tail
+        for cell, cfg in t.items():
+            ref = o[cell]
+            assert cfg["general"]["emission"] == {"mode": "tail", "from_height": "auto"}, (tail, cell)
+            stripped = {**cfg, "general": {k: v for k, v in cfg["general"].items() if k != "emission"}}
+            assert stripped == ref, (tail, cell)
+
+
+def test_dsweep_specs_differ_from_their_d5_cells_only_in_the_delay():
+    """The d sweep (owner 2026-10-30): each sop_v4_dsweep_* cell is the d = 5
+    cell of its source spec plus sim-sop-delay-s on exactly the daemons that
+    run SoP (sim-share-or-perish), and nothing else changes."""
+    pairs = {
+        "sop_v4_dsweep_slow_72h.yaml": ("sop_v4_slow_72h.yaml", 4),
+        "sop_v4_dsweep_gamma_72h.yaml": ("sop_v4_gamma_72h.yaml", 2),
+        "sop_v4_dsweep_param_72h.yaml": ("sop_v4_param_72h.yaml", 4),
+    }
+    for sweep, (orig, n) in pairs.items():
+        cells = _cells(_load_spec(sweep))
+        base = _cells(_load_spec(orig))
+        assert len(cells) == n, (sweep, sorted(cells))
+        for name, cfg in cells.items():
+            d = 10 if "_d10_" in name else 20
+            assert f"_d{d}_" in name
+            twin = base[name.replace(f"_d{d}_", "_")]
+            stripped = copy.deepcopy(cfg)
+            sop_hosts = 0
+            for a, ag in stripped["agents"].items():
+                opts = ag.get("daemon_options") or {}
+                if opts.get("sim-share-or-perish"):
+                    sop_hosts += 1
+                    assert opts.pop("sim-sop-delay-s") == d, (name, a)
+                else:
+                    assert "sim-sop-delay-s" not in opts, (name, a)
+            assert sop_hosts >= 4, (name, sop_hosts)
+            assert stripped["agents"] == twin["agents"], name
+            assert stripped["general"] == twin["general"], name
+
+
+def test_seed2_and_lowalpha_specs_differ_from_their_twins_only_where_intended():
+    """Second seeds (owner 2026-10-30): each cell equals its s1 twin except the
+    attacker's sample attribute. Low-alpha adoption: each a030 cell equals its
+    a045 twin except the miners' hashrates (attacker 3.0, honest pools 1.75)."""
+    for spec, orig, n in (("sop_v4_seed2_gamma_72h.yaml", "sop_v4_gamma_72h.yaml", 2),
+                          ("sop_v4_seed2_slow_72h.yaml", "sop_v4_slow_72h.yaml", 2),
+                          ("sop_v4_seed2_adopt_72h.yaml", "sop_v4_adopt_72h.yaml", 2)):
+        cells, base = _cells(_load_spec(spec)), _cells(_load_spec(orig))
+        assert len(cells) == n and all(c.endswith("_s2") for c in cells), sorted(cells)
+        for name, cfg in cells.items():
+            twin = copy.deepcopy(base[name[:-3] + "_s1"])
+            assert cfg["agents"]["attacker-miner"]["attributes"]["sample"] == "2"
+            twin["agents"]["attacker-miner"]["attributes"]["sample"] = "2"
+            assert cfg["agents"] == twin["agents"] and cfg["general"] == twin["general"], name
+    cells = _cells(_load_spec("sop_v4_adopt_lowalpha_72h.yaml"))
+    base = _cells(_load_spec("sop_v4_adopt_72h.yaml"))
+    assert sorted(cells) == ["d2_k0_a030_s1", "share_k1_a030_s1", "share_k2_a030_s1"]
+    miners = ["honest-001", "honest-002", "honest-003", "honest-004"]
+    for name, cfg in cells.items():
+        assert cfg["agents"]["attacker-miner"]["hashrate"] == 3.0
+        assert [cfg["agents"][m]["hashrate"] for m in miners] == [1.75] * 4
+        twin = copy.deepcopy(base[name.replace("a030", "a045")])
+        twin["agents"]["attacker-miner"]["hashrate"] = 3.0
+        for m in miners:
+            twin["agents"][m]["hashrate"] = 1.75
+        assert cfg["agents"] == twin["agents"], name
+
+
+def test_adopt_nodrop_differs_from_k2_only_in_the_scoring():
+    """sop_v4_adopt_nodrop_72h (2026-10-30): the 50 % adoption cell at 0.45 with
+    --sim-no-drop-score on exactly the stock-rule daemons (honest-003 / 004,
+    relay-002, seeds 4-6), relay-002 moved to monerod-sim to accept it, and
+    nothing else changed."""
+    cells = _cells(_load_spec("sop_v4_adopt_nodrop_72h.yaml"))
+    assert sorted(cells) == ["share_k2_nodrop_a045_s1"]
+    cfg = copy.deepcopy(cells["share_k2_nodrop_a045_s1"])
+    twin = _cells(_load_spec("sop_v4_adopt_72h.yaml"))["share_k2_a045_s1"]
+    flagged = {a for a, ag in cfg["agents"].items()
+               if (ag.get("daemon_options") or {}).pop("sim-no-drop-score", False)}
+    assert flagged == {"honest-003", "honest-004", "relay-002",
+                       "monero-seed-004", "monero-seed-005", "monero-seed-006"}
+    assert not any(_sop(cfg, a) for a in flagged)
+    assert cfg["agents"]["relay-002"]["daemon"] == "monerod-sim"
+    assert twin["agents"]["relay-002"]["daemon"] == "monerod"
+    cfg["agents"]["relay-002"]["daemon"] = "monerod"
+    for a in flagged:   # an emptied daemon_options mapping equals an absent one
+        if cfg["agents"][a].get("daemon_options") == {} and "daemon_options" not in twin["agents"][a]:
+            del cfg["agents"][a]["daemon_options"]
+    assert cfg["agents"] == twin["agents"] and cfg["general"] == twin["general"]

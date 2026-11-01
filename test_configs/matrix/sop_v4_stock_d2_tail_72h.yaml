@@ -1,0 +1,42 @@
+# sop_v4_stock_d2_tail_72h (2026-10-28): tail-emission rerun of the stock-rule bracket (a036 / a038, the crossing 0.369).
+# Owner 10-28: "test that assumption" (that the stock emission schedule the sims
+# run under cannot change the block-count results). Identical to sop_v4_stock_d2_72h.yaml
+# cell for cell except general.emission = tail from the snapshot height
+# (0.6 XMR per block instead of ~35 XMR; see docs/TAIL_EMISSION.md); the
+# matrix's `general:` key deep-merges into the base, so no second base config.
+# test_tail_reruns_match_their_originals_except_the_emission_mode pins this.
+# Expect the same shares within seed noise (~0.02): a different coinbase
+# changes every block hash, so this is a fresh draw, not a replay.
+name: sop_v4_stock_d2_tail_72h
+seed: 27791
+base: test_configs/selfish_micro_sop.yaml
+parallel: 1
+stop_time: 72h
+axes:
+  arm:
+    share:
+      attacker:
+        attributes: {strategy: window_stubborn, reject_aware: 'true', embedded_shares: 'true', window_rule: '20261020', window_objects: '32',
+          weigh: sop, use_honest_shares: 'true', tip_shares: 'true', give_up_depth: '5', give_up_objects: '5'}
+        daemon_options: {sim-share-or-perish: true, sim-sop-w: 16}
+  countermeasure:
+    stockd2:
+      attacker:
+        attributes: {weigh: difficulty, window_objects: '0', give_up_objects: '-1', give_up_depth: '2'}
+  alpha:
+    a036:
+      attacker: {hashrate: 3.6}
+      honest:
+        hashrate: [3.2, 3.2]
+    a038:
+      attacker: {hashrate: 3.8}
+      honest:
+        hashrate: [3.1, 3.1]
+  sample:
+    s1:
+      attacker:
+        attributes: {sample: '1'}
+ksm: true
+bootfast: true
+general:
+  emission: {mode: tail, from_height: auto}

@@ -1,6 +1,16 @@
+# 2026-10-24: arm re-pointed to the objects give-up (give_up_objects '5'),
+# measured on 12 daemons at 0.209/0.210 over 72 h with 0 h stranded
+# (sop_v4_o5_72h, docs/20261023_sop_scale_n300_smoke.md s3.1). The block-rule
+# attacker this spec carried before sat stranded 6.5 of the smoke's 8 h
+# (same doc s2); the 12-daemon reference for the block rule is 0.054.
 # sop_scale_n1000_hs_a045_d5_72h (2026-10-21): does the share-aware
 # window_stubborn attacker still beat Share-or-Perish at alpha 0.45, depth 5,
 # when 1,000 relays sit between it and the honest miners instead of 2?
+# Updated 2026-10-23 to the v4 attacker (window_rule 20261020,
+# window_objects 32, tip_shares true) so it matches the v4 campaign cell
+# share_sop2_hs_a045_d5, which measured 0.054 over 72 h on 12 daemons
+# (docs/20261022_sop_v4_results.md); the old-rule numbers quoted below are
+# historical (v3 build, the 2026-10-15 text).
 #
 # Why this cell. On the 12-daemon network it came out above break-even in all
 # three 72 h draws (alpha = 0.45; one draw each, run-to-run spread not
@@ -63,10 +73,13 @@ axes:
           strategy: window_stubborn
           reject_aware: 'true'
           embedded_shares: 'true'
-          window_objects: '48'
+          window_rule: '20261020'
+          window_objects: '32'
           weigh: sop
           use_honest_shares: 'true'
+          tip_shares: 'true'
           give_up_depth: '5'
+          give_up_objects: '5'
         daemon_options:
           sim-share-or-perish: true
           sim-sop-w: 16

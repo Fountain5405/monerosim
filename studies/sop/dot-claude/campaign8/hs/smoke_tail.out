@@ -1,0 +1,3 @@
+12 daemons; rewards below height 995: {}
+rewards at or above 995: 564 block adds, 1 distinct values, most common {'0.600000000000': 564}
+TAIL CHECK: PASS
