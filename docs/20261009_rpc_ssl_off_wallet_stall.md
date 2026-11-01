@@ -1,3 +1,5 @@
+> Status: design record of 2026-10-09, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # RPC SSL off → wallets stop syncing after the first transaction burst
 
 **Date:** 2026-10-09 · **Status:** cause *narrowed*, exact Shadow mechanism **not established** ·

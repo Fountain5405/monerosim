@@ -1,3 +1,5 @@
+> Status: design record of 2026-07-17, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # The Intermittent wallet-rpc Crash: Root Cause
 
 **Date:** 2026-07-17

@@ -1,3 +1,5 @@
+> Status: design record of 2026-05-12, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # How block production works in monerosim
 
 Captured 2026-05-12 from a code walkthrough during analysis of the

@@ -1,3 +1,5 @@
+> Status: design record of 2026-07-24, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # Cuprate wallet-RPC interop: a real `monero-wallet-rpc` syncs and sends through `cuprated`
 
 **Date:** 2026-07-24

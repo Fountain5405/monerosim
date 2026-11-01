@@ -1,3 +1,5 @@
+> Status: design record of 2026-05-06, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # 1011-node end-to-end validation (2026-05-06)
 
 Trust-validation run for the Tier 1 refactor effort and the upstream

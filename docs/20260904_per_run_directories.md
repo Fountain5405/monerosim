@@ -1,3 +1,5 @@
+> Status: design record of 2026-09-04, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # Per-run directories: parallel simulations from one checkout
 
 **Date:** 2026-09-04

@@ -1,3 +1,5 @@
+> Status: design record of 2026-09-23, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # Monero mainnet P2P topology: literature and replica targets
 
 **Date:** 2026-09-23

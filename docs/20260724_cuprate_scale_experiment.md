@@ -1,3 +1,5 @@
+> Status: design record of 2026-07-24, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # Cuprate at scale: a monerod vs monerod+cuprate network experiment
 
 **Date:** 2026-07-24 (follow-up findings folded in 2026-07-26)

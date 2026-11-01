@@ -1,3 +1,5 @@
+> Status: design record of 2026-08-02, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # Cuprate 0.1.0-preview: upstream merge, and a 300-node validation of canonical cuprate
 
 **Date:** 2026-08-02

@@ -1,3 +1,5 @@
+> Status: design record of 2026-07-25, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # Cross-implementation P2P connection characteristics: monerod ↔ cuprate
 
 **Date:** 2026-07-25

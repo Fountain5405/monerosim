@@ -1,3 +1,5 @@
+> Status: design record of 2026-07-22, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # Node Reachability: Synthetic Firewall vs. Hidden (breaking change)
 
 **Date:** 2026-07-22

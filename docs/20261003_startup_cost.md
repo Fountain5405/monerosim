@@ -1,3 +1,5 @@
+> Status: design record of 2026-10-03, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # Why a monero process start costs ~17 wall-seconds under Shadow
 
 **Date:** 2026-10-03, measured on a 24-thread box (Ryzen 9 3900X, 12 cores,

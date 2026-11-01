@@ -1,3 +1,5 @@
+> Status: design record of 2026-06-10, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 <!-- Reply to Rucknium's review, POSTED 2026-06-11 on -->
 <!-- https://github.com/Fountain5405/monerosim/issues/3 -->
 <!-- This file is the posted text of record; companion doc: -->

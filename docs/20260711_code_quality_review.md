@@ -1,3 +1,5 @@
+> Status: design record of 2026-07-11, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # Code Quality Review: Full-Codebase Assessment
 
 **Date:** 2026-07-11

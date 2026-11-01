@@ -1,3 +1,5 @@
+> Status: design record of 2026-10-03, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # Runbook: why simulation startup takes hours (RPC SSL hypothesis)
 
 **Written:** 2026-10-03, on the 256-thread box, for an agent on a smaller box. Everything

@@ -1,3 +1,5 @@
+> Status: design record of 2026-10-11, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # Peak-log phase: costs and design options (not implemented)
 
 **Date:** 2026-10-11 · **Status:** discussion notes + a decision; nothing implemented.

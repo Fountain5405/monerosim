@@ -1,3 +1,5 @@
+> Status: design record of 2026-06-18, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # Mainnet network topology: targets + monerosim config approach
 
 **Date:** 2026-06-18

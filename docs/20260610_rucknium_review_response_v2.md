@@ -1,3 +1,5 @@
+> Status: design record of 2026-06-10, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # Response to Rucknium's v0.1.0 Review (issue #3) — v2: Mechanisms, Not Narratives
 
 **Date:** 2026-06-10

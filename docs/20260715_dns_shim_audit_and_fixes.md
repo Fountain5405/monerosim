@@ -1,3 +1,5 @@
+> Status: design record of 2026-07-15, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # DNS-Shim Forensic Audit + Fixes (fork v0.2.2)
 
 **Date:** 2026-07-15

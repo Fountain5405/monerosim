@@ -1,3 +1,5 @@
+> Status: design record of 2026-10-12, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # 3k slowdown: workload, not engine (2026-10-12)
 
 Question: the 3k scale-ladder rung ran at sim:wall ~0.18 in its final hours

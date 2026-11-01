@@ -1,3 +1,5 @@
+> Status: design record of 2026-07-23, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # Multi-node-type architecture: cuprate + generalizable node implementations
 
 **Date:** 2026-07-23

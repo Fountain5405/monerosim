@@ -1,3 +1,5 @@
+> Status: design record of 2026-07-21, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # Per-Run /tmp Namespacing
 
 **Date:** 2026-07-21

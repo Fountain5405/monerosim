@@ -211,8 +211,10 @@ monerosim/
   tests/                  # Rust integration tests + golden/baseline fixtures
   attic/                  # Ad-hoc / unmaintained tools (see attic/README.md)
   gml_processing/         # CAIDA topology generation
-  docs/                   # Documentation
-  test_configs/           # Configuration files (scenarios + expanded)
+  docs/                   # Documentation (index: docs/README.md)
+  patches/                # Core monerod patches; series = the one ordered patch list
+  studies/                # Research studies, each with its own configs, scripts, data and docs
+  test_configs/           # General-purpose configuration files (scenarios + expanded)
   setup.sh                # Environment setup
   run_sim.sh              # Simulation runner
 ```

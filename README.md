@@ -299,14 +299,20 @@ monerosim/
     baselines/               # Smoke-test baselines (e.g. quickstart_metrics.json)
   attic/                     # Ad-hoc / unmaintained tools (see attic/README.md)
   gml_processing/            # CAIDA topology generation
-  docs/                      # Documentation
-  test_configs/              # Configuration files (scenarios + expanded)
+  docs/                      # Documentation (index: docs/README.md)
+  patches/                   # Core monerod patches; series = the one ordered patch list
+  studies/                   # Research studies (sop, antiproxy, eclipse); see studies/README.md
+  test_configs/              # General-purpose configuration files (scenarios + expanded)
   setup.sh                   # Environment setup (~30-60 min)
   run_sim.sh                 # Quick simulation runner
   smart_config_tool.sh       # AI-powered config generator (requires LLM API key)
 ```
 
 ## Documentation
+
+The full index, sorted into reference docs, dated design records and docs that
+moved to a study, is [docs/README.md](docs/README.md). Research findings are in
+each study's `STATUS.md` (see [studies/README.md](studies/README.md)).
 
 - [Quick Start](QUICKSTART.md) - Installation and first simulation
 - [Configuration Guide](docs/CONFIGURATION.md) - Complete reference for the flat expanded-YAML config format

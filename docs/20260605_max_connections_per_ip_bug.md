@@ -1,3 +1,5 @@
+> Status: design record of 2026-06-05, kept as history; it may not match the current code. Current docs: docs/README.md.
+
 # `max-connections-per-ip=1` breaks small, dense simulations
 
 **Date:** 2026-06-05 — **revised 2026-06-11** after full verification
