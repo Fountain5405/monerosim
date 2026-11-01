@@ -187,23 +187,36 @@ def config_counts(config_path: str) -> dict:
     }
 
 
-# Options that only a patched monerod understands. Key = the daemon_options
-# key a config sets; value = the string that must appear in `monerod --help`.
-SIM_FLAG_OPTIONS = {
-    'fakechain-hard-forks': 'fakechain-hard-forks',
-    'peerlist-dump-file': 'peerlist-dump-file',
-    'sim-relay-alt-blocks': 'sim-relay-alt-blocks',
-    'sim-publish-or-perish': 'sim-publish-or-perish',
-    'sim-pop-k': 'sim-pop-k',
-    'sim-pop-delay-s': 'sim-pop-delay-s',
-    'sim-pop-det-tie': 'sim-pop-det-tie',
-    'sim-pop-uncles': 'sim-pop-uncles',
-    'sim-pop-uncles-header': 'sim-pop-uncles-header',
-    'sim-sop-w': 'sim-sop-w',
-    'sim-share-or-perish': 'sim-share-or-perish',
-    'sim-sop-delay-s': 'sim-sop-delay-s',
-    'sim-sop-k': 'sim-sop-k',
-}
+# patches/series: the one ordered list of the patches built into monerod-sim.
+# setup.sh and update.sh read it through scripts/patch_series.sh.
+PATCH_SERIES = Path(__file__).resolve().parent.parent / 'patches' / 'series'
+
+
+def read_patch_series(path: Path = PATCH_SERIES) -> list[dict]:
+    """The series rows in apply order, each {path, owner, flags, summary}.
+
+    Lines are TAB-separated; `flags` lists the daemon flags the patch adds
+    ('--name', comma-separated in the file, '-' for none).
+    """
+    rows = []
+    for n, line in enumerate(Path(path).read_text().splitlines(), 1):
+        if not line.strip() or line.startswith('#'):
+            continue
+        cols = line.split('\t')
+        if len(cols) != 4:
+            raise ValueError(f'{path}:{n}: expected 4 TAB-separated columns, got {len(cols)}')
+        rel, owner, flags, summary = cols
+        rows.append({'path': rel, 'owner': owner,
+                     'flags': [] if flags == '-' else flags.split(','),
+                     'summary': summary})
+    return rows
+
+
+# Options that only a patched monerod understands: every flag a series patch
+# adds. Key = the daemon_options key a config sets; value = the string that
+# must appear in `monerod --help`.
+SIM_FLAG_OPTIONS = {flag[2:]: flag[2:]
+                    for row in read_patch_series() for flag in row['flags']}
 # general.mining.mode: native drives miners through the sim-mining patch.
 NATIVE_MINING_FLAG = 'sim-hash-interval-ms'
 # Shorthand names setup.sh installs; naming one means the config expects the

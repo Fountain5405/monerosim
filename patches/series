@@ -1,0 +1,31 @@
+# monerod-sim patch series: the one list of patches built into monerod-sim.
+#
+# setup.sh --sim-binary and update.sh apply these, top to bottom, to the
+# Monero tag in monero.pin. setup.sh --help prints this list, and run_sim.sh's
+# capability gate (scripts/run_sim_helpers.py) takes the daemon flags from it.
+#
+# Change the patch set only here, then rebuild with ./setup.sh --sim-binary.
+# A patch's bytes are its identity: every installed binary's provenance
+# records each patch's sha256, so never edit a patch casually.
+#
+# Columns, TAB-separated:
+#   path     repo-relative patch file
+#   owner    core, or the study that owns the patch (studies/<owner>/)
+#   flags    daemon flags the patch adds, comma-separated ('-' for none)
+#   summary  one line for setup.sh --help
+patches/monero-fakechain-hardforks.patch	core	--fakechain-hard-forks	fork schedules on the fakechain (network-upgrade sims)
+patches/monero-sim-mining.patch	core	--sim-hash-interval-ms,--sim-rx-full-dataset,--sim-timestamp-offset	native PoW under Shadow (sleep-throttled RandomX)
+patches/monero-sim-selfish-relay.patch	core	--sim-relay-alt-blocks	relay alt blocks (selfish mining, gamma > 0); flush_cache sim_alt_blocks RPC
+patches/monero-sim-peerlist-dump.patch	core	--peerlist-dump-file	peer-list dumps (measurement only)
+patches/monero-sim-pop.patch	sop	--sim-no-drop-score,--sim-pop-delay-s,--sim-pop-det-tie,--sim-pop-k,--sim-pop-uncles,--sim-pop-uncles-header,--sim-publish-or-perish,--sim-share-or-perish,--sim-sop-delay-s,--sim-sop-k,--sim-sop-rejudge-displaced,--sim-sop-seen-at-notify,--sim-sop-w	Publish-or-Perish / Share-or-Perish fork choice (MRL #144, #146)
+patches/monero-sim-tail-emission.patch	core	--sim-tail-emission-height	tail emission: mainnet 0.6 XMR block reward from a height
+patches/monero-sim-txrelay-log.patch	antiproxy	--sim-log-txrelay	transaction relay log (measurement only)
+patches/monero-sim-subnet-dedup.patch	antiproxy	--sim-subnet-dedup	outbound peer grouping prefix (stock 24)
+patches/monero-sim-fixed-randomx-seed.patch	antiproxy	--sim-fixed-randomx-seed	no RandomX epoch change at block 2113
+patches/monero-sim-uniform-whitelist-pick.patch	antiproxy	--sim-uniform-whitelist-pick	white-list pick uniform, not recency-biased
+patches/monero-sim-whitelist-candidates.patch	antiproxy	--sim-whitelist-candidates	candidates per white-list pick (stock 20, 0 = all)
+patches/monero-sim-random-whitelist-candidates.patch	antiproxy	--sim-random-whitelist-candidates	white-list candidates sampled at random, not the N newest
+patches/monero-sim-peerlist-limits.patch	antiproxy	--sim-gray-peerlist-limit,--sim-white-peerlist-limit	runtime white/gray peer-list limits (stock 1000 / 5000)
+patches/monero-sim-stemmable-inbound.patch	antiproxy	--sim-stemmable-cidrs,--sim-stemmable-inbound	inbound peers usable as Dandelion++ stems (tevador, MRL #160)
+patches/monero-sim-peerlist-ports-per-host.patch	antiproxy	--sim-peerlist-ports-per-host	at most N gray peer-list entries per host, newest wins (0 = stock)
+patches/monero-sim-id-consistency.patch	antiproxy	--sim-enforce-id-consistency,--sim-shared-spy-id	a peer's advertised entry must carry its handshake id (hours; 0 = stock)

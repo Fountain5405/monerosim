@@ -20,6 +20,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/scripts/log_lib.sh"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPS_DIR="$SCRIPT_DIR/sibling_repos"
 
+# The monerod-sim patch list (patches/series) and its readers
+source "$SCRIPT_DIR/scripts/patch_series.sh"
+
 # Repository locations and their expected branches
 declare -A REPOS
 REPOS["monerosim"]="$SCRIPT_DIR:main"
@@ -327,17 +330,16 @@ rebuild_shadow() {
 }
 
 rebuild_sim_binary() {
-    # monerod-sim = vanilla monero (monero.pin) + every vendored patch, each
-    # flag-gated and stock when its flag is absent:
-    #   patches/monero-fakechain-hardforks.patch  --fakechain-hard-forks
-    #   patches/monero-sim-mining.patch           --sim-hash-interval-ms / --sim-rx-full-dataset
-    # One build serves the fork-schedule and native-mining features; monerod-hf
-    # is kept as a symlink alias so existing fork configs keep working.
+    # monerod-sim = vanilla monero (monero.pin) + every patch in patches/series,
+    # applied in its order, built exactly as setup.sh --sim-binary builds it.
+    # monerod-hf is kept as a symlink alias so existing fork configs keep working.
     local monero_dir="$1"
-    local patches=(
-        "$SCRIPT_DIR/patches/monero-fakechain-hardforks.patch"
-        "$SCRIPT_DIR/patches/monero-sim-mining.patch"
-    )
+    local patches=()
+    mapfile -t patches < <(patch_series_paths "$SCRIPT_DIR")
+    if [[ ${#patches[@]} -eq 0 ]]; then
+        log_err "patches/series lists no patches"
+        return
+    fi
     local p
     for p in "${patches[@]}"; do
         if [[ ! -f "$p" ]]; then
@@ -387,12 +389,15 @@ rebuild_sim_binary() {
 
     log_info "Building patched monerod (monerod-sim, -j${BUILD_JOBS}) — this takes a while..."
     if ! (cd "$sim_build_dir" && mkdir -p build/release && cd build/release \
-          && cmake -DCMAKE_BUILD_TYPE=Release ../.. > cmake.log 2>&1 \
+          && cmake -DCMAKE_BUILD_TYPE=Release -DUSE_DEVICE_TREZOR=OFF -DCMAKE_DISABLE_FIND_PACKAGE_HIDAPI=TRUE ../.. > cmake.log 2>&1 \
           && nice -n10 make -j"$BUILD_JOBS" daemon); then
         log_err "monerod-sim build failed (see $sim_build_dir/build/release/cmake.log)"
         return
     fi
 
+    # Replace the slot rather than write through it: if the path is ever a
+    # symlink alias, a plain cp -f would silently overwrite the alias TARGET.
+    rm -f "$MONEROSIM_BIN/monerod-sim"
     cp -f "$sim_build_dir/build/release/bin/monerod" "$MONEROSIM_BIN/monerod-sim"
     # Alias for configs that predate the combined build (daemon: monerod-hf).
     ln -sfn monerod-sim "$MONEROSIM_BIN/monerod-hf"
@@ -401,7 +406,7 @@ rebuild_sim_binary() {
         echo "binary: monerod-sim (alias: monerod-hf)"
         echo "base: $monero_ref (monero.pin)"
         for p in "${patches[@]}"; do
-            echo "patch: patches/$(basename "$p")"
+            echo "patch: ${p#"$SCRIPT_DIR"/}"
             echo "patch_sha256: $(sha256sum "$p" | cut -d' ' -f1)"
         done
         echo "built: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
