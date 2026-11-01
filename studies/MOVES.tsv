@@ -1,0 +1,12 @@
+old_path	new_path	owner	reason
+patches/monero-sim-pop.patch	studies/sop/patches/monero-sim-pop.patch	sop	Publish-or-Perish / Share-or-Perish patch; only SoP changes it (series owner sop)
+patches/monero-sim-txrelay-log.patch	studies/antiproxy/patches/monero-sim-txrelay-log.patch	antiproxy	added on feat/spy-relay-log for the antiproxy study (series owner antiproxy)
+patches/monero-sim-subnet-dedup.patch	studies/antiproxy/patches/monero-sim-subnet-dedup.patch	antiproxy	added on feat/spy-relay-log for the antiproxy study (series owner antiproxy)
+patches/monero-sim-fixed-randomx-seed.patch	studies/antiproxy/patches/monero-sim-fixed-randomx-seed.patch	antiproxy	added on feat/spy-relay-log for the antiproxy study (series owner antiproxy)
+patches/monero-sim-uniform-whitelist-pick.patch	studies/antiproxy/patches/monero-sim-uniform-whitelist-pick.patch	antiproxy	added on feat/spy-relay-log for the antiproxy study (series owner antiproxy)
+patches/monero-sim-whitelist-candidates.patch	studies/antiproxy/patches/monero-sim-whitelist-candidates.patch	antiproxy	added on feat/spy-relay-log for the antiproxy study (series owner antiproxy)
+patches/monero-sim-random-whitelist-candidates.patch	studies/antiproxy/patches/monero-sim-random-whitelist-candidates.patch	antiproxy	added on feat/spy-relay-log for the antiproxy study (series owner antiproxy)
+patches/monero-sim-peerlist-limits.patch	studies/antiproxy/patches/monero-sim-peerlist-limits.patch	antiproxy	added on feat/spy-relay-log for the antiproxy study (series owner antiproxy)
+patches/monero-sim-stemmable-inbound.patch	studies/antiproxy/patches/monero-sim-stemmable-inbound.patch	antiproxy	added on feat/spy-relay-log for the antiproxy study (series owner antiproxy)
+patches/monero-sim-peerlist-ports-per-host.patch	studies/antiproxy/patches/monero-sim-peerlist-ports-per-host.patch	antiproxy	added on feat/spy-relay-log for the antiproxy study (series owner antiproxy)
+patches/monero-sim-id-consistency.patch	studies/antiproxy/patches/monero-sim-id-consistency.patch	antiproxy	added on feat/spy-relay-log for the antiproxy study (series owner antiproxy)
