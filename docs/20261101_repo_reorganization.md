@@ -1,15 +1,15 @@
 # Repository reorganization, 2026-11-01
 
-> Status: current. Record of the reorganization on branch `reorg`. It merges
-> the two research branches, moves research out of the core folders into
-> `studies/`, and gives `monerod-sim` one patch list. **Main was not
-> updated:** one benchmark, the antiproxy B1 cell, missed its band (below).
+> Status: current. Record of the reorganization that merged the two research
+> branches into main, moved research out of the core folders into `studies/`,
+> and gave `monerod-sim` one patch list. One benchmark, the antiproxy B1
+> cell, missed its band; the owner judged it run-to-run spread (below).
 
 ## Summary
 
 - **Merges.** `sop-research` (tag `handoff/sop`) and `feat/spy-relay-log` (tag
   `handoff/antiproxy`, plus `7c3a9ddb`, the antiproxy `CLAUDE.md` that the tag
-  left out) are merged into `reorg` with `--no-ff` merges. No history was
+  left out) are merged into main with `--no-ff` merges. No history was
   rewritten. The only conflict, `docs/PERFORMANCE_AND_SCALE.md`, kept both
   sides.
 - **Moves.** 1,411 files moved into `studies/`, all with `git mv`, and each
@@ -29,14 +29,14 @@
   `STATUS.md` and `SWITCHOVER.md` for each active study, a `STATUS.md` for
   the closed eclipse study, `docs/README.md` (the docs index), and a
   CHANGELOG entry.
-- **Main was not updated.** Every deterministic check passes, and four of
-  the five benchmarks meet their bands. The fifth, the antiproxy B1 cell,
-  gives a light share of 0.0927 from the final tree, outside the register's
-  0.0853 ± 0.005. From the pre-move tree, with the same binary, it gives
-  0.0902, just inside. Under the brief's rules that is a failed check that no
-  path or module-name fix can address. So the PR, the push to main, the
-  archive tags and the branch deletions wait for the owner (see "Main was not
-  updated").
+- **One benchmark missed, and the owner let main move.** Every
+  deterministic check passes, and four of the five benchmarks meet their
+  bands. The fifth, the antiproxy B1 cell, gives a light share of 0.0927 from
+  the final tree, outside the register's 0.0853 ± 0.005. From the pre-move
+  tree, with the same binary, it gives 0.0902, just inside. Under the brief's
+  rules that stopped the work before main. The owner judged the gap to be
+  run-to-run spread and asked for the last step to be finished. The antiproxy
+  study will investigate B1.
 
 ## Results at a glance
 
@@ -53,11 +53,11 @@
 | Old-path search | no stale live references; 59 deliberate old-to-new mentions remain (lists and notes) |
 | Private details (A7) | none added; the ones already published are listed below; every commit by Fountain5405 |
 | Antiproxy B1 cell md5 | `ca7ae836` before and after, the handoff's value |
-| Benchmarks (A8) | quickstart, refactor_gate (from one worktree), the knob smoke and the double build pass. Antiproxy B1 misses: 0.0927 after against 0.0853 ± 0.005, where the pre-move tree gives 0.0902 |
+| Benchmarks (A8) | quickstart, refactor_gate (from one worktree), the knob smoke and the double build pass. Antiproxy B1 misses: 0.0927 after against 0.0853 ± 0.005, where the pre-move tree gives 0.0902; the owner judged it run-to-run spread |
 | Run provenance | every after-run archive has `source_state.txt` (commit and dirty state) |
 | Independent review | 0 critical, 5 important, 14 minor; all addressed (below) |
 
-## Main was not updated
+## Main: held back by one benchmark, then the owner's go-ahead
 
 The brief lets main move only when every check passes. A difference beyond a
 benchmark's band is a failed check. If its fix is not a path or a module
@@ -73,28 +73,15 @@ still fail, main is left alone, and the branch and the report are pushed.
   and the worktree path differ. No single change can be blamed, and
   reverting the moves would undo the reorganization.
 - **The rule was fixed before the result.** The pass criterion for the
-  pre-move B1 run was written in the work log before that run started.
+  pre-move B1 run was written in the work log before that run started. The
+  work stopped there, with the branch and this report pushed and main
+  untouched.
 
-**What the owner can do.** If the 0.0025 gap between the two B1 runs counts
-as run-to-run spread, step 10 is ready. First check that `origin/main` is
-still `9d300222`; if it has moved, merge it into `reorg` and rerun the fast
-checks. Then, from a checkout of `reorg`:
-
-```bash
-git fetch origin
-gh pr create --base main --head reorg \
-  --title "Repository reorganization: merge the research branches, separate the studies" \
-  --body-file docs/20261101_repo_reorganization.md
-git push origin reorg:main    # a fast-forward: reorg was cut from main at 9d300222
-for b in feat/turnover-return-grid hashrate-gating progress-brief; do
-  git tag -a "archive/$b" "origin/$b" -m "Archive of $b at its tip, before deletion" &&
-  git push origin "refs/tags/archive/$b" &&
-  git push origin --delete "$b"
-done
-```
-
-Otherwise, a few more B1 runs from each tree would measure the spread
-(about 2.7 hours a run).
+**The owner's decision.** On 2026-11-02 the owner judged the 0.0025 gap
+between the two B1 runs to be run-to-run spread and asked for step 10 to be
+finished: the PR, the fast-forward of main, and the archive tags and
+deletions under "Branches". The antiproxy study will investigate B1
+(follow-ups).
 
 ## What moved
 
@@ -451,8 +438,8 @@ brackets.
     the version pin does.
 12. **No attribution trailers** on the reorganization's commits, as the
     owner asked: only Fountain5405 identities in the repo. The root
-    `CLAUDE.md` now states the rule. The PR should be merged by a
-    fast-forward push, so GitHub adds no merge commit of its own.
+    `CLAUDE.md` now states the rule. The PR is merged by a fast-forward push,
+    so GitHub adds no merge commit of its own.
 13. **Benchmarks before and after** (A8, the owner's request), on top of the
     deterministic checks.
 14. **Lab box names stay in the new study docs** (how A7 was read). The
@@ -462,6 +449,11 @@ brackets.
     and home paths were removed from every new or rewritten file. [If the
     names should go too: a small docs commit that moves them to
     `CLAUDE.local.md`.]
+15. **Main moved despite the B1 miss, on the owner's call** (2026-11-02).
+    The owner judged the gap between the two B1 runs to be run-to-run
+    spread. [If B1's real spread is smaller than that gap, something in the
+    final tree moves antiproxy results, and the antiproxy study has to find
+    what.]
 
 ## Follow-ups
 
@@ -528,6 +520,13 @@ the chain to about 229 blocks over the same time. The pre-move tree fails
 the same way, so the reorganization did not cause it. The limit, or the
 scenario, needs a look.
 
+**B1 against the antiproxy register.** The final tree's 0.0927 and the
+pre-move tree's 0.0902 straddle the band's upper edge, 0.0903. The
+register's 0.0853 came from the study's own R8 binary on simbox3, while both
+runs here used the merged binary, which carries SoP's v4 PoP patch. The
+antiproxy study will investigate. More B1 runs from the merged binary would
+show whether its light share really sits above the register's.
+
 **How far runs of one seed spread.** Runs are known to be close but not
 deterministic. These benchmarks measured the spread for two scenarios:
 - **refactor_gate:** 229 or 230 blocks, and a per-miner median of 24 to 26,
@@ -571,17 +570,16 @@ LAN address, a login, a home path or an email address (a scan of
 The `192.168` addresses in `src/`, `docs/NETWORK_SCALING_GUIDE.md` and the
 CAIDA links file are examples and test data, not lab details.
 
-**Identities.** Every commit this branch would bring to main has
-Fountain5405 as author and committer. The research commits merged from the two branches carry
+**Identities.** Every commit this brings to main has Fountain5405 as author
+and committer. The research commits merged from the two branches carry
 `Co-Authored-By` trailers from their own sessions. Those commits were
 already public and cannot change without rewriting history. The
 reorganization's own commits carry no trailer.
 
 ## Branches
 
-When main points at this branch, each leftover remote branch gets an
-annotated `archive/<branch>` tag at its tip, and is then deleted. None of
-this is done yet, because main was not updated:
+Once main points at this branch, each leftover remote branch gets an
+annotated `archive/<branch>` tag at its tip, and is then deleted:
 
 | Branch | Tip | Why it can go |
 |---|---|---|
@@ -609,4 +607,4 @@ No `archive/` tag of these names existed before. `sop-research` and
   (follow-ups).
 - **The spread of B1's light share between runs.** B1 ran once from each
   tree. The ±0.005 band comes from the antiproxy handoff; these runs did not
-  measure the spread.
+  measure the spread (follow-ups).
