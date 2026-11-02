@@ -60,6 +60,7 @@ Current research findings are not here: each study's `STATUS.md` states them.
 - [`20261012_3k_slowdown_decomposition.md`](20261012_3k_slowdown_decomposition.md): 3k slowdown: workload, not engine (2026-10-12)
 - [`20261012_tail_emission_plan.md`](20261012_tail_emission_plan.md): Plan: simulate mainnet tail emission (2026-10-12)
 - [`20261020_storage_dedup_zfs.md`](20261020_storage_dedup_zfs.md): Per-node chain and log storage: share the blobs; dedup doesn't pay
+- [`20261101_repo_reorganization.md`](20261101_repo_reorganization.md): Repository reorganization: research branches merged, studies moved to `studies/`, one patch list
 
 Undated plans and investigations, also history:
 
