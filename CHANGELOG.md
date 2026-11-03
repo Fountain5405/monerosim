@@ -2,8 +2,35 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Stock-equivalence test for `monerod-sim`** (`scripts/stock_equivalence.sh`).
+  Every patch in `patches/series` is gated by a `--sim-*` style flag and must
+  be inert without it. The test runs quickstart twice with the same seed, on
+  stock `monerod` and on `monerod-sim` with no flag set, and passes only when
+  both runs pass the smoke assertions and every daemon node's chain is
+  identical over the heights both reached. Each run appends a row (commit,
+  binary sha256, patch count, verdict, first divergence) to
+  `tests/baselines/stock_equivalence_history.csv`. Run it after changing the
+  series or a patch. `scripts/compare_chains.py` is the chain comparison on
+  its own (block ids per height from `daemon_logs/*/bitmonero.log`, any two
+  runs). The audit of the 15 current patches that motivated the test, with
+  what each leaves on the default path, is
+  `docs/20261103_sim_patch_inertness_audit.md`. Tests:
+  `scripts/test_compare_chains.py`, `scripts/test_stock_equivalence.sh`.
+
 ### Changed
 
+- **`run_sim.sh` uses `--bootfast` by default.** Fast monero process starts
+  (each ~0.4 instead of ~16 wall-s, nothing else in the simulation changed)
+  no longer need the flag; `--no-bootfast` restores Shadow's default clock
+  for one run, `--allfast` is unchanged, and `--bootfast` is still accepted.
+  With a Shadow older than v0.2.5 the implied default falls back to the
+  default clock with a warning; an explicit `--bootfast` is still an error.
+  Every run now records its clock mode in `source_state.txt` (`clock_mode:`)
+  and `shadow_output/run_env.sh` (`MONEROSIM_CLOCK_MODE`), so runs made
+  before and after this change can be told apart. `--ksm` stays opt-in.
+  Test: `scripts/test_clock_mode.sh`.
 - **Research moved out of the core folders into `studies/`**
   (`docs/20261101_repo_reorganization.md`). The two research branches,
   `sop-research` and `feat/spy-relay-log`, are merged into main. Each study's

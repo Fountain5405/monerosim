@@ -8,6 +8,11 @@
 # A patch's bytes are its identity: every installed binary's provenance
 # records each patch's sha256, so never edit a patch casually.
 #
+# Every patch must be inert with its flags unset: an unflagged monerod-sim is
+# stock monerod. scripts/stock_equivalence.sh checks that end to end (same
+# chain as stock on quickstart); run it after any change here or to a patch.
+# The audit behind the rule: docs/20261103_sim_patch_inertness_audit.md.
+#
 # Columns, TAB-separated:
 #   path     repo-relative patch file
 #   owner    core, or the study that owns the patch (studies/<owner>/)

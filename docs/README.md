@@ -61,6 +61,7 @@ Current research findings are not here: each study's `STATUS.md` states them.
 - [`20261012_tail_emission_plan.md`](20261012_tail_emission_plan.md): Plan: simulate mainnet tail emission (2026-10-12)
 - [`20261020_storage_dedup_zfs.md`](20261020_storage_dedup_zfs.md): Per-node chain and log storage: share the blobs; dedup doesn't pay
 - [`20261101_repo_reorganization.md`](20261101_repo_reorganization.md): Repository reorganization: research branches merged, studies moved to `studies/`, one patch list
+- [`20261103_sim_patch_inertness_audit.md`](20261103_sim_patch_inertness_audit.md): Are the monerod-sim patches inert without their flags? Audit of the 15 patches and the stock-equivalence test
 
 Undated plans and investigations, also history:
 

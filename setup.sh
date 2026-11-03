@@ -1322,7 +1322,7 @@ if [[ "$INSTALL_SIM_BINARY" == true ]]; then
     TEST_SIM_CONFIG="test_configs/native_micro.yaml"
     log_warn "The test simulation ($TEST_SIM_CONFIG) runs for 3 hours simulated time"
     log_warn "Native-mining micro gate: 2 miners (20 + 5 h/s, real RandomX on monerod-sim) + 2 stock relays"
-    TEST_SIM_HINT="For deeper validation see docs/NATIVE_MINING.md §7 Validation results (expect difficulty ~3000, miner-001 ~80% of blocks)"
+    TEST_SIM_HINT="For deeper validation see docs/NATIVE_MINING.md §7 Validation results (expect difficulty ~3000, miner-001 ~80% of blocks). After changing patches/series: ./scripts/stock_equivalence.sh (unflagged monerod-sim must match stock monerod, ~35 min)"
 else
     TEST_SIM_CONFIG="test_configs/quickstart.yaml"
     log_warn "The test simulation ($TEST_SIM_CONFIG) runs for 6 hours simulated time"

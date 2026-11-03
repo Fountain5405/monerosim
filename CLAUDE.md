@@ -67,3 +67,7 @@ that uses the simulator lives in `studies/`. The repository is public.
 - `venv/bin/python -m pytest -q` (testpaths: agents, scripts, tests, studies).
 - `./scripts/smoke_test.sh` (quickstart) for behaviour changes;
   `./scripts/smoke_test.sh refactor_gate` for refactors.
+- `./scripts/stock_equivalence.sh` after changing `patches/series` or any
+  patch: an unflagged `monerod-sim` must produce the same chain as stock
+  `monerod` on quickstart (~35 min; appends to
+  `tests/baselines/stock_equivalence_history.csv`).

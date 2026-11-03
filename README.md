@@ -321,7 +321,7 @@ each study's `STATUS.md` (see [studies/README.md](studies/README.md)).
 - [Running Simulations](docs/RUNNING_SIMULATIONS.md) - End-to-end simulation workflow
 - [Network Scaling Guide](docs/NETWORK_SCALING_GUIDE.md) - CAIDA topologies and large-scale simulations
 - [Performance and Scale Limits](docs/PERFORMANCE_AND_SCALE.md) - Speed knobs, per-machine safe-N caps, and auto-config guardrails
-- [Fast Process Starts: `--bootfast` / `--allfast`](docs/explain_clock_mods.md) - Plain-language explanation of why every monero process start took ~16 s under Shadow and how the two `run_sim.sh` clock flags cut it to under half a second
+- [Fast Process Starts: `--bootfast` / `--allfast`](docs/explain_clock_mods.md) - Plain-language explanation of why every monero process start took ~16 s under Shadow and how the `run_sim.sh` clock modes cut it to under half a second (`--bootfast` is the default; `--no-bootfast` restores the old clock)
 - [How It Works](docs/FLOW.md) - Detailed mechanics of how monerosim interfaces with Shadow
 - [Determinism Fixes](docs/DETERMINISM_FIXES.md) - Sources of non-determinism and fixes
 - [AI Config Generator](docs/AI_CONFIG_GENERATOR.md) - LLM-based configuration generation
@@ -465,6 +465,12 @@ The Tier 2 smoke test runs a real Shadow simulation end-to-end and then evaluate
 ```
 
 Run it pre-release and after non-trivial changes to the agents or orchestrator. Exit code 0 = all assertions PASS; non-zero = at least one assertion failed (see `scripts/smoke_test.sh` for the exit-code map).
+
+The stock-equivalence test checks the patched daemon rather than the agents: `monerod-sim` carries every patch in `patches/series`, each gated by a `--sim-*` style flag, and with no flag set it must be stock `monerod`. The test runs quickstart twice with the same seed, on stock `monerod` and on an unflagged `monerod-sim`, and passes only when both runs pass the smoke assertions and every daemon node's chain is identical over the heights both reached (`scripts/compare_chains.py`, block ids from the daemon logs). Run it after changing `patches/series` or any patch; each run appends a row to `tests/baselines/stock_equivalence_history.csv`.
+
+```bash
+./scripts/stock_equivalence.sh            # quickstart twice, ~35 min wall
+```
 
 Baselines live at `tests/baselines/<scenario>_metrics.json` and capture the expected envelope (wall-time cap, height floor, transaction floors, etc.) for that scenario. To add or refresh one, run a known-good simulation, then copy the canonical metrics from the resulting `archived_runs/<TS>_<scenario>/summary.txt` into a new `<scenario>_metrics.json` (see the existing quickstart baseline for the schema).
 
