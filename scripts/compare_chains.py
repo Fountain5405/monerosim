@@ -14,8 +14,11 @@ Exit 1: some node's chain diverges (the first such height is printed).
 Exit 2: a node is missing or has no blocks in one run, or fewer than
         --min-common heights (default 1) are common.
 
-Used by scripts/stock_equivalence.sh (stock monerod against an unflagged
-monerod-sim); handy on its own for any before/after pair.
+For two runs of the SAME daemon binary (a before/after of the agents, the
+generator or the runner). Two different binaries never share block ids, even
+when they behave the same: the coinbase key is drawn from the daemon's random
+stream, which any change to the binary shifts. For that comparison use
+scripts/compare_block_timeline.py (as scripts/stock_equivalence.sh does).
 """
 from __future__ import annotations
 

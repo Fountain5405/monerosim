@@ -30,7 +30,7 @@ nothing. It would cost several binaries per box, a provenance check matching
 configs to builds instead of to one series, and rebuilds for every research
 agent. The owner chose instead to make inertness a tested property:
 `scripts/stock_equivalence.sh` runs quickstart on stock `monerod` and on an
-unflagged `monerod-sim` and requires identical chains (below).
+unflagged `monerod-sim` and requires the same block timeline (below).
 
 ## Options and defaults
 
@@ -184,17 +184,59 @@ its committed seed: once as committed, where every daemon is stock
 `monerod`, and once with every `daemon: monerod` rewritten to `monerod-sim`
 and nothing else changed. Quickstart uses legacy mining and no patched
 feature, so stock can run it. The test passes only when both runs pass
-`tests/baselines/quickstart_metrics.json` and `scripts/compare_chains.py`
-finds every daemon node's block ids identical over the heights both runs
-reached. Each run appends to `tests/baselines/stock_equivalence_history.csv`.
-Quickstart is a fair chain-identity test: during the 2026-11 reorganization
-two quickstarts from different trees matched at all 180 heights, while longer
-scenarios (refactor_gate) part by run-to-run spread
-(`20261101_repo_reorganization.md`).
+`tests/baselines/quickstart_metrics.json` and
+`scripts/compare_block_timeline.py` finds the same block timeline on every
+archived chain: the same timestamp, block version and difficulty at every
+height both runs reached, and transaction totals within 2 %. The headers
+are read from each run's archived chain database (`blockchain/<node>/`)
+with a stock `monerod` started offline on a copy. Each run appends to
+`tests/baselines/stock_equivalence_history.csv`.
+
+### Why not block ids
+
+The first version of the test required identical block ids, on the strength
+of two quickstarts from different trees matching at all 180 heights during
+the 2026-11 reorganization (`20261101_repo_reorganization.md`). Those were
+the same binary. Between stock `monerod` and the unflagged `monerod-sim`
+every block from height 1 on had a different id on every node, and the
+genesis block matched. Dumping block 1 from both archived chains showed the
+difference: the same timestamp, versions, nonce, reward and size, and a
+different coinbase transaction key, hence a different one-time output key
+and block id. The coinbase key is drawn from the daemon's pseudo-random
+generator, which Shadow seeds deterministically but whose draws are shared
+by every thread in the daemon. A different binary interleaves its threads
+and syscalls differently, so the draw that makes the first coinbase key sees
+a different state. Nothing a code audit can see, and nothing the agents can
+influence, so block ids cannot tell two binaries apart from two seeds. The
+full comparison of the 180 headers (the same two runs):
+
+| Field | Heights agreeing of 180 |
+|---|---|
+| timestamp, major version, minor version, difficulty, cumulative difficulty | 180 |
+| transactions per block | 176 (totals 195 and 195; one transaction straddles a block) |
+| block size | 149 (random ring offsets change varint lengths by a byte) |
+| nonce | 18 (the PoW hash depends on the coinbase key) |
+| block id, coinbase id | 1 (genesis) |
+
+What the agents drive, the mining timeline, matched exactly; what the random
+stream touches did not. That is the criterion the test now uses, and it is
+the one a patch that quietly changed consensus, difficulty or block timing
+would fail. Transaction totals get a 2 % tolerance because a transaction
+can straddle a block boundary when relay timing shifts by a millisecond, as
+it did here at height 150. `scripts/compare_chains.py`, the block-id
+comparison from the first version, stays as a tool for two runs of the same
+binary.
 
 ### First result
 
-_Pending: filled in from the first run on this box._
+Run on 2026-11-03 on this box from a pinned worktree, `monerod-sim` sha256
+`1ba9486d…` (v0.18.5.1 plus the 15 patches), stock `monerod` v0.18.5.1,
+`run_sim.sh` with its new default `--bootfast`. Both runs passed the
+quickstart smoke assertions in 11 m 53 s of wall time each, both reached
+height 179 with 178 blocks mined, and the timeline matched at all 180
+heights on both archived chains (`monero-miner-001`, `monero-relay-001`) with
+195 transactions in blocks on each side. The end-to-end script's own PASS row
+is the first line of `tests/baselines/stock_equivalence_history.csv`.
 
 ## Follow-ups, by owner
 

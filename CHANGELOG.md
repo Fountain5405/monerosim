@@ -8,16 +8,24 @@
   Every patch in `patches/series` is gated by a `--sim-*` style flag and must
   be inert without it. The test runs quickstart twice with the same seed, on
   stock `monerod` and on `monerod-sim` with no flag set, and passes only when
-  both runs pass the smoke assertions and every daemon node's chain is
-  identical over the heights both reached. Each run appends a row (commit,
-  binary sha256, patch count, verdict, first divergence) to
-  `tests/baselines/stock_equivalence_history.csv`. Run it after changing the
-  series or a patch. `scripts/compare_chains.py` is the chain comparison on
-  its own (block ids per height from `daemon_logs/*/bitmonero.log`, any two
-  runs). The audit of the 15 current patches that motivated the test, with
-  what each leaves on the default path, is
+  both runs pass the smoke assertions and have the same block timeline: for
+  every archived chain, the same timestamp, block version and difficulty at
+  every height both reached, and transaction totals within 2 %
+  (`scripts/compare_block_timeline.py`, headers read from the archived chain
+  databases with a stock `monerod` started offline). Block ids are not
+  compared: the coinbase key is drawn from the daemon's random stream, which
+  any change to the binary shifts, so the first attempt at a block-id
+  criterion failed at height 1 on every node while timestamps, versions,
+  difficulty and transaction totals matched at all 180 heights. Each run
+  appends a row (commit, binary sha256, patch count, verdict, first
+  difference) to `tests/baselines/stock_equivalence_history.csv`. Run it
+  after changing the series or a patch. `scripts/compare_chains.py` compares
+  block ids per height from `daemon_logs/*/bitmonero.log`, for two runs of
+  the same binary. The audit of the 15 current patches that motivated the
+  test, with what each leaves on the default path, is
   `docs/20261103_sim_patch_inertness_audit.md`. Tests:
-  `scripts/test_compare_chains.py`, `scripts/test_stock_equivalence.sh`.
+  `scripts/test_compare_block_timeline.py`, `scripts/test_compare_chains.py`,
+  `scripts/test_stock_equivalence.sh`.
 
 ### Changed
 

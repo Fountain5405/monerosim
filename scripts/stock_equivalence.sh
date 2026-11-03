@@ -11,8 +11,19 @@
 # passes only when
 #   - both runs pass the scenario's smoke assertions
 #     (tests/baselines/<scenario>_metrics.json), and
-#   - every daemon node's chain is identical in the two runs over the heights
-#     both reached (scripts/compare_chains.py, block ids from the daemon logs).
+#   - the two runs have the same block timeline: for every archived chain, at
+#     every height both runs reached, the same timestamp, block version and
+#     difficulty, and transaction totals within 2 %
+#     (scripts/compare_block_timeline.py, headers read from the archived chain
+#     databases with a stock monerod started offline).
+#
+# Why the timeline and not the block ids: the coinbase key comes from the
+# daemon's random stream, and any change to the binary shifts that stream, so
+# two binaries never produce the same block ids even when they behave the
+# same (2026-11-03: stock vs unflagged monerod-sim on quickstart differed in
+# every block id from height 1, and in nothing the agents drive). The
+# timeline is what the agents drive and what a patch that quietly changed
+# consensus or mining would disturb. docs/20261103_sim_patch_inertness_audit.md.
 #
 # Run it after changing patches/series or any patch (after ./setup.sh
 # --sim-binary). Two quickstarts take about 35 min on an idle box.
@@ -27,12 +38,13 @@
 # options, and only `daemon: monerod` daemons.
 #
 # Each run appends a row to tests/baselines/stock_equivalence_history.csv
-# (commit, monerod-sim sha256, its patch count, verdict, first divergence).
+# (commit, monerod-sim sha256, its patch count, verdict, first difference).
 #
 # Exit codes:
-#   0  PASS: both runs pass the assertions and every chain is identical.
-#   1  FAIL: a chain diverged or a smoke assertion failed.
-#   2  compare_chains.py could not compare (a node missing, no blocks).
+#   0  PASS: both runs pass the assertions and the timelines are the same.
+#   1  FAIL: a timeline differs, tx totals are apart, or an assertion failed.
+#   2  compare_block_timeline.py could not compare (no chain archived in
+#      both runs, monerod not answering).
 #   4  Scenario missing, or one stock monerod cannot run.
 #   5  run_sim.sh exited 0 but never reported its run directory.
 #   *  Any other non-zero from run_sim.sh is propagated.
@@ -120,24 +132,30 @@ for label in stock sim; do
 done
 echo
 
-# --- Chains ------------------------------------------------------------------
-echo -e "${BOLD}${BLUE}=== Chains: every daemon node, stock vs monerod-sim ===${NC}"
-N_NODES=$(find "$RUN_DIR_stock/daemon_logs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
-echo "$N_NODES daemon nodes in the stock run"
-CHAIN_JSON="$WORK/chains.json"
+# --- Block timeline ------------------------------------------------------------
+echo -e "${BOLD}${BLUE}=== Block timeline: archived chains, stock vs monerod-sim ===${NC}"
+CHAIN_JSON="$WORK/timeline.json"
 CHAIN_RC=0
-python3 "$SCRIPT_DIR/compare_chains.py" "$RUN_DIR_stock" "$RUN_DIR_sim" --json "$CHAIN_JSON" || CHAIN_RC=$?
+python3 "$SCRIPT_DIR/compare_block_timeline.py" "$RUN_DIR_stock" "$RUN_DIR_sim" \
+    --monerod "$BIN_DIR/monerod" --json "$CHAIN_JSON" || CHAIN_RC=$?
 echo
 
 # --- Verdict + history -------------------------------------------------------
-FIRST_DIV=""
+FIRST_DIV=""; N_CHAINS=0
 if [[ -f "$CHAIN_JSON" ]]; then
-    FIRST_DIV=$(python3 - "$CHAIN_JSON" <<'PY'
+    read -r N_CHAINS FIRST_DIV < <(python3 - "$CHAIN_JSON" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
-hits = [f"{n['node']}@{n['first_divergence']}" for n in d["nodes"] if n["first_divergence"] is not None]
-errs = [f"{n['node']}:error" for n in d["nodes"] if n["error"]]
-print(" ".join(hits + errs))
+out = []
+for n in d["nodes"]:
+    if n["first_difference"]:
+        h, f, a, b = n["first_difference"]
+        out.append(f"{n['node']}@{h}:{f}={a}/{b}")
+    if not n["tx_ok"] and not n["error"]:
+        out.append(f"{n['node']}:txs={n['tx_total'][0]}/{n['tx_total'][1]}")
+    if n["error"]:
+        out.append(f"{n['node']}:error")
+print(len(d["nodes"]), " ".join(out))
 PY
     )
 fi
@@ -153,27 +171,27 @@ SIM_SHA=$(sha256sum "$(readlink -f "$BIN_DIR/monerod-sim")" 2>/dev/null | cut -c
 PATCHES=$(grep -c '^patch_sha256:' "$BIN_DIR/monerod-sim.provenance" 2>/dev/null || echo 0)
 COMMIT=$(git rev-parse --short=8 HEAD 2>/dev/null || echo unknown)
 if [[ ! -f "$HISTORY" ]]; then
-    echo "date,commit_hash,scenario,result,monerod_sim_sha256,patch_count,nodes,first_divergence,assertion_failures,wall_seconds,stock_run,sim_run" > "$HISTORY"
+    echo "date,commit_hash,scenario,result,monerod_sim_sha256,patch_count,chains,difference,assertion_failures,wall_seconds,stock_run,sim_run" > "$HISTORY"
 fi
-echo "$(date -u +%Y-%m-%d),$COMMIT,$SCENARIO,$RESULT,${SIM_SHA:-unknown},$PATCHES,$N_NODES,${FIRST_DIV// /;},${ASSERT_FAIL% },$WALL_S,$(basename "$RUN_DIR_stock"),$(basename "$RUN_DIR_sim")" >> "$HISTORY"
+echo "$(date -u +%Y-%m-%d),$COMMIT,$SCENARIO,$RESULT,${SIM_SHA:-unknown},$PATCHES,$N_CHAINS,${FIRST_DIV// /;},${ASSERT_FAIL% },$WALL_S,$(basename "$RUN_DIR_stock"),$(basename "$RUN_DIR_sim")" >> "$HISTORY"
 
 echo
 if [[ "$RESULT" == PASS ]]; then
-    echo -e "${BOLD}${GREEN}Stock equivalence PASS${NC} (scenario=$SCENARIO, $N_NODES nodes, wall ${WALL_S}s)"
-    echo "  monerod-sim ${SIM_SHA:0:16}… with $PATCHES patches behaves as stock monerod on $SCENARIO"
+    echo -e "${BOLD}${GREEN}Stock equivalence PASS${NC} (scenario=$SCENARIO, $N_CHAINS archived chains, wall ${WALL_S}s)"
+    echo "  monerod-sim ${SIM_SHA:0:16}… with $PATCHES patches has stock monerod's block timeline on $SCENARIO"
     echo "  history: $HISTORY"
     exit 0
 fi
 echo -e "${BOLD}${RED}Stock equivalence $RESULT${NC} (scenario=$SCENARIO, wall ${WALL_S}s)"
 [[ -n "$ASSERT_FAIL" ]] && echo "  smoke assertions failed: $ASSERT_FAIL"
-[[ -n "$FIRST_DIV" ]] && echo "  chains: $FIRST_DIV (node@first divergent height)"
+[[ -n "$FIRST_DIV" ]] && echo "  timeline: $FIRST_DIV (chain@height:field=stock/sim, or chain:txs=stock/sim)"
 echo "  stock run: $RUN_DIR_stock"
 echo "  sim run:   $RUN_DIR_sim"
 echo "  history:   $HISTORY"
 if [[ -n "$FIRST_DIV" ]]; then
-    echo "  A divergence can be run-to-run spread rather than the patches. To tell: run the"
-    echo "  scenario again on stock and compare stock against stock:"
-    echo "    ./run_sim.sh --config $CONFIG_PATH && scripts/compare_chains.py $RUN_DIR_stock archived_runs/<new run>"
-    echo "  If stock differs from stock too, the scenario is not a chain-identity test at this seed."
+    echo "  A timeline difference means a daemon timed or valued a block differently: look at that"
+    echo "  height in both runs' daemon logs. Block ids, nonces and sizes differ between binaries"
+    echo "  by design (random stream) and are not judged. The archives keep the two runs:"
+    echo "    scripts/compare_block_timeline.py $RUN_DIR_stock $RUN_DIR_sim"
 fi
 exit "$RC"
