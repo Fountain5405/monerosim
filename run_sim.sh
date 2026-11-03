@@ -42,7 +42,8 @@ REACHABLE=""              # "" = use config default; else fraction in [0,1] pass
 TURNOVER_SESSION=""          # "" = no turnover; else mean ONLINE session (e.g. 1h) -> monerosim --turnover-session
 TURNOVER_DOWNTIME=""         # mean OFFLINE gap (e.g. 1h) -> monerosim --turnover-downtime
 TURNOVER_MAX_SESSION=""      # optional hard session ceiling (e.g. 6h) -> monerosim --turnover-max-session
-CLOCK_MODE=""                # "" = Shadow default clock charge; bootfast | allfast -> monerosim --bootfast / --allfast
+CLOCK_MODE="bootfast"        # bootfast (default) | allfast -> monerosim --bootfast / --allfast; "" (--no-bootfast) = Shadow default clock charge
+CLOCK_EXPLICIT=false         # true once a clock flag was given: then a Shadow without bootfast is an error, not a fallback
 KSM_OPTIN=false              # --ksm: re-exec through scripts/ksm_exec.py (prctl PR_SET_MEMORY_MERGE)
 SHOW_MONITOR=true
 RUN_ANALYZE=false
@@ -79,18 +80,25 @@ Options:
   --turnover-downtime <dur> Mean OFFLINE gap for turnover (e.g. 1h). Average uptime =
                          session/(session+downtime).
   --turnover-max-session <dur>  Optional hard ceiling on a single turnover session.
-  --bootfast             Fast process starts, nothing else changed. Each monerod /
-                         wallet-rpc start spends ~16 wall-s in monero's start-up
-                         clock-calibration loop. With this, each clock read in a
-                         row after the 10,000th costs 1 us of simulated time
-                         instead of 10 ns; any other syscall restarts the count
-                         (normal code never gets past a few hundred). Ends the
-                         loop in ~0.2 s. Needs shadowformonero >= v0.2.5.
+  --no-bootfast          Shadow's default clock charge for every process (the
+                         behaviour before bootfast became the default). Each
+                         monerod / wallet-rpc start then spends ~16 wall-s in
+                         monero's start-up clock-calibration loop.
+  --bootfast             The default: fast process starts, nothing else changed.
+                         Each clock read in a row after the 10,000th costs 1 us
+                         of simulated time instead of 10 ns; any other syscall
+                         restarts the count (normal code never gets past a few
+                         hundred). Ends the calibration loop in ~0.2 s. Needs
+                         shadowformonero >= v0.2.5: an older Shadow falls back
+                         to the default clock with a warning, unless --bootfast
+                         was given explicitly (then it is an error).
                          Explained in docs/explain_clock_mods.md.
   --allfast              Every clock read in every process costs 1 us of simulated
                          time instead of 10 ns, for the whole run. Starts as fast
                          as --bootfast; normal code runs slightly slower in
                          simulated time (~0.1 ms per block hop). Not with --bootfast.
+                         The clock mode of a run is recorded in its
+                         source_state.txt and run_env.sh.
   --ksm                  Opt this run's processes into kernel same-page merging
                          (KSM). Each monerod's 256 MB RandomX light cache is
                          byte-identical across nodes; KSM deduplicates it and
@@ -153,7 +161,7 @@ Examples:
   ./run_sim.sh --config test_configs/quickstart.yaml --name scaling_1000 --analyze
   ./run_sim.sh --config test_configs/quickstart.yaml --archive-blockchain 50
   ./run_sim.sh --config large.yaml --data-dir /scratch/shadow_data
-  ./run_sim.sh --config test_configs/quickstart.yaml --bootfast
+  ./run_sim.sh --config test_configs/quickstart.yaml --no-bootfast
 EOF
     exit 0
 }
@@ -186,12 +194,14 @@ while [[ $# -gt 0 ]]; do
             TURNOVER_MAX_SESSION="$2"
             shift 2
             ;;
-        --bootfast|--allfast)
-            if [[ -n "$CLOCK_MODE" && "$CLOCK_MODE" != "${1#--}" ]]; then
-                echo "Error: --bootfast and --allfast are mutually exclusive" >&2
+        --bootfast|--allfast|--no-bootfast)
+            _clock="${1#--}"; [[ "$_clock" == "no-bootfast" ]] && _clock=""
+            if [[ "$CLOCK_EXPLICIT" == true && "$CLOCK_MODE" != "$_clock" ]]; then
+                echo "Error: --bootfast, --allfast and --no-bootfast are mutually exclusive" >&2
                 exit 1
             fi
-            CLOCK_MODE="${1#--}"
+            CLOCK_MODE="$_clock"
+            CLOCK_EXPLICIT=true
             shift
             ;;
         --ksm)
@@ -574,6 +584,37 @@ setup_ramdisk() {
     log_info "Effective config: $CONFIG"
 }
 
+# The clock mode against the installed Shadow. bootfast needs the busy-loop
+# clock charge (shadowformonero >= v0.2.5); an older Shadow rejects the
+# generated config ("unknown field"), so settle it here (this also covers
+# MONEROSIM_SKIP_SHADOW_CHECK=1). bootfast is the default: when it was only
+# implied, an old Shadow means a warning and the default clock; when it was
+# asked for, an error. Uses SHADOW_BIN, CLOCK_MODE, CLOCK_EXPLICIT; may clear
+# CLOCK_MODE. Tested by scripts/test_clock_mode.sh.
+check_clock_mode() {
+    case "$CLOCK_MODE" in
+        bootfast)
+            if "$SHADOW_BIN" --help 2>&1 | grep -q -- '--unblocked-vdso-busy-threshold'; then
+                log_ok "Clock: --bootfast (1 us per clock read past the 10,000th in a row; the default)"
+            elif [[ "$CLOCK_EXPLICIT" == true ]]; then
+                log_err "--bootfast needs shadowformonero >= v0.2.5; the installed Shadow lacks it"
+                log_info "Fix: ./setup.sh  (or: ./update.sh --shadow --rebuild), or use --allfast"
+                exit 1
+            else
+                log_warn "bootfast (the default clock mode) needs shadowformonero >= v0.2.5; the installed Shadow lacks it"
+                log_warn "Running with Shadow's default clock (~16 wall-s per process start). Fix: ./setup.sh  (or: ./update.sh --shadow --rebuild)"
+                CLOCK_MODE=""
+            fi
+            ;;
+        allfast)
+            log_ok "Clock: --allfast (1 us per clock read)"
+            ;;
+        "")
+            log_info "Clock: Shadow default (--no-bootfast)"
+            ;;
+    esac
+}
+
 # ============================================================
 # Phase 1: Pre-flight Checks
 # ============================================================
@@ -647,20 +688,7 @@ preflight_checks() {
         log_warn "shadowformonero.pin missing — skipping fork version check"
     fi
 
-    # --bootfast needs the busy-loop clock charge (shadowformonero >= v0.2.5).
-    # An older Shadow rejects the generated config ("unknown field"), so say so
-    # here instead (this also covers MONEROSIM_SKIP_SHADOW_CHECK=1).
-    if [[ "$CLOCK_MODE" == "bootfast" ]]; then
-        if "$SHADOW_BIN" --help 2>&1 | grep -q -- '--unblocked-vdso-busy-threshold'; then
-            log_ok "Clock: --bootfast (1 us per clock read past the 10,000th in a row)"
-        else
-            log_err "--bootfast needs shadowformonero >= v0.2.5; the installed Shadow lacks it"
-            log_info "Fix: ./setup.sh  (or: ./update.sh --shadow --rebuild), or use --allfast"
-            exit 1
-        fi
-    elif [[ "$CLOCK_MODE" == "allfast" ]]; then
-        log_ok "Clock: --allfast (1 us per clock read)"
-    fi
+    check_clock_mode
 
     # --ksm opted the run's processes in (re-exec through scripts/ksm_exec.py),
     # but the kernel only merges if root enabled it; that resets at every
@@ -1220,6 +1248,7 @@ build_and_generate() {
     # checkout had uncommitted changes to tracked files (listed when it did).
     {
         echo "recorded_at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        echo "clock_mode: ${CLOCK_MODE:-default}"
         if _head=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null); then
             echo "commit: $_head"
             _dirty=$(git -C "$SCRIPT_DIR" status --porcelain --untracked-files=no 2>/dev/null)
@@ -1251,6 +1280,8 @@ build_and_generate() {
     if [[ -n "$CLOCK_MODE" ]]; then
         CLOCK_ARGS=(--"$CLOCK_MODE")
         log_info "Clock: --$CLOCK_MODE"
+    else
+        log_info "Clock: Shadow default (--no-bootfast)"
     fi
     if "$MONEROSIM_BIN" --config "$CONFIG" --output "$SHADOW_OUTPUT" "${REACHABLE_ARGS[@]}" "${TURNOVER_ARGS[@]}" "${CLOCK_ARGS[@]}" > "$ARCHIVE_DIR/monerosim.log" 2>&1; then
         log_ok "Shadow config generated"
@@ -1292,6 +1323,7 @@ build_and_generate() {
         echo "MONEROSIM_SHADOW_OUTPUT_DIR=\"$(readlink -f "$SHADOW_OUTPUT")\""
         echo "MONEROSIM_DAEMON_DATA_DIR=\"$DAEMON_DATA_BASE\""
         echo "MONEROSIM_SHARED_DIR=\"$SHARED_DIR\""
+        echo "MONEROSIM_CLOCK_MODE=\"${CLOCK_MODE:-default}\""
     } > "$SHADOW_OUTPUT/run_env.sh"
 }
 

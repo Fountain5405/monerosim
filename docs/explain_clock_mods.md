@@ -12,10 +12,12 @@ Every Monero program waits for 0.1 s of clock time when it starts. Under
 Shadow that wait cost ~16 real seconds per program start, and starts happen
 one after another, so large runs spent hours on it. `--bootfast` and
 `--allfast` both cut a start to under half a second. `--bootfast` does it
-without changing anything else in the simulation, so prefer it.
+without changing anything else in the simulation, so it is what `run_sim.sh`
+does by default. `--no-bootfast` gives the old behaviour for one run.
 
 ```bash
-./run_sim.sh --config my.yaml --bootfast
+./run_sim.sh --config my.yaml                 # bootfast, the default
+./run_sim.sh --config my.yaml --no-bootfast   # Shadow's default clock
 ```
 
 ## How to use it
@@ -24,22 +26,28 @@ without changing anything else in the simulation, so prefer it.
 `~/.monerosim/bin/shadow --version`; if it says v0.2.4 or older, run
 `./update.sh --shadow --rebuild` (or `./setup.sh`). An older Shadow refuses a
 config that has the setting: `unknown field 'unblocked_vdso_busy_threshold'`.
+`run_sim.sh` notices first: with an older Shadow it warns and runs with the
+default clock, unless `--bootfast` was given explicitly (then it stops).
 
-**2. Turn it on, any one of these ways.** All produce exactly the same
-simulation.
+**2. It is on.** `run_sim.sh` passes `--bootfast` to the generator unless you
+say otherwise. The other ways of getting exactly the same simulation:
 
-- For every run of a config: add this block at the top level of the config
-  (next to `general:`), so nobody has to remember the flag. It works in a
-  compact `.scenario.yaml` (`generate_config.py --from` copies it into the
-  expanded config) and in an expanded config:
+- For every run of a config, even outside `run_sim.sh`: add this block at the
+  top level of the config (next to `general:`). It works in a compact
+  `.scenario.yaml` (`generate_config.py --from` copies it into the expanded
+  config) and in an expanded config:
 
   ```yaml
   performance:
     unblocked_vdso_busy_threshold: 10000   # what --bootfast sets
     unblocked_vdso_busy_latency: 1 us
   ```
-- For one run: `./run_sim.sh --config my.yaml --bootfast`.
-- Generating by hand: `monerosim --config my.yaml --bootfast --output dir`.
+- Generating by hand: `monerosim --config my.yaml --bootfast --output dir`
+  (the generator itself has no default; `run_sim.sh` adds the flag).
+
+To run without it: `./run_sim.sh --config my.yaml --no-bootfast`. The run's
+`source_state.txt` (`clock_mode:`) and `shadow_output/run_env.sh`
+(`MONEROSIM_CLOCK_MODE`) record which clock a run used.
 
 `run_sim.sh` and `monerosim` read only expanded configs; expand a compact
 `.scenario.yaml` first (`scripts/generate_config.py --from x.scenario.yaml -o
@@ -68,9 +76,10 @@ setting from its config file like every other Shadow option. If you run
 Shadow by hand on a generated config, the setting is already in the file.
 Shadow v0.2.5 also takes it on its own command line, as
 `--unblocked-vdso-busy-threshold 10000 --unblocked-vdso-busy-latency 1us`.
-`run_sim.sh` checks the installed Shadow's version only when `--bootfast` is
-given; with the YAML block, an older Shadow stops at launch with the error
-above.
+`run_sim.sh` checks the installed Shadow for the setting before every run
+(bootfast being the default) and falls back or stops as described above;
+with only the YAML block and `--no-bootfast`, an older Shadow stops at launch
+with the error above.
 
 ## How time works in Shadow
 
@@ -166,16 +175,17 @@ the quickstart's.
 
 | | During normal work | During the start-up check | Daemon start | 70-node test run |
 |---|---|---|---|---|
-| no flag | 10 ns per look | 10 ns per look | ~16 s | ~18 min |
+| `--no-bootfast` | 10 ns per look | 10 ns per look | ~16 s | ~18 min |
 | `--allfast` | 1 µs per look | 1 µs per look | ~0.4 s | ~1.5 min |
-| `--bootfast` | 10 ns per look | 10 ns for the first 10,000 looks, then 1 µs | ~0.4 s | ~1.5 min |
+| `--bootfast` (default) | 10 ns per look | 10 ns for the first 10,000 looks, then 1 µs | ~0.4 s | ~1.5 min |
 
 Notes:
 
 - `--bootfast` needs shadowformonero v0.2.5 or later (it adds the running
-  count to Shadow's shim); `run_sim.sh` refuses `--bootfast` if the installed
-  Shadow lacks it. `--allfast` works with any Shadow.
-- The two flags cannot be combined.
+  count to Shadow's shim). If the installed Shadow lacks it, `run_sim.sh`
+  warns and uses the default clock when bootfast was only implied, and
+  refuses when `--bootfast` was given. `--allfast` works with any Shadow.
+- The three flags cannot be combined.
 - They also help daemons that restart in the middle of a run (turnover,
   upgrade phases), which pay the start-up cost again on every restart.
 - Separately, turning the RPC SSL certificate off saves about another second

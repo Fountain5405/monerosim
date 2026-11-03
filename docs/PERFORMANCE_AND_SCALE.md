@@ -40,7 +40,7 @@ These knobs **decrease wall time** (improve ratio) but come with tradeoffs:
 | `daemon_defaults.log-level: monitor` (default 1) | Cuts monerod log volume substantially while keeping the lines the live monitor and post-run analyzer parse | See [Tuning monerod log-level](#tuning-monerod-log-level). `log-level: 0` would silence the monitor; `monitor` is the safe perf knob. |
 | `shadow_log_level: error` (default warning) | Drops Shadow's own log spam | Lose some Shadow diagnostics |
 | `performance.model_unblocked_syscall_latency: false` (default true) | Skips per-syscall sim-time bookkeeping for non-blocking calls | **Don't enable.** See [Modeling syscall latency](#modeling-syscall-latency) — empirically stalls Monerosim runs even at quickstart scale. |
-| `run_sim.sh --bootfast` (needs shadowformonero >= v0.2.5) | Every monero process start drops from ~16 to ~0.4 wall-s | None measurable: only a thread that reads the clock more than 10,000 times in a row is charged more. See [Start-up cost](#start-up-cost) |
+| `run_sim.sh --bootfast` (the default; `--no-bootfast` turns it off; needs shadowformonero >= v0.2.5) | Every monero process start drops from ~16 to ~0.4 wall-s | None measurable: only a thread that reads the clock more than 10,000 times in a row is charged more. See [Start-up cost](#start-up-cost) |
 | `run_sim.sh --allfast` (= `performance.unblocked_vdso_latency: 1 us`) | Same start-up cut | Every clock read in every process charges 1 µs of sim time instead of 10 ns (~0.1 ms per block hop). See [Start-up cost](#start-up-cost) |
 | Mount `/tmp` on tmpfs (system-side, not YAML) | LMDB writes go to RAM, not disk | Costs RAM proportional to chain size; for fakechain runs that's small |
 | **KSM enabled** (machine-level, plus `scripts/ksm_exec.py` wrapper) | ~10× less RAM per node; the single biggest scale enabler | Needs root once per boot; no wall-time cost measured. See [KSM](#ksm-kernel-same-page-merging) |
@@ -247,11 +247,14 @@ plain language in [`explain_clock_mods.md`](explain_clock_mods.md)):
 | `--allfast` | 1 µs, always | 0.42 s | 93 s | slightly slower in sim time, see below |
 
 ```bash
-./run_sim.sh --config my.yaml --bootfast
+./run_sim.sh --config my.yaml                 # --bootfast is the default
+./run_sim.sh --config my.yaml --no-bootfast   # Shadow's default clock
 ```
 
-`--bootfast` needs shadowformonero >= v0.2.5 (run_sim.sh checks before it
-generates anything); `--allfast` works with any Shadow. Both also speed up
+`--bootfast` is the default. It needs shadowformonero >= v0.2.5: run_sim.sh
+checks before it generates anything, and with an older Shadow it warns and
+runs with the default clock (or refuses, if `--bootfast` was given
+explicitly). `--allfast` works with any Shadow. Both also speed up
 daemons that restart mid-run (turnover, upgrade phases), which pay the start
 cost again on every restart. The flags override these config knobs, which you
 can also set directly (the scenario parser passes `performance:` through):
