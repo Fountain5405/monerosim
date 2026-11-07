@@ -41,6 +41,10 @@ Paths below are relative to the repository root.
   before adding a patch to `patches/series`; grep -c with 0 matches exits 1 and breaks &&
   chains; make_lean tags decode the cell name (k=subnets, m=daemons-per-subnet each on its OWN
   IP, _hpl=ports-per-host cap, _idc=id enforcement, _sid=shared spy id); m-daemons do NOT
-  share an IP (10-31 correction).
+  share an IP (10-31 correction); a stale box checkout makes `setup.sh --sim-binary` a
+  silent no-op (binary's recorded patches == the stale series → nothing rebuilt, exit
+  happy — idled both boxes ~6 h on 11-07): verify the box's HEAD and the series line
+  before launching a build, and judge builds only by binary md5 + `--help` flags, never
+  by "process started" (setup done markers hold rc 1/2 on normal exits).
 
 Machine-specific notes (control box): see CLAUDE.local.md (untracked, this machine only).
