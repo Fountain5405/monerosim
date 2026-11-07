@@ -38,4 +38,4 @@ studies/antiproxy/patches/monero-sim-peerlist-ports-per-host.patch	antiproxy	--s
 # the header is not in the patch (b051d548 added it to the array without a
 # build), so monerod-sim fails to compile with it. The antiproxy study owns
 # the fix: regenerate the patch with the new file, then uncomment this row.
-# studies/antiproxy/patches/monero-sim-id-consistency.patch	antiproxy	--sim-enforce-id-consistency,--sim-shared-spy-id	a peer's advertised entry must carry its handshake id (hours; 0 = stock)
+studies/antiproxy/patches/monero-sim-id-consistency.patch	antiproxy	--sim-enforce-id-consistency,--sim-shared-spy-id	a peer's advertised entry must carry its handshake id (hours; 0 = stock)
