@@ -36,7 +36,7 @@ Paths below are relative to the repository root.
 - Conventions: never push to origin without the owner's word; raw mainnet data NEVER enters
   the repo (~/monerosim_local/ only); no pkill -f (kill by pid); no amend once a box holds the
   commit; updateInstead pushes only into idle checkouts.
-- Pitfalls: BUILD_TESTS=ON cannot compile the patched series (test_core stub lacks R7+
+- Pitfalls: git diff silently omits untracked files — stage new files before extracting a patch (this shipped an incomplete patch once); BUILD_TESTS=ON cannot compile the patched series (test_core stub lacks R7+
   symbols) — unit-test new logic via a standalone g++ driver, and BUILD the patched series
   before adding a patch to `patches/series`; grep -c with 0 matches exits 1 and breaks &&
   chains; make_lean tags decode the cell name (k=subnets, m=daemons-per-subnet each on its OWN
