@@ -1,3 +1,123 @@
+diff --git a/src/p2p/id_evidence_map.h b/src/p2p/id_evidence_map.h
+new file mode 100644
+index 000000000..33f7855b5
+--- /dev/null
++++ b/src/p2p/id_evidence_map.h
+@@ -0,0 +1,114 @@
++// Copyright (c) 2026, The Monero Project
++//
++// Simulation only (--sim-enforce-id-consistency): observational id-consistency evidence.
++// Direct observations ONLY (a node's own handshakes/pings/self-advertisements over its own
++// connections); hearsay (third-party gossip) never enters this map — that is the anti-framing
++// property. R1: a peer id observed at >= 2 addresses within the grace window violates
++// one-id-one-address. R2: an address that contradicted its own advertised id is marked.
++#pragma once
++
++#include <cstdlib>
++#include <map>
++#include <string>
++#include <vector>
++#include "string_tools.h" 
++#include "net/net_utils_base.h"
++
++namespace nodetool
++{
++class id_evidence_map
++{
++  // lo(now): the grace window's lower bound, underflow-safe for small test timestamps.
++  static uint64_t window_lo(uint64_t now, uint64_t grace) { return now > grace ? now - grace : 0; }
++  uint64_t lo(uint64_t now) const { return window_lo(now, m_grace); }
++
++public:
++  explicit id_evidence_map(uint64_t grace_seconds) : m_grace(grace_seconds) {}
++  void set_grace(uint64_t grace_seconds) { m_grace = grace_seconds; }
++  bool enabled() const { return m_grace > 0; }
++
++  // Record: id directly observed at adr at time now. Returns the OTHER addresses whose
++  // evidence for this id is within the grace window (they violate R1; the just-observed
++  // address is the freshest and wins).
++  std::vector<epee::net_utils::network_address> observe(
++      uint64_t id, const epee::net_utils::network_address& adr, uint64_t now)
++  {
++    std::vector<epee::net_utils::network_address> violators;
++    if (!enabled())
++      return violators;
++    auto& per_id = m_seen[id];
++    const std::string key = adr.str();
++    for (const auto& kv : per_id)
++      if (kv.first != key && kv.second >= lo(now) && kv.second <= now)
++        violators.push_back(parse(kv.first));
++    per_id[key] = now;
++    return violators;
++  }
++
++  // The id this address most recently presented over a direct connection (for R2 checks).
++  bool last_observed_id(const epee::net_utils::network_address& adr, uint64_t& id_out) const
++  {
++    uint64_t best = 0; uint64_t best_t = 0; bool found = false;
++    const std::string key = adr.str();
++    for (const auto& id_kv : m_seen)
++    {
++      auto it = id_kv.second.find(key);
++      if (it != id_kv.second.end() && (!found || it->second > best_t))
++      { best = id_kv.first; best_t = it->second; found = true; }
++    }
++    if (found) id_out = best;
++    return found;
++  }
++
++  // R2: the address presented contradictory ids on one connection (handshake vs self-adv).
++  void mark_contradiction(const epee::net_utils::network_address& adr, uint64_t now)
++  {
++    if (enabled())
++      m_contradictions[adr.str()] = now;
++  }
++  bool contradiction_recent(const epee::net_utils::network_address& adr, uint64_t now) const
++  {
++    auto it = m_contradictions.find(adr.str());
++    return it != m_contradictions.end() && it->second >= lo(now) && it->second <= now;
++  }
++
++  // An address's own latest evidence: within the window of a shared id (in violation).
++  bool address_in_violation(const epee::net_utils::network_address& adr, uint64_t now) const
++  {
++    if (!enabled())
++      return false;
++    const std::string key = adr.str();
++    for (const auto& id_kv : m_seen)
++    {
++      auto it = id_kv.second.find(key);
++      if (it == id_kv.second.end())
++        continue;
++      if (it->second < lo(now) || it->second > now)
++        continue;
++      for (const auto& other : id_kv.second)
++        if (other.first != key && other.second >= lo(now) && other.second <= now && other.second >= it->second)
++          return true;
++    }
++    return false;
++  }
++
++private:
++  static epee::net_utils::network_address parse(const std::string& s)
++  {
++    // addresses were produced by network_address::str(); for the sim's ipv4 public zone the
++    // string is ip:port — parse back. (Only the public zone uses the map.)
++    const auto colon = s.find_last_of(':');
++    if (colon == std::string::npos || colon + 1 >= s.size())
++      return epee::net_utils::ipv4_network_address{0, 0};
++    uint32_t ip = 0;
++    if (!epee::string_tools::get_ip_int32_from_string(ip, s.substr(0, colon)))
++      return epee::net_utils::ipv4_network_address{0, 0};
++    const unsigned long port = std::strtoul(s.substr(colon + 1).c_str(), nullptr, 10);
++    return epee::net_utils::ipv4_network_address{ip, (uint16_t)port};
++  }
++
++  uint64_t m_grace;                                       // 0 = disabled
++  std::map<uint64_t, std::map<std::string, uint64_t>> m_seen;  // id -> addr.str() -> last seen
++  std::map<std::string, uint64_t> m_contradictions;            // addr.str() -> time
++};
++}
 diff --git a/src/p2p/net_node.cpp b/src/p2p/net_node.cpp
 index f85fa8336..c35c66ec9 100644
 --- a/src/p2p/net_node.cpp
@@ -130,3 +250,74 @@ index 2415dfea8..4e44b4494 100644
    test_protocol_pack.cpp
    threadpool.cpp
    tx_proof.cpp
+diff --git a/tests/unit_tests/test_id_consistency.cpp b/tests/unit_tests/test_id_consistency.cpp
+new file mode 100644
+index 000000000..48ce5e92d
+--- /dev/null
++++ b/tests/unit_tests/test_id_consistency.cpp
+@@ -0,0 +1,65 @@
++// Copyright (c) 2026, The Monero Project
++//
++// Simulation only: unit tests for --sim-enforce-id-consistency's evidence rules (R1 shared id
++// on direct observation with grace, R2 self-contradiction). Hearsay has no API — by design.
++
++#include "gtest/gtest.h"
++#include "p2p/id_evidence_map.h"
++
++#define IDA_ADDR(a,b,c,d,e) epee::net_utils::ipv4_network_address{MAKE_IP(a,b,c,d),e}
++
++TEST(id_consistency, shared_id_within_grace_flags_older_address)
++{
++  nodetool::id_evidence_map m{3600};
++  auto v = m.observe(42, IDA_ADDR(1,2,3,4, 80), 1000);
++  ASSERT_TRUE(v.empty());
++  v = m.observe(42, IDA_ADDR(5,6,7,8, 80), 1010);   // same id, second address, within grace
++  ASSERT_EQ(v.size(), 1u);                          // the older address violates
++  ASSERT_EQ(v[0].as<const epee::net_utils::ipv4_network_address>().ip(), MAKE_IP(1,2,3,4));
++  ASSERT_TRUE(m.address_in_violation(IDA_ADDR(1,2,3,4, 80), 1010));
++  ASSERT_FALSE(m.address_in_violation(IDA_ADDR(5,6,7,8, 80), 1010)); // freshest wins
++  uint64_t seen_id = 0;
++  ASSERT_TRUE(m.last_observed_id(IDA_ADDR(5,6,7,8, 80), seen_id) && seen_id == 42);
++}
++
++TEST(id_consistency, migration_beyond_grace_is_clean)
++{
++  nodetool::id_evidence_map m{3600};
++  m.observe(42, IDA_ADDR(1,2,3,4, 80), 1000);
++  auto v = m.observe(42, IDA_ADDR(5,6,7,8, 80), 1000 + 3600 + 1); // honest IP move after grace
++  ASSERT_TRUE(v.empty());
++  ASSERT_FALSE(m.address_in_violation(IDA_ADDR(1,2,3,4, 80), 1000 + 3600 + 1));
++}
++
++TEST(id_consistency, proxy_returning_to_parked_address_flags)
++{
++  nodetool::id_evidence_map m{3600};
++  m.observe(42, IDA_ADDR(1,2,3,4, 80), 1000);
++  m.observe(42, IDA_ADDR(5,6,7,8, 80), 1010);
++  auto v = m.observe(42, IDA_ADDR(1,2,3,4, 80), 1020); // the old address is live again
++  ASSERT_EQ(v.size(), 1u);
++  ASSERT_EQ(v[0].as<const epee::net_utils::ipv4_network_address>().ip(), MAKE_IP(5,6,7,8));
++  ASSERT_TRUE(m.address_in_violation(IDA_ADDR(5,6,7,8, 80), 1020));
++}
++
++TEST(id_consistency, id_change_at_same_address_never_flags)
++{
++  nodetool::id_evidence_map m{3600};
++  m.observe(7, IDA_ADDR(1,2,3,4, 80), 1000);          // before restart
++  auto v = m.observe(99, IDA_ADDR(1,2,3,4, 80), 1001); // new random id, same address
++  ASSERT_TRUE(v.empty());
++  ASSERT_FALSE(m.address_in_violation(IDA_ADDR(1,2,3,4, 80), 1001));
++}
++
++TEST(id_consistency, contradiction_marks_address_and_expires)
++{
++  nodetool::id_evidence_map m{3600};
++  ASSERT_FALSE(m.enabled() == false && true); // enabled with grace 3600
++  m.mark_contradiction(IDA_ADDR(1,2,3,4, 80), 1000);
++  ASSERT_TRUE(m.contradiction_recent(IDA_ADDR(1,2,3,4, 80), 1000 + 3599));
++  ASSERT_FALSE(m.contradiction_recent(IDA_ADDR(1,2,3,4, 80), 1000 + 3601));
++  nodetool::id_evidence_map off{0};
++  off.observe(1, IDA_ADDR(1,2,3,4, 80), 1000);        // G=0: inert
++  off.mark_contradiction(IDA_ADDR(1,2,3,4, 80), 1000);
++  ASSERT_FALSE(off.contradiction_recent(IDA_ADDR(1,2,3,4, 80), 1000));
++}
