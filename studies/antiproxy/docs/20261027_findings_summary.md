@@ -4,7 +4,7 @@
 
 A human-readable summary of the spy-relay research program's results. Two to three pages,
 the important numbers only; every claim carries a pointer into
-`docs/SPY_EXPERIMENT_JOURNAL.md` (entries E1-E75, predictions P1-P67, run register
+`docs/SPY_EXPERIMENT_JOURNAL.md` (entries E1-E75, predictions P1-P70, run register
 `studies/antiproxy/docs/spy_journal/runs/`, 115 runs) where the full method, clauses and raw scoring live.
 The lab's design and question framing are in `docs/20261018_spy_node_defenses.md` and
 its section 7 review.
@@ -166,7 +166,7 @@ the sender-class table and the IP-churn model.
 ## Pointers
 
 - Journal: `docs/SPY_EXPERIMENT_JOURNAL.md` — entries E1-E71 (section 4), predictions
-  P1-P67 (section 5), open questions (section 6), decisions (section 7), run register
+  P1-P70 (section 5), open questions (section 6), decisions (section 7), run register
   (section 3, 111 runs; per-run artifacts in `docs/spy_journal/runs/<id>/`).
 - Tooling: `test_configs/x0/make_lean.py` (`--spy-refresh/--spy-rotate/--user-dumps`
   and the rule/trim flags), `agents/spy_refresh.py` (the adversary),
