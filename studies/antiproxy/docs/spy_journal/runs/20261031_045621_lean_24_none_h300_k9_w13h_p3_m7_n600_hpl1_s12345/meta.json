@@ -1,0 +1,30 @@
+{
+ "run_id": "20261031_045621_lean_24_none_h300_k9_w13h_p3_m7_n600_hpl1_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k9_w13h_p3_m7_n600_hpl1_s12345",
+ "archived_at": "2026-10-31T04:57:02Z",
+ "monerod_sim_sha": "870505a97e99",
+ "wall": "2h 27m",
+ "exit_code": 1,
+ "min_avail_mb": 49241,
+ "txs_created": 1030,
+ "txs_in_blocks": 1030,
+ "note": "P64 M2 k9 m7 hpl1: NULL-VALIDATION of the R8 flag after the premise correction (no shared-host entries exist; the cap cannot fire): recall 0.0197 precision 1.000, 296 receipts vs M1 314; reads == M1 within noise = the flag is inert without same-host endpoints, as designed; E73",
+ "scored_cell": "24/none",
+ "spies": 63,
+ "spy_24s": 9,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0651,
+ "light_out_quarters": [
+  0.0664,
+  0.0653,
+  0.0653,
+  0.0633
+ ],
+ "model_out": 0.0382,
+ "fluff_per_hop": 0.196,
+ "stem_txs": 1082,
+ "stem_hops_implied": 5.1,
+ "embargo_rate": 0.0
+}

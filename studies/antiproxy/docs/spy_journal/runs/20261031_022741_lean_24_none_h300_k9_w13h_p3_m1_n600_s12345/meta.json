@@ -1,0 +1,30 @@
+{
+ "run_id": "20261031_022741_lean_24_none_h300_k9_w13h_p3_m1_n600_s12345",
+ "box": "simbox3",
+ "cell": "lean_24_none_h300_k9_w13h_p3_m1_n600_s12345",
+ "archived_at": "2026-10-31T02:28:44Z",
+ "monerod_sim_sha": "cf4b5b910c17",
+ "wall": "4h 36m",
+ "exit_code": 0,
+ "min_avail_mb": 82212,
+ "txs_created": 1093,
+ "txs_in_blocks": 1089,
+ "note": "P62 B1 k9 m1 baseline (9 addresses, 9 /24s): light 0.0853 = 2.38x model 0.0359 (above the m-series band), 414 receipts on 9 spies (46 per /24 vs M1 35: per-/24 totals hold as address count varies), hop-1 16; E75",
+ "scored_cell": "24/none",
+ "spies": 9,
+ "spy_24s": 9,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0853,
+ "light_out_quarters": [
+  0.0847,
+  0.0837,
+  0.086,
+  0.0868
+ ],
+ "model_out": 0.0382,
+ "fluff_per_hop": 0.195,
+ "stem_txs": 1103,
+ "stem_hops_implied": 5.13,
+ "embargo_rate": 0.0
+}

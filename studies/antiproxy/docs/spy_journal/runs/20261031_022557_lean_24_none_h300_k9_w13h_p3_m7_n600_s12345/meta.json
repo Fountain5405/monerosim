@@ -1,0 +1,30 @@
+{
+ "run_id": "20261031_022557_lean_24_none_h300_k9_w13h_p3_m7_n600_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k9_w13h_p3_m7_n600_s12345",
+ "archived_at": "2026-10-31T02:26:38Z",
+ "monerod_sim_sha": "870505a97e99",
+ "wall": "2h 27m",
+ "exit_code": 0,
+ "min_avail_mb": 46022,
+ "txs_created": 1001,
+ "txs_in_blocks": 993,
+ "note": "P63 M1 k9 m7 stock (63 addresses, 9 /24s): sp recall 0.0146 precision 1.000, 314 receipts, hop-1 15; corrected read = addresses-per-/24 dose-response; E72",
+ "scored_cell": "24/none",
+ "spies": 63,
+ "spy_24s": 9,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0633,
+ "light_out_quarters": [
+  0.0645,
+  0.0643,
+  0.0623,
+  0.0623
+ ],
+ "model_out": 0.0382,
+ "fluff_per_hop": 0.191,
+ "stem_txs": 1096,
+ "stem_hops_implied": 5.24,
+ "embargo_rate": 0.0
+}

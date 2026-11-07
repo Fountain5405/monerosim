@@ -1,0 +1,30 @@
+{
+ "run_id": "20261031_111203_lean_24_none_h300_k42_w13h_p3_m7_n600_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m7_n600_s12345",
+ "archived_at": "2026-10-31T11:12:44Z",
+ "monerod_sim_sha": "870505a97e99",
+ "wall": "2h 42m",
+ "exit_code": 0,
+ "min_avail_mb": 7221,
+ "txs_created": 996,
+ "txs_in_blocks": 932,
+ "note": "P66 I1 k42 m7 (294 addresses, 42 /24s): light 0.3467 = 2.26x model (band 2.0-2.6 HIT; m1 series 2.0-2.23), 1004 receipts, hop-1 106, recall 0.108 precision 1.000; the addresses-per-/24 axis is near-flat against E27 k42 m1: the /24 cap, not address count, sets the multiplier; E74",
+ "scored_cell": "24/none",
+ "spies": 294,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.3467,
+ "light_out_quarters": [
+  0.3463,
+  0.3457,
+  0.3488,
+  0.3459
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.201,
+ "stem_txs": 1048,
+ "stem_hops_implied": 4.98,
+ "embargo_rate": 0.0
+}
