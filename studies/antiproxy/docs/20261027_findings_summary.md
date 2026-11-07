@@ -4,8 +4,8 @@
 
 A human-readable summary of the spy-relay research program's results. Two to three pages,
 the important numbers only; every claim carries a pointer into
-`docs/SPY_EXPERIMENT_JOURNAL.md` (entries E1-E71, predictions P1-P67, run register
-`docs/spy_journal/runs/`, 111 runs) where the full method, clauses and raw scoring live.
+`docs/SPY_EXPERIMENT_JOURNAL.md` (entries E1-E75, predictions P1-P67, run register
+`studies/antiproxy/docs/spy_journal/runs/`, 115 runs) where the full method, clauses and raw scoring live.
 The lab's design and question framing are in `docs/20261018_spy_node_defenses.md` and
 its section 7 review.
 
