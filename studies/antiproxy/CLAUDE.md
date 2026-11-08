@@ -45,6 +45,11 @@ Paths below are relative to the repository root.
   silent no-op (binary's recorded patches == the stale series → nothing rebuilt, exit
   happy — idled both boxes ~6 h on 11-07): verify the box's HEAD and the series line
   before launching a build, and judge builds only by binary md5 + `--help` flags, never
-  by "process started" (setup done markers hold rc 1/2 on normal exits).
+  by "process started" (setup done markers hold rc 1/2 on normal exits); compiling the
+  series, a standalone logic driver, and stock-equivalence (UNFLAGGED) all pass while the
+  flagged path is broken — after any flag-carrying rebuild, run a small flagged smoke cell
+  (k9-class, ~15 min) and read its daemon logs for handshake/network errors BEFORE queueing
+  real cells (S2 2026-11-08: wrong-network storm, all-zero network_id, 20x crawl, a night
+  lost).
 
 Machine-specific notes (control box): see CLAUDE.local.md (untracked, this machine only).
