@@ -1,0 +1,30 @@
+{
+ "run_id": "20261108_092314_lean_24_none_h300_k42_w13h_p3_m7_n600_sid_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m7_n600_sid_s12345",
+ "archived_at": "2026-11-08T09:23:56Z",
+ "monerod_sim_sha": "b895902bac44",
+ "wall": "2h 40m",
+ "exit_code": 0,
+ "min_avail_mb": 7452,
+ "txs_created": 1023,
+ "txs_in_blocks": 1006,
+ "note": "P68 S1 k42 m7 sid (e1bc05fc): light 0.3522 = I1-noise (control HIT - the fixed spy-scoped shared id is invisible to stock selection), receipts 1033 (850-1200 HIT), hop-1 139 (90-150 HIT), sp recall 0.142 CI 0.11-0.18 (band edge), precision 1.000; E76",
+ "scored_cell": "24/none",
+ "spies": 294,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.3522,
+ "light_out_quarters": [
+  0.3569,
+  0.3571,
+  0.3519,
+  0.3431
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.204,
+ "stem_txs": 1044,
+ "stem_hops_implied": 4.9,
+ "embargo_rate": 0.0
+}

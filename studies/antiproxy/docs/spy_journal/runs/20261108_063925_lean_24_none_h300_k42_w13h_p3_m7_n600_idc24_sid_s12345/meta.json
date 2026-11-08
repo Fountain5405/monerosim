@@ -1,0 +1,30 @@
+{
+ "run_id": "20261108_063925_lean_24_none_h300_k42_w13h_p3_m7_n600_idc24_sid_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m7_n600_idc24_sid_s12345",
+ "archived_at": "2026-11-08T06:40:06Z",
+ "monerod_sim_sha": "b895902bac44",
+ "wall": "2h 40m",
+ "exit_code": 0,
+ "min_avail_mb": 6130,
+ "txs_created": 1001,
+ "txs_in_blocks": 950,
+ "note": "P69 S2 k42 m7 idc24+sid (07d0d9a3): light 0.3487 vs predicted 0.004-0.05 MISS - enforcement never engaged: dir census 1022/1022 relay-dialed, R1/R2 observe ids only on inbound-presented requests, this fleet presents none; receipts 1022 (band 50-350 MISS), hop-1 117, sp recall 0.119 precision 1.000 (recall band MISS); honest connectivity clean (161m, exit 0) (d) HIT; E76",
+ "scored_cell": "24/none",
+ "spies": 294,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.3487,
+ "light_out_quarters": [
+  0.3504,
+  0.3533,
+  0.3485,
+  0.3427
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.197,
+ "stem_txs": 1046,
+ "stem_hops_implied": 5.08,
+ "embargo_rate": 0.0
+}
