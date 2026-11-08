@@ -162,6 +162,10 @@ def agents_yaml(a, ban):
                 attrs += f"\n      rotate_period: \"{a.spy_rotate}\""
             w(f"    attributes:\n      {attrs}")
         sopts = {"hide-my-port": "true" if a.spy_hidden else "false"}
+        if a.shared_spy_id:
+            sopts["sim-shared-spy-id"] = "true"  # spy daemons only: monerod's public-zone self-connection check drops
+            # any handshake whose peer_id equals the receiver's own, so a global shared id kills every
+            # handshake in the cell (S2, 2026-11-08: zero completed handshakes, wrong-network storm, 20x crawl)
         if a.spy_dial:
             # A dialing spy: no exclusive node, so the harness's --seed-node list applies and the
             # spy fills --out-peers slots from the white list it learns, like any node. Its
@@ -201,8 +205,6 @@ def scenario_text(a, ban):
         head = re.sub(r"(?m)^(    sim-subnet-dedup:)", rf"    sim-peerlist-ports-per-host: {a.host_port_limit}\n\1", head)
     if a.id_enforce:
         head = re.sub(r"(?m)^(    sim-subnet-dedup:)", rf"    sim-enforce-id-consistency: {a.id_enforce}\n\1", head)
-    if a.shared_spy_id:
-        head = re.sub(r"(?m)^(    sim-subnet-dedup:)", r"    sim-shared-spy-id: true\n\1", head)
     if a.turnover:
         on, off = a.turnover.split(",")
         head = re.sub(r"(?m)^(  simulation_seed:.*)$",
@@ -351,8 +353,11 @@ def main():
                          "studies/antiproxy/patches/monero-sim-id-consistency.patch): observational id consistency "
                          "enforced. 0 = stock. Cell names get _idcN.")
     ap.add_argument("--shared-spy-id", action="store_true",
-                    help="every daemon gets --sim-shared-spy-id (models a proxy front sharing a "
-                         "backing node's peer id). Cell names get _sid.")
+                    help="every SPY daemon gets --sim-shared-spy-id (all spies share one fixed backing peer id, "
+                         "the proxy-front model; honest daemons keep stock random ids). Must stay off the honest "
+                         "fabric: monerod's public-zone self-connection check drops any handshake whose peer id "
+                         "equals the receiver's own, so a global shared id kills every handshake in the cell "
+                         "(S2, 2026-11-08). Cell names get _sid.")
     ap.add_argument("--host-port-limit", type=int, default=0,
                     help="every daemon gets --sim-peerlist-ports-per-host N (needs patches/"
                          "monero-sim-peerlist-ports-per-host.patch): gray peer list capped at N "
