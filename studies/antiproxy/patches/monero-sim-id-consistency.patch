@@ -164,7 +164,7 @@ index 446c2a069..16a043d01 100644
      extern const command_line::arg_descriptor<bool> arg_sim_random_whitelist_candidates;
      extern const command_line::arg_descriptor<size_t> arg_sim_white_peerlist_limit;
 diff --git a/src/p2p/net_node.inl b/src/p2p/net_node.inl
-index b0b99892f..9c0035ff3 100644
+index b0b99892f..d8d6483b2 100644
 --- a/src/p2p/net_node.inl
 +++ b/src/p2p/net_node.inl
 @@ -129,6 +129,8 @@ namespace nodetool
@@ -227,7 +227,7 @@ index b0b99892f..9c0035ff3 100644
 +    if (sim_id_white_allowed(pe_local.adr)) // --sim-enforce-id-consistency (v3): standing gate
 +      zone.m_peerlist.append_with_peer_white(pe_local);
 +    else
-+      MDEBUG("sim id-consistency: refusing white insertion for " << pe_local.adr.host_str() << " (live shared-id violation)");
++      MWARNING("sim id-consistency: refusing white insertion for " << pe_local.adr.host_str() << " (live shared-id violation)");
      //update last seen and push it to peerlist manager
  
      anchor_peerlist_entry ape = AUTO_VAL_INIT(ape);
@@ -307,7 +307,7 @@ index b0b99892f..9c0035ff3 100644
 +        if (this->sim_id_white_allowed(pe.adr)) // --sim-enforce-id-consistency (v3): standing gate
 +          this->m_network_zones.at(context.m_remote_address.get_zone()).m_peerlist.append_with_peer_white(pe);
 +        else
-+          MDEBUG("sim id-consistency: refusing white insertion for " << context.m_remote_address.host_str() << " (live shared-id violation)");
++          MWARNING("sim id-consistency: refusing white insertion for " << context.m_remote_address.host_str() << " (live shared-id violation)");
          LOG_DEBUG_CC(context, "PING SUCCESS " << context.m_remote_address.host_str() << ":" << port_l);
        });
      }
