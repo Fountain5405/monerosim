@@ -164,7 +164,7 @@ index 446c2a069..16a043d01 100644
      extern const command_line::arg_descriptor<bool> arg_sim_random_whitelist_candidates;
      extern const command_line::arg_descriptor<size_t> arg_sim_white_peerlist_limit;
 diff --git a/src/p2p/net_node.inl b/src/p2p/net_node.inl
-index b0b99892f..d8d6483b2 100644
+index b0b99892f..36ab403f9 100644
 --- a/src/p2p/net_node.inl
 +++ b/src/p2p/net_node.inl
 @@ -129,6 +129,8 @@ namespace nodetool
@@ -283,15 +283,23 @@ index b0b99892f..d8d6483b2 100644
    int node_server<t_payload_net_handler>::handle_get_support_flags(int command, COMMAND_REQUEST_SUPPORT_FLAGS::request& arg, COMMAND_REQUEST_SUPPORT_FLAGS::response& rsp, p2p_connection_context& context)
    {
      rsp.support_flags = m_network_zones.at(context.m_remote_address.get_zone()).m_config.m_support_flags;
-@@ -2950,6 +3004,15 @@ namespace nodetool
+@@ -2950,6 +3004,23 @@ namespace nodetool
    template<class t_payload_net_handler>
    int node_server<t_payload_net_handler>::handle_handshake(int command, typename COMMAND_HANDSHAKE::request& arg, typename COMMAND_HANDSHAKE::response& rsp, p2p_connection_context& context)
    {
-+    { // --sim-enforce-id-consistency: direct observation of (peer_id, remote address) — R1
++    { // --sim-enforce-id-consistency: direct observation of (peer_id, remote address) — R1.
++      // Key by the peer's ADVERTISED address (ip + node_data.my_port), as try_ping does: the
++      // raw context address on an inbound connection carries the peer's EPHEMERAL source port,
++      // so keying by it makes one honest daemon look like two addresses sharing an id and the
++      // standing gate then refuses its honest insertions (E77's 40,795 false refusals).
 +      if (m_sim_id_evidence.enabled() && context.m_remote_address.get_zone() == epee::net_utils::zone::public_)
 +      {
++        epee::net_utils::network_address obs_adr = context.m_remote_address;
++        if (arg.node_data.my_port && context.m_remote_address.get_type_id() == epee::net_utils::ipv4_network_address::get_type_id())
++          obs_adr = epee::net_utils::ipv4_network_address(
++              context.m_remote_address.as<epee::net_utils::ipv4_network_address>().ip(), arg.node_data.my_port);
 +        auto& ev_zone = m_network_zones.at(epee::net_utils::zone::public_);
-+        const auto violators = m_sim_id_evidence.observe(arg.node_data.peer_id, context.m_remote_address, (uint64_t)time(NULL));
++        const auto violators = m_sim_id_evidence.observe(arg.node_data.peer_id, obs_adr, (uint64_t)time(NULL));
 +        for (const auto& v : violators)
 +          ev_zone.m_peerlist.filter(true, [&v](const peerlist_entry& pe){ return pe.adr == v; });
 +      }
@@ -299,7 +307,7 @@ index b0b99892f..d8d6483b2 100644
      if(arg.node_data.network_id != m_network_id)
      {
  
-@@ -3029,7 +3092,10 @@ namespace nodetool
+@@ -3029,7 +3100,10 @@ namespace nodetool
          pe.pruning_seed = context.m_pruning_seed;
          pe.rpc_port = context.m_rpc_port;
          pe.rpc_credits_per_hash = context.m_rpc_credits_per_hash;

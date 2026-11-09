@@ -1,0 +1,39 @@
+archived_at: 2026-11-09T08:09:01Z
+monerod: sha256=d73dbf2177092feb43eaed387672a8bc101198998fef480bdaeacc0c2a048b95 mtime=2026-11-09T07:00:45Z
+monerod-sim: sha256=2d4905ef01df4b46a25e79f21f570d62573f34e725173db9710fb6b64d6f6642 mtime=2026-11-09T07:01:58Z
+--- monerod-sim.provenance ---
+binary: monerod-sim (alias: monerod-hf)
+base: v0.18.5.1 (monero.pin)
+patch: patches/monero-fakechain-hardforks.patch
+patch_sha256: 732924a33a90978d3236758dbbb1e971bda69bbb51c3079a9489d24644d842fa
+patch: patches/monero-sim-mining.patch
+patch_sha256: b25b83ccc9ed0acc3b422112b073cf0742442efe8a06b254bf6dab9f455dab79
+patch: patches/monero-sim-selfish-relay.patch
+patch_sha256: 4d4c86d6044eac36c32a06a0929a3c21db5e08d13e8ee6f952186d7b300d9dca
+patch: patches/monero-sim-peerlist-dump.patch
+patch_sha256: b99de1927045e48a29ff90bb1e594f17e1e3d639bb389a1ddca2b9fef11549b1
+patch: studies/sop/patches/monero-sim-pop.patch
+patch_sha256: 3f321bdede8fe8c50ff70c7f186fa9749d86a63df02aa25d35eed799628ce464
+patch: patches/monero-sim-tail-emission.patch
+patch_sha256: 5a6e3937f0b56abf36a3be2747c66cee4b7195e049f7e88ddfffc53214e0767e
+patch: studies/antiproxy/patches/monero-sim-txrelay-log.patch
+patch_sha256: aa205115ff75400eb0f9b526595b07b3b916098a373d20556affd2bf690f992a
+patch: studies/antiproxy/patches/monero-sim-subnet-dedup.patch
+patch_sha256: eb85a3007f29ea7578760b10db8b545c1ab55cecdf096caa7d75e0e14b345c5c
+patch: studies/antiproxy/patches/monero-sim-fixed-randomx-seed.patch
+patch_sha256: 38ec8e8446cf11a4b8399a0c9398bf721af03af4df35a9aacfd776cc6d495e8a
+patch: studies/antiproxy/patches/monero-sim-uniform-whitelist-pick.patch
+patch_sha256: 24969283fc0de70222aa0ddf123f24f7badb5014b1c602abfbdddf5e2227ba77
+patch: studies/antiproxy/patches/monero-sim-whitelist-candidates.patch
+patch_sha256: 17547ed3c7b6ac267d6cad3f3a16f73b486fd8cf649aa8d7a6dd7d6d8a6124b8
+patch: studies/antiproxy/patches/monero-sim-random-whitelist-candidates.patch
+patch_sha256: 450a9a84f13358b793ffdace4ee3b2df2129b7bfea88fd25565c47030688c5eb
+patch: studies/antiproxy/patches/monero-sim-peerlist-limits.patch
+patch_sha256: 0fd6a0d81c75d63f35c4779f94d35f18c814836037c5cf3ae6b6076649f35ea9
+patch: studies/antiproxy/patches/monero-sim-stemmable-inbound.patch
+patch_sha256: 29da93b1b500883574819ee3ac08b690a0556becc2aec2b4d9f84e3388872c34
+patch: studies/antiproxy/patches/monero-sim-peerlist-ports-per-host.patch
+patch_sha256: ca3e8edfa56333f0db3ea27c868c33e09bff866bd84878afa65f46f99687cc95
+patch: studies/antiproxy/patches/monero-sim-id-consistency.patch
+patch_sha256: 1097d2a1fe7389aeb1ed3bbc18d31c7ee24bb8fbb089de1df978170bdfbc3137
+built: 2026-11-09T07:01:58Z

@@ -1,0 +1,30 @@
+{
+ "run_id": "20261109_105953_lean_24_none_h300_k42_w13h_p3_m7_n600_idc24_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m7_n600_idc24_s12345",
+ "archived_at": "2026-11-09T11:00:36Z",
+ "monerod_sim_sha": "2d4905ef01df",
+ "wall": "2h 50m",
+ "exit_code": 0,
+ "min_avail_mb": 7769,
+ "txs_created": 977,
+ "txs_in_blocks": 967,
+ "note": "P72 S3 v3.1 (62ce428b): (a) light 0.3581 I1-noise HIT, receipts 1099 (+9.5pc of I1, inside 15pc) hop-1 108 HIT, recall 0.110 HIT; (c) MISS with mechanism found - 40,795 refusals on 300 hosts against HONEST per-endpoint ids: ephemeral-port vs advertised-address keying in the evidence map makes one honest daemon look like two addresses sharing an id; the no-collateral check did its job; E77",
+ "scored_cell": "24/none",
+ "spies": 294,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.3581,
+ "light_out_quarters": [
+  0.3612,
+  0.3621,
+  0.3583,
+  0.351
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.187,
+ "stem_txs": 1044,
+ "stem_hops_implied": 5.35,
+ "embargo_rate": 0.0
+}

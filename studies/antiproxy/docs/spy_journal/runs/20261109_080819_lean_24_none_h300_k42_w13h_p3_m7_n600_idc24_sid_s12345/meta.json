@@ -1,0 +1,30 @@
+{
+ "run_id": "20261109_080819_lean_24_none_h300_k42_w13h_p3_m7_n600_idc24_sid_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m7_n600_idc24_sid_s12345",
+ "archived_at": "2026-11-09T08:09:01Z",
+ "monerod_sim_sha": "2d4905ef01df",
+ "wall": "2h 47m",
+ "exit_code": 0,
+ "min_avail_mb": 8436,
+ "txs_created": 1046,
+ "txs_in_blocks": 1042,
+ "note": "P71 S2 v3.1 (07d0d9a3, binary 28b86462): light 0.1019 HIT band 0.03-0.15 (3.4x below I1 0.3467), receipts 455 HIT, hop-1 55 HIT, sp recall 0.056 precision 1.000 HIT, refusals 78,200 - all clauses numerically in band BUT contaminated: the server-side observation keys inbound peers by ephemeral source port while v2 client-side keys the advertised form, so honest daemons appear as same-id-two-addresses and honest insertions are falsely refused (the P72 collateral); the clean shared-id-only effect awaits v3.2; E77",
+ "scored_cell": "24/none",
+ "spies": 294,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.1019,
+ "light_out_quarters": [
+  0.1197,
+  0.1034,
+  0.0959,
+  0.0895
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.207,
+ "stem_txs": 1049,
+ "stem_hops_implied": 4.83,
+ "embargo_rate": 0.0
+}
