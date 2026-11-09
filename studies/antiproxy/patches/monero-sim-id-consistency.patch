@@ -1,6 +1,6 @@
 diff --git a/src/p2p/id_evidence_map.h b/src/p2p/id_evidence_map.h
 new file mode 100644
-index 000000000..33f7855b5
+index 000000000..5f84442c2
 --- /dev/null
 +++ b/src/p2p/id_evidence_map.h
 @@ -0,0 +1,114 @@
@@ -17,7 +17,7 @@ index 000000000..33f7855b5
 +#include <map>
 +#include <string>
 +#include <vector>
-+#include "string_tools.h" 
++#include "string_tools.h"
 +#include "net/net_utils_base.h"
 +
 +namespace nodetool
@@ -163,7 +163,7 @@ index 446c2a069..92deb94c7 100644
      extern const command_line::arg_descriptor<bool> arg_sim_random_whitelist_candidates;
      extern const command_line::arg_descriptor<size_t> arg_sim_white_peerlist_limit;
 diff --git a/src/p2p/net_node.inl b/src/p2p/net_node.inl
-index b0b99892f..c1c62dd51 100644
+index b0b99892f..e5a4b8b42 100644
 --- a/src/p2p/net_node.inl
 +++ b/src/p2p/net_node.inl
 @@ -129,6 +129,8 @@ namespace nodetool
@@ -198,7 +198,27 @@ index b0b99892f..c1c62dd51 100644
        if (m_sim_peerlist_ports_per_host)
        {
          MGINFO("*** SIMULATION: --sim-peerlist-ports-per-host " << m_sim_peerlist_ports_per_host << ": gray peer list capped per host, same-host gray erased on white promotion (stock = off). ***");
-@@ -2607,6 +2616,23 @@ namespace nodetool
+@@ -1267,6 +1276,19 @@ namespace nodetool
+         return;
+       }
+ 
++      { // --sim-enforce-id-consistency: R1, client side — we dialed this peer and now directly
++        // observe its id in the response. A relay-dialed fleet never presents inbound requests,
++        // so the server-side hook alone never sees it and the map stays empty (E76); this half
++        // makes "direct observation over its own connections" cover both directions.
++        if (m_sim_id_evidence.enabled() && context.m_remote_address.get_zone() == epee::net_utils::zone::public_)
++        {
++          auto& ev_zone = m_network_zones.at(epee::net_utils::zone::public_);
++          const auto violators = m_sim_id_evidence.observe(rsp.node_data.peer_id, context.m_remote_address, (uint64_t)time(NULL));
++          for (const auto& v : violators)
++            ev_zone.m_peerlist.filter(true, [&v](const peerlist_entry& pe){ return pe.adr == v; });
++        }
++      }
++
+       if(!handle_remote_peerlist(rsp.local_peerlist_new, context))
+       {
+         LOG_WARNING_CC(context, "COMMAND_HANDSHAKE: failed to handle_remote_peerlist(...), closing connection.");
+@@ -2607,6 +2629,23 @@ namespace nodetool
    template<class t_payload_net_handler>
    bool node_server<t_payload_net_handler>::handle_remote_peerlist(const std::vector<peerlist_entry>& peerlist, const epee::net_utils::connection_context_base& context)
    {
@@ -222,7 +242,7 @@ index b0b99892f..c1c62dd51 100644
      if (peerlist.size() > P2P_MAX_PEERS_IN_HANDSHAKE)
      {
        MWARNING(context << "peer sent " << peerlist.size() << " peers, considered spamming");
-@@ -2950,6 +2976,15 @@ namespace nodetool
+@@ -2950,6 +2989,15 @@ namespace nodetool
    template<class t_payload_net_handler>
    int node_server<t_payload_net_handler>::handle_handshake(int command, typename COMMAND_HANDSHAKE::request& arg, typename COMMAND_HANDSHAKE::response& rsp, p2p_connection_context& context)
    {
