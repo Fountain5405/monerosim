@@ -164,7 +164,7 @@ index 446c2a069..16a043d01 100644
      extern const command_line::arg_descriptor<bool> arg_sim_random_whitelist_candidates;
      extern const command_line::arg_descriptor<size_t> arg_sim_white_peerlist_limit;
 diff --git a/src/p2p/net_node.inl b/src/p2p/net_node.inl
-index b0b99892f..36ab403f9 100644
+index b0b99892f..83ba0a6ea 100644
 --- a/src/p2p/net_node.inl
 +++ b/src/p2p/net_node.inl
 @@ -129,6 +129,8 @@ namespace nodetool
@@ -295,9 +295,9 @@ index b0b99892f..36ab403f9 100644
 +      if (m_sim_id_evidence.enabled() && context.m_remote_address.get_zone() == epee::net_utils::zone::public_)
 +      {
 +        epee::net_utils::network_address obs_adr = context.m_remote_address;
-+        if (arg.node_data.my_port && context.m_remote_address.get_type_id() == epee::net_utils::ipv4_network_address::get_type_id())
++        if (arg.node_data.my_port && obs_adr.get_type_id() == epee::net_utils::ipv4_network_address::get_type_id())
 +          obs_adr = epee::net_utils::ipv4_network_address(
-+              context.m_remote_address.as<epee::net_utils::ipv4_network_address>().ip(), arg.node_data.my_port);
++              obs_adr.as<const epee::net_utils::ipv4_network_address>().ip(), arg.node_data.my_port);
 +        auto& ev_zone = m_network_zones.at(epee::net_utils::zone::public_);
 +        const auto violators = m_sim_id_evidence.observe(arg.node_data.peer_id, obs_adr, (uint64_t)time(NULL));
 +        for (const auto& v : violators)
