@@ -1,0 +1,30 @@
+{
+ "run_id": "20261110_062537_lean_24_none_h300_k42_w13h_p3_m7_n600_idc24_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m7_n600_idc24_s12345",
+ "archived_at": "2026-11-10T06:26:18Z",
+ "monerod_sim_sha": "0133bf033c08",
+ "wall": "2h 51m",
+ "exit_code": 0,
+ "min_avail_mb": 6701,
+ "txs_created": 1009,
+ "txs_in_blocks": 987,
+ "note": "P75 S3 v3.2 (62ce428b, c2ec2b01): light 0.3494 = I1-noise (0.3467/0.3489/0.3494 across three binaries), receipts 1031 (+2.7pc of I1), hop-1 92 (-13pc, inside 15pc), recall 0.094 precision 1.000, refusals EXACTLY 0 at k42 density - the no-collateral bound complete; E78",
+ "scored_cell": "24/none",
+ "spies": 294,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.3494,
+ "light_out_quarters": [
+  0.3508,
+  0.3553,
+  0.349,
+  0.3428
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.192,
+ "stem_txs": 1047,
+ "stem_hops_implied": 5.21,
+ "embargo_rate": 0.0
+}

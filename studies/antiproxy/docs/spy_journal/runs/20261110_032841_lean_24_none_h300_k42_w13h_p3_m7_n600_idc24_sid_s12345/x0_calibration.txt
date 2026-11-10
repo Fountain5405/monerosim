@@ -1,0 +1,21 @@
+cell 24/none   /fast/antiproxy/monerosim_archives/20261110_032841_lean_24_none_h300_k42_w13h_p3_m7_n600_idc24_sid_s12345
+
+group      nodes spy share out spy share in
+honest       340        0.0335       0.0208
+light        281        0.0359       0.0001
+observer       8        0.0176          0.0
+user          40        0.0222          0.0
+relay        233        0.0388       0.0001
+medium        48        0.0219          0.0
+miner          5        0.0463       0.0004
+monero-seed     6        0.0027       0.5409
+no-list      340        0.0335       0.0208
+
+model (12 slots, one per subnet): 294 spies in 42 /24s, 300 honest reachable in 242 /24s: legacy 0.4813, 24 0.1531, none 0.494
+light outbound share by quarter of the window: [0.0375, 0.0353, 0.0362, 0.0346]
+
+stems: 1048 txs, mean hops 4.68, 4.52 on paths ended by a fluff epoch
+  fluff per hop 0.202 (stock 0.2): implied uncensored mean 4.95 hops (target ~5)
+  ended {'epoch': 990, 'loop': 47, 'no_stem': 11}
+  embargo rate 0.0, loop rate 0.0448, fluff epochs 0.202, hops without rx 0
+  hops histogram {0: 1, 1: 194, 2: 191, 3: 124, 4: 108, 5: 106, 6: 81, 7: 60, 8: 41, 9: 30, 10: 27, 11: 19, 12: 14, 13: 9, 14: 10, 15: 11, 16: 3, 17: 3, 18: 6, 19: 3, 20: 1, 22: 3, 23: 1, 24: 1, 25: 1}

@@ -1,0 +1,30 @@
+{
+ "run_id": "20261110_092034_lean_24_none_h300_k42_w13h_p3_m7_n600_sid_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m7_n600_sid_s12345",
+ "archived_at": "2026-11-10T09:20:35Z",
+ "monerod_sim_sha": "0133bf033c08",
+ "wall": "2h 40m",
+ "exit_code": 0,
+ "min_avail_mb": 7047,
+ "txs_created": 1044,
+ "txs_in_blocks": 1038,
+ "note": "P76 S1 v3.2 (e1bc05fc, c2ec2b01): light 0.3586 (null family 0.3467-0.3586 across runs and binaries), receipts 1121 (850-1200), hop-1 149 (90-150), recall 0.151 precision 1.000, refusals 0 - three binaries, one reading, structural null; E78",
+ "scored_cell": "24/none",
+ "spies": 294,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.3586,
+ "light_out_quarters": [
+  0.3622,
+  0.3619,
+  0.3564,
+  0.3541
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.183,
+ "stem_txs": 1051,
+ "stem_hops_implied": 5.46,
+ "embargo_rate": 0.0
+}

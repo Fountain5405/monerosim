@@ -1,0 +1,30 @@
+{
+ "run_id": "20261110_032841_lean_24_none_h300_k42_w13h_p3_m7_n600_idc24_sid_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m7_n600_idc24_sid_s12345",
+ "archived_at": "2026-11-10T03:29:22Z",
+ "monerod_sim_sha": "0133bf033c08",
+ "wall": "2h 53m",
+ "exit_code": 0,
+ "min_avail_mb": 6692,
+ "txs_created": 1048,
+ "txs_in_blocks": 1044,
+ "note": "P74 S2 v3.2 (07d0d9a3, binary c2ec2b01): light 0.0359 = 9.7x below I1 0.3467 - beat the filed floor 0.04 and landed inside P69s original 0.004-0.05; receipts 187 (beat 250-650), hop-1 21 (beat 30-85), sp recall 0.021 at precision 1.000 (beat 0.025-0.09), stem_txs 1048 (no honest cost), refusals 308 on 25 hosts ALL spy-address / 0 honest - the hard precondition holds; E78",
+ "scored_cell": "24/none",
+ "spies": 294,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.0359,
+ "light_out_quarters": [
+  0.0375,
+  0.0353,
+  0.0362,
+  0.0346
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.202,
+ "stem_txs": 1048,
+ "stem_hops_implied": 4.95,
+ "embargo_rate": 0.0
+}
