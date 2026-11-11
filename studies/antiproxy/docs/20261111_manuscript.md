@@ -11,12 +11,14 @@ wants to understand it without reading the journal.
 ## The short version
 
 Someone wanting to learn who sends Monero transactions does not need to break
-cryptography. It is enough to run many cheap proxies — one real `monerod`
-backend behind many forwarded addresses — and let the network's own peer
+cryptography. It is enough to run many cheap proxies — a few real `monerod`
+backends behind many forwarded addresses — and let the network's own peer
 selection carry honest nodes' traffic to them. A September 2026 crawl of the
 live network found 12,368 of 18,026 reachable endpoints carrying the
-fingerprint of exactly that design: many addresses, one backing peer identity
-(E3). In our simulations such a fleet, entirely passive, occupies 2.2 times its
+fingerprint of exactly that design: fresh handshake identities minted per
+address, but only 40 distinct ids on the ping path — the backends leaking
+through their fronts (E3, re-read 11-11). In our simulations such a fleet,
+entirely passive, occupies 2.2 times its
 fair share of honest nodes' outbound connections and receives 11–12% of user
 transactions *as the first hop* — the hop whose sender is, by construction, the
 transaction's origin. The attribution is perfect-precision: every transaction
@@ -126,11 +128,19 @@ matters.
 
 ## The defense that works: observe ids, gate addresses
 
-The crawl's fingerprint — many addresses, one backing peer id — is also the
-fleet's structural weakness. A proxy front cannot help presenting the same
-peer id from many addresses: the id is minted by the one backing daemon, and
-the PING-support handshake requires it. An honest node's own connections,
-nothing else, are enough to see the contradiction.
+The crawl's fingerprint is subtler than "one id everywhere," and the
+distinction decides what a defense must observe. Peer ids are self-declared,
+unauthenticated 64-bit values — nothing in the protocol binds an id to its
+presenter, so a protocol-aware front can mint a fresh one per address, and the
+real fleet does. Measured on the raw crawl: the 12,368 flagged endpoints
+present **12,368 distinct handshake ids** (one per address) but only **40
+distinct PING ids** — per-address handshake identities, with the backing
+daemons' ids leaking through the PING support path (the two id sets are
+disjoint; unflagged nodes share handshake ids at only 8.5%). The structural
+weakness is not that ids cannot be spoofed — they can — but that the
+cheap-front design leaks the backends' ids somewhere, and the ping path is
+where it leaks today. A defense must observe what the fronts fail to rewrite
+consistently, per message type.
 
 The rule (patch R9 v3.2, `--sim-enforce-id-consistency`, off by default): a
 node records, per its directly observed connections in *both* directions,
@@ -140,7 +150,13 @@ the most recently observed one loses **standing**: existing white entries are
 evicted, and every path that could re-insert them refuses while the
 contradiction is live. The fleet is demoted to one standing address per
 observing node. No wire format changes, no new messages, no coordination —
-it is a local policy on local evidence.
+it is a local policy on local evidence. **As built, v3.2 observes ids on
+handshake messages** — so the measurement below is the shared-handshake-id
+polarity (a fleet whose fronts forward the backing daemon's handshakes, the
+lab's `_sid` model). The crawl's exact polarity above — unique handshake ids,
+shared ping ids — needs the same map fed from PING responses as well: a
+designed amendment (v3.3), one more observation site on a path the patch
+already touches.
 
 **Measured** (k42-m7, 294 shared-id endpoints, 19-hour steady state, E78):
 
@@ -198,9 +214,15 @@ Both lessons generalize well past Monero.
 - The enforcement rule needs adoption by monerod to matter on mainnet; its
   grace window trades honest dynamic-IP moves against demotion speed, and
   that trade is a policy decision, not a measurement.
-- Sophisticated fleets — per-endpoint ids, or per-identity proof work — are
-  out of this rule's scope by design. It prices the design the crawl actually
-  observed, which is the design that exists.
+- Peer ids are spoofable, and the measured fleet already spoofs them — the
+  rule's power comes from what the fronts *fail* to rewrite, not from
+  unforgeable ids. As built (v3.2, handshake observation) it collapses fleets
+  that forward the backing daemon's handshakes; the crawl's exact polarity
+  (unique handshake ids, 40 shared ping ids) needs the evidence map fed from
+  PING responses too — a small, designed amendment (v3.3) on a code path the
+  patch already touches. A fleet that mints unique ids in *every* message type
+  reads as independent nodes and is priced elsewhere: per-identity proof work
+  or signed bindings, the escalation layers.
 - The composition question is closed (E79, run 125): the draw fix stacked on
   enforcement takes the fleet's tracing to **zero** — 0 of 984 user
   transactions attributed, light share 0.006 (58x below baseline), stem

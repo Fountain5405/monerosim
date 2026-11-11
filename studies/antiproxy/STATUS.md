@@ -31,7 +31,11 @@ the P2P layer.
    cuts tracing to 2.1 %** — a local rule (refuse a second address a
    white-list slot when the same peer id was directly observed at two
    addresses), no wire changes, zero honest refusals, structural flag-off
-   null, and a priced evasion bound (per-endpoint ids pay nothing).
+   null, and a priced evasion bound (per-endpoint ids pay nothing). Caveat
+   (11-11): v3.2 observes handshake messages; the real fleet mints unique
+   handshake ids per front and leaks its ~40 backends' ids on the PING path —
+   catching that polarity needs PING observation too (the v3.3 amendment,
+   filed as the next patch cycle).
 4. **The two stacked take tracing to zero** (E79): share 0.006, receipts 26,
    **0 of 984 user transactions attributed**. The trap inverts — under
    enforcement the fleet is one standing address per node, and the uniform
@@ -46,6 +50,10 @@ the P2P layer.
 
 **What's left to do:**
 
+- **R9 v3.3: PING-path observation** — feed the evidence map from PING
+  responses and re-run the trio against a crawl-shaped fleet arm (unique
+  handshake ids + shared ping ids; the measured polarity: 12,368 fronts, 40
+  backends). The patch cycle + P78/E80 — next defense work.
 - Second seeds for the E78 trio + the E79 combo (~11 h of tr) — hardening;
   the only lab work that could move a published number.
 - The upstream note (draw fix + cap mapping + enforcement + composition) —
@@ -97,8 +105,8 @@ the P2P layer.
    already one-per-host). The R8 per-host gray cap is provably inert without
    same-IP endpoints (M2 null) and waits on the same-IP generator feature.
 10. **Observational id-consistency enforcement works** (E76-E78, R9 v3.2,
-    `--sim-enforce-id-consistency`): a shared-id proxy fleet — the crawl's
-    fingerprint — collapses 9.7x (light 0.3467 → 0.0359) and hop-1 attribution
+    `--sim-enforce-id-consistency`): a fleet presenting one peer id at all its
+    addresses collapses 9.7x (light 0.3467 → 0.0359) and hop-1 attribution
     falls 11.9 % → 2.1 % of user transactions at precision 1.000, with zero
     honest refusals and unchanged honest throughput; a per-endpoint-id fleet
     pays exactly nothing (the priced bound), and flag-off is a structural
