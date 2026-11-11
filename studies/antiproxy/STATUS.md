@@ -27,15 +27,21 @@ the P2P layer.
    fairness arm is the *worst* for privacy (0.146-0.173 vs stock 0.126).
    Fairness is a property of honest connection budgets; privacy is a property
    of who holds first-hop slots.
-3. **Observational id-consistency enforcement collapses the fleet 9.7x and
-   cuts tracing to 2.1 %** — a local rule (refuse a second address a
-   white-list slot when the same peer id was directly observed at two
-   addresses), no wire changes, zero honest refusals, structural flag-off
-   null, and a priced evasion bound (per-endpoint ids pay nothing). Caveat
-   (11-11): v3.2 observes handshake messages; the real fleet mints unique
-   handshake ids per front and leaks its ~40 backends' ids on the PING path —
-   catching that polarity needs PING observation too (the v3.3 amendment,
-   filed as the next patch cycle).
+3. **Observational id-consistency enforcement works — with a spoofability
+   bound that is now stated up front.** The rule (refuse
+   a second address a white-list slot when the same peer id was directly
+   observed at two addresses) collapses a shared-id fleet 9.7x and takes
+   tracing to 2.1 % (zero honest cost, structural flag-off null). **But peer
+   ids are self-declared and spoofable, the real fleet already spoofs them**
+   (12,368 fronts, 12,368 unique handshake ids, 40 shared PING ids), and a
+   front that rewrites consistently — one id per address everywhere — is
+   indistinguishable from that many honest nodes: every id-consistency result
+   is measured against *leaking* fleets. The ladder: v3.2 (measured, defeats
+   lazy forwarding) -> v3.3 PING observation (designed, defeats the deployed
+   polarity) -> priced identity (per-id PoW, or id keys anchored by an
+   on-chain burn — the only rung a careful fleet cannot rewrite past;
+   designed in the manuscript, not measured). Part I (threat + fairness trap)
+   reads no peer id and is untouched.
 4. **The two stacked take tracing to zero** (E79): share 0.006, receipts 26,
    **0 of 984 user transactions attributed**. The trap inverts — under
    enforcement the fleet is one standing address per node, and the uniform
@@ -54,6 +60,10 @@ the P2P layer.
   responses and re-run the trio against a crawl-shaped fleet arm (unique
   handshake ids + shared ping ids; the measured polarity: 12,368 fronts, 40
   backends). The patch cycle + P78/E80 — next defense work.
+- **Priced identity (the spoofability endgame)** — per-id PoW or id keys
+  anchored by an on-chain burn; the design is sketched in the manuscript's
+  "Tying ids to proof" section (wire change + adoption debate = the owner's
+  call whether to develop it into a spec).
 - Second seeds for the E78 trio + the E79 combo (~11 h of tr) — hardening;
   the only lab work that could move a published number.
 - The upstream note (draw fix + cap mapping + enforcement + composition) —

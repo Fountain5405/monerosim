@@ -120,16 +120,23 @@ all-spy/zero-honest).
    984** — still 312 refusals, all spy, zero honest. Every filed band missed
    below: the fairness trap inverts under enforcement (see the ladder).
 
-   **Polarity caveat (11-11, from a colleague's challenge):** peer ids are
-   self-declared and spoofable, and the raw crawl re-read shows the real fleet
-   spoofs them — 12,368 flagged endpoints carry **12,368 distinct handshake
-   ids** but only **40 distinct PING ids** (the backends', disjoint from the
-   handshake set; unflagged nodes share handshake ids at 8.5%). v3.2 observes
-   handshake messages, so E78/E79 are the shared-handshake-id polarity (fronts
-   forwarding the backend's handshakes); the crawl's exact polarity needs the
-   evidence map fed from PING responses as well — the designed v3.3 amendment,
-   one observation site on a path the patch already touches. The all-unique-id
-   bound (per-endpoint ids in every message) stays priced out of scope.
+   **Polarity caveat and the spoofability bound (11-11, from a colleague's
+   challenge):** peer ids are self-declared and spoofable, and the raw crawl
+   re-read shows the real fleet spoofs them — 12,368 flagged endpoints carry
+   **12,368 distinct handshake ids** but only **40 distinct PING ids** (the
+   backends', disjoint from the handshake set; unflagged nodes share handshake
+   ids at 8.5%). v3.2 observes handshake messages, so E78/E79 are the
+   shared-handshake-id polarity (fronts forwarding the backend's handshakes);
+   the crawl's exact polarity needs the evidence map fed from PING responses
+   as well — the designed v3.3 amendment, one observation site on a path the
+   patch already touches. **And the bound itself: every id-consistency result
+   here is measured against a fleet that *leaks* ids; a front that mints one
+   consistent id per address in every message type is indistinguishable from
+   that many honest nodes, and no observational extension defeats it** — that
+   fleet is priced only by identity cost (per-id proof of work, or an id key
+   anchored by an on-chain burn — the design sketched in the manuscript's
+   "Tying ids to proof" section; designed, not measured). Part I is untouched
+   by this bound: none of the threat measurements read a peer id.
 
    **The design lessons cost four patch versions, each caught by a
    pre-registered check:** v1 observed ids only on inbound handshakes and was

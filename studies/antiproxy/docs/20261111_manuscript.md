@@ -27,15 +27,25 @@ the fleet attributes, it attributes correctly.
 Two defenses follow from the measurements, and they are not the two one would
 guess. Fixing the rule that lets the fleet multiply its share — the obvious,
 one-line fix, ready for upstream — makes the fleet's share *fair* but leaves
-its tracing power untouched, or slightly worse. The defense that actually cuts
-tracing is a local, observational rule: a node that has *directly seen* one
-peer id presenting two different addresses simply refuses the second address a
-place in its white list, for as long as the contradiction stands. That rule
-collapses a shared-id fleet's position 9.7-fold, cuts origin attribution from
-11.9% to 2.1% of user transactions, provably costs honest peers nothing — and
-needs no protocol change, no new message, no coordination. And the two
-defenses stack: with both in force, the fleet's origin tracing in the lab goes
-to **zero** — not one of 984 user transactions attributed (E79).
+its tracing power untouched, or slightly worse. The defense that cuts tracing
+is a local, observational rule: a node that has *directly seen* one peer id
+presenting two different addresses simply refuses the second address a place
+in its white list, for as long as the contradiction stands. Measured in the
+lab, that rule collapses a shared-id fleet 9.7-fold, takes attribution to 2.1%
+— and **zero** when stacked with the draw fix (E79).
+
+**But there is a hard bound on that second defense, and it must be stated
+before anything else is believed: peer ids are self-declared and spoofable,
+and the deployed fleet already spoofs them.** An observational id rule can
+only catch what a front fails to rewrite consistently; a front that mints a
+fresh, consistent id per address — in every message type — is indistinguishable
+from that many honest nodes at the p2p layer, and no observation defeats it.
+The measurements below are against *leaking* designs (the lab's all-shared
+polarity; the deployed fleet leaks on its ping path). They are real results
+about the fleets that exist today, and they are not a standalone answer to a
+careful fleet. The ladder that ends the race is priced identity — tying the id
+to something unforgeable, e.g. an on-chain anchored key (designed below, not
+measured).
 
 ![first-hop deanonymization by defense](figures/f3_deanonymization_ladder.png)
 
@@ -158,6 +168,32 @@ shared ping ids — needs the same map fed from PING responses as well: a
 designed amendment (v3.3), one more observation site on a path the patch
 already touches.
 
+**The spoofability bound, stated plainly.** Every measured number in this
+section is a result about a fleet that *leaks* ids. The lab's fleet shared
+them everywhere; the deployed fleet leaks its backends on the ping path.
+(The threat measurements of Part I are untouched by this bound — none of them
+read a peer id; the multiplier, the fairness trap, and the trims are
+candidate-draw mechanics.) Against a front that rewrites consistently — one
+fresh id per address in every message field — the observational rule is
+structurally inert, and no extension
+of it (more message types, more observation sites) changes that: 300 addresses
+with 300 consistent ids are 300 nodes, as far as any observer can tell. The
+fairness-trap result says that fleet traces at least 0.10-0.17 of user
+transactions with no defense but the draw rules. So the honest summary of the
+defense line is a cost ladder, and only the first rung is measured:
+
+1. **Free local observation** (v3.2, measured): defeats lazy and leaking
+   designs. The deployed fleet leaks today — measured on the crawl — so this
+   rung is not academic; it costs honest nodes nothing and needs no wire
+   change.
+2. **Wider observation** (v3.3, designed): feeding the evidence map from PING
+   responses defeats the deployed fleet's exact polarity — its ~40 backend ids
+   are shared across ~300 fronts each, a denser contradiction than any lab arm
+   has tested. Still observational, still evadible by consistent rewriting.
+3. **Priced identity** (designed below, not measured): the only rung a careful
+   fleet cannot rewrite its way past, because there is nothing to rewrite —
+   the binding is to cost, not to observation.
+
 **Measured** (k42-m7, 294 shared-id endpoints, 19-hour steady state, E78):
 
 - Slot share: 0.3467 → **0.0359** — a 9.7x collapse, at or below the
@@ -221,8 +257,45 @@ Both lessons generalize well past Monero.
   (unique handshake ids, 40 shared ping ids) needs the evidence map fed from
   PING responses too — a small, designed amendment (v3.3) on a code path the
   patch already touches. A fleet that mints unique ids in *every* message type
-  reads as independent nodes and is priced elsewhere: per-identity proof work
-  or signed bindings, the escalation layers.
+  reads as independent nodes and is priced elsewhere (see "Tying ids to
+  proof", next section).
+
+## Tying ids to proof: the rung a careful fleet cannot rewrite
+
+The question the spoofability bound forces: can a peer id be bound to
+something a front cannot cheaply multiply? The p2p layer itself offers no
+such thing — a proxy can relay any chain evidence a backend produces (our own
+variant-P front does exactly this), so "prove you follow the chain" separates
+fronts from nothing. The binding has to be to *cost*, and the network already
+has two working examples of pricing identity: the /24 slot (one standing
+entry per prefix — the entire passive surface pins at it) and, in the other
+direction, the fleet's own economics (many cheap fronts, few backends).
+
+The concrete design — sketched here, **not measured** in this study:
+
+- A node generates a keypair and anchors its public key on-chain, e.g. by a
+  burned output carrying `H(pubkey)`. The anchor's age and amount are the
+  identity's price.
+- The handshake (or ping) carries `sig = Sign_privkey(peer_id, advertised
+  address, current height)`. An observer verifies the signature against the
+  anchored key, and requires anchors past some age/amount threshold.
+- Consequences: one key per address means one burn per front — at the
+  measured fleet's scale, 12,368 anchors. One key across addresses is *worse*
+  for the fleet than today's shared id: every signature is cryptographic
+  proof of common control, indexable by anyone (today's shared ping ids took
+  a crawl to find; anchored keys confess on every connection).
+- Honest dynamic-IP nodes keep their key across address changes — which also
+  retires the grace-window tension the observational rule carries (v3.2's 24h
+  window trades honest moves against demotion speed; an anchored key moves
+  with the node).
+- The offline variant, if a wire change is unacceptable: per-identity proof
+  of work on the id (hashcash-style), weaker because it prices time rather
+  than stake and can be farmed.
+- The cost, stated honestly: a wire change and an adoption debate. A
+  permissionless network resists per-node costs on principle — every honest
+  node pays, and the debate is legitimate. That is why this is the top rung
+  and not the first move: rungs 1-2 are free, local, and defeasible; rung 3
+  is expensive, cooperative, and not.
 - The composition question is closed (E79, run 125): the draw fix stacked on
   enforcement takes the fleet's tracing to **zero** — 0 of 984 user
   transactions attributed, light share 0.006 (58x below baseline), stem
