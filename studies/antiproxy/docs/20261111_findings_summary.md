@@ -4,6 +4,20 @@ Supersedes `20261027_findings_summary.md` (Findings 1-8 stand; this adds 9-10 an
 the enforcement chapter). Evidence: experiment journal entries E1-E78, predictions
 P1-P76, 124 registered runs (`docs/SPY_EXPERIMENT_JOURNAL.md` is the source of
 truth; every number below cites its entry). Paths relative to the repository root.
+Figures live in `figures/` (regenerate: `venv/bin/python figures/make_figures.py`).
+
+## The one-paragraph version
+
+A spy fleet of cheap proxies multiplies its way into Monero peer lists because
+stock monerod draws outbound candidates from the 20 *newest* white-list entries —
+fresh gossip is cheap to fabricate. That gets the fleet 11-12% of user
+transactions handed to it as the *first hop* of Dandelion++ spreading, at perfect
+precision. Fixing the draw rule makes the fleet's share *fair* but not its
+tracing power smaller — slot-share fairness is not sender privacy. The defense
+that does cut tracing is observational id-consistency enforcement: a node that
+sees one peer id claiming two addresses refuses the second a white-list slot,
+collapsing a shared-id proxy fleet 9.7x with zero honest cost. Figure 3 tells
+the whole story.
 
 ## What the study asks
 
@@ -22,6 +36,8 @@ measurements.
   candidates from the 20 newest /24-deduplicated white entries; a passive fleet
   reads 0.337 light share = 2.2x its pool share. Lifting the cap collapses the
   multiplier to 1.03x (E36/E37).
+
+  ![fleet slot share vs pool share, white-cap sweep](figures/f1_cap_sweep.png)
 - **The real fleet's shape cannot buy more passive position** (Finding 9,
   E72-E75). On every layout axis the position pins at the /24-slot ceiling:
   7x more addresses per /24 moves nothing (I1 vs B1); /16 spread is dead (the
@@ -41,11 +57,24 @@ measurements.
 
 ## Part II — the defenses, measured
 
+![first-hop deanonymization by defense](figures/f3_deanonymization_ladder.png)
+
+The ladder above is the study's sharpest result and its most cautionary one:
+**every slot-share defense leaves first-hop deanonymization between 0.10 and
+0.17 — the draw fix's best arm (uncapped + uniform, three seeds 0.146-0.173) is
+*worse* than stock (0.126) at the estimator's perfect precision — while
+id-consistency enforcement takes it to 0.021.** Fair share of outbound slots is
+a fairness property, not a privacy property: spreading the fleet's occupancy
+across more honest dials spreads the *first hops* across more spies. The
+combination cell (draw fix on top of enforcement) is the open arm.
+
 1. **The candidate-draw fix** (one rule, ready for upstream): draw candidates
    from the whole subnet-deduplicated white list instead of the 20 newest —
    the 2.2x passive multiplier collapses to 1.03x, and the active adversary's
    0.908 falls to 0.599 (uniform draw) or 0.0248 (with a 70-entry trimmed list).
-   Lab evidence E19-E49; the oldest and cheapest result in the study.
+   Lab evidence E19-E49; the oldest and cheapest result in the study. It fixes
+   the fleet's *share* of honest outbound slots; it does not by itself reduce
+   what the fleet learns (see the ladder above).
 2. **Per-host gray-list cap** (R8 patch, `--sim-peerlist-ports-per-host`):
    provably inert without same-IP endpoints (M2 null-validation, E73) — the
    lab's m-daemons get distinct IPs, so the port-front model needs the same-IP
@@ -70,6 +99,12 @@ measurements.
    instead by escalation layers beyond this rule (signed id bindings,
    per-identity work). Flag-off is a structural null: three binaries read the
    null within noise (0.3519-0.3586), refusals exactly 0.
+
+   ![fleet slot share by enforcement arm](figures/f2_enforcement_arc.png)
+
+   ![the version ladder, one smoke cell](figures/f4_version_ladder.png)
+
+   ![attribution and stem exposure under enforcement](figures/f5_fleet_losses.png)
 
    **The design lessons cost four patch versions, each caught by a
    pre-registered check:** v1 observed ids only on inbound handshakes and was
@@ -101,4 +136,6 @@ design and are the escalation layers' problem.
 provenance; `docs/spy_journal/runs/` for per-run artifacts (estimator reports,
 receipts censuses, calibration); `analysis/spy/` for the tools;
 `patches/series` + `studies/antiproxy/patches/` for the flag-gated monerod
-patches (R8 per-host cap, R9 id-consistency v3.2).
+patches (R8 per-host cap, R9 id-consistency v3.2). The narrative manuscript for
+a human reader is `20261111_manuscript.md`; `figures/make_figures.py` regenerates
+every figure from journal-cited values.
