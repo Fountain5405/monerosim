@@ -83,7 +83,8 @@ ax.grid(axis="x", visible=False)
 ax.legend(frameon=False, fontsize=9, loc="upper center", ncol=3)
 style(ax, "User transactions deanonymized at first hop",
       "Slot-share fairness is not sender privacy; enforcement is",
-      "sp-estimator recall at precision 1.000. Draw arms: k42-m1, E27/E36/E37 (uncapped+uniform: 3 seeds, dots; bar = mean). Enforcement: k42-m7, E78.")
+      "sp-estimator recall at precision 1.000. Slot-share arms (k42-m1): stock E27, uniform pick E35, uncapped E37, "
+      "uncapped+uniform E36/E38/E41 (three seeds, dots; bar = mean), trims E45/E50. Enforcement (k42-m7): E78.")
 fig.tight_layout(); fig.savefig(OUT / "f3_deanonymization_ladder.png"); plt.close(fig)
 
 # F4 — the version ladder: same smoke cell, only the defense varies.
