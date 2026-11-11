@@ -1,15 +1,14 @@
 # Antiproxy study: status
 
-Status as of 2026-11-01; paths are relative to the repository root. The study is
-active, but the owner stopped all work on 2026-11-01 (about 11:20 UTC): the
-queues are empty and nothing runs. Work resumes after the switch-over to main
-(`SWITCHOVER.md`).
+Status as of 2026-11-11. The study is active and its history is public
+(`origin/main` through the latest commit). The full write-up is
+`studies/antiproxy/docs/20261111_findings_summary.md` (Findings 1-10). The
+experiment journal, `studies/antiproxy/docs/SPY_EXPERIMENT_JOURNAL.md`, holds
+entries E1-E78, predictions P1-P76 and 124 registered runs.
 
 The study measures how spy fleets infiltrate Monero's peer lists and trace
 transaction origins (Dandelion++ first-hop attribution), and tests defences at
-the P2P layer. The full write-up is `studies/antiproxy/docs/20261027_findings_summary.md`
-(Findings 1-8). The experiment journal, `studies/antiproxy/docs/SPY_EXPERIMENT_JOURNAL.md`, holds
-entries E1-E71, predictions P1-P67 and 111 registered runs.
+the P2P layer.
 
 ## Current findings
 
@@ -39,27 +38,38 @@ entries E1-E71, predictions P1-P67 and 111 registered runs.
    1.000 stock, and 1.000 at mainnet sender rates.
 8. **Stemmable inbound is closed end to end:** nothing buys the first hop.
    Every gain a hidden fleet gets is at hop 2 or later, with zero attribution
-   and one slot per prefix; an inbound-only adversary never sits on the
-   sender's first hop (E64-E71).
+   and one slot per prefix (E64-E71).
+9. **One slot per prefix governs the whole passive surface** (E72-E75): the
+   addresses-per-/24 axis is flat (7x addresses move nothing; B1 vs I1), /16
+   spread is dead, budgets scale sub-linearly — the /24 slot plus the
+   20-newest cut is the entire passive position, and the real fleet's port
+   multiplication buys gray-side pumping, not white slots (stock white is
+   already one-per-host). The R8 per-host gray cap is provably inert without
+   same-IP endpoints (M2 null) and waits on the same-IP generator feature.
+10. **Observational id-consistency enforcement works** (E76-E78, R9 v3.2,
+    `--sim-enforce-id-consistency`): a shared-id proxy fleet — the crawl's
+    fingerprint — collapses 9.7x (light 0.3467 → 0.0359) and hop-1 attribution
+    falls 11.9 % → 2.1 % of user transactions at precision 1.000, with zero
+    honest refusals and unchanged honest throughput; a per-endpoint-id fleet
+    pays exactly nothing (the priced bound), and flag-off is a structural
+    null across three binaries. The version history is the design lesson:
+    eviction needs a standing gate (v2's treadmill amplified the attack 4x),
+    and observation must cover both connection directions (v1 was blind to
+    relay-dialed fleets; v3's ephemeral-port keying manufactured honest
+    collateral).
 
 What stays live is observational: the monthly mainnet dump read (the fleet's
-weekly address rotation and the candidate cut's freshness).
+weekly address rotation and the candidate cut's freshness) and the observatory
+daily pulls.
 
 ## Unfinished work
 
-- Four finished cells are unscored: M1 (k9 m7), B1 (k9 m1), M2 (hpl1
-  null-validation) and I1 (k42 m7). The data is on the lab boxes;
-  `SESSION_HANDOFF_20261101.md` has the recipe.
-- P62-P67 are filed, none scored. P68-P70 are not filed, and the S1-S3
-  id-consistency cells are not generated.
-- **The id-consistency patch (R9, `b051d548`) does not build.** It includes
-  `p2p/id_evidence_map.h`, which the patch does not contain. It is commented
-  out of `patches/series` until it is regenerated with the new file. Both lab
-  boxes run R8 binaries.
+- The upstream note (candidate-draw fix + cap mapping + enforcement) is ready
+  to draft on complete lab evidence; venue and timing are the owner's call.
+- The E78 trio's second seeds (~8 h of lab time) — hardening, not blocking.
 - The port-front generator (same-IP daemons) is designed but unwritten
-  (journal correction `3560f58a`).
-- M2's run exited 1 from the post-run calibration scorer; its data is intact
-  and the cause is undiagnosed.
+  (journal correction `3560f58a`); it unblocks the R8 cap's real test.
+- Mainnet monitor deployment on the owner's three nodes — approved, unbuilt.
 
 ## Corrections in force
 
@@ -68,3 +78,6 @@ weekly address rotation and the candidate cut's freshness).
   host; the defence is gray-side only).
 - The P62-P67 filings carry a correction block (2026-10-31 05:10): a cell's m
   daemons get distinct IPs, not shared-IP ports.
+- The 11-08 journal rows record the `_sid` generator fix (the 11-07 S2 cell
+  gave every daemon the shared id and died of self-connection drops) and the
+  mandatory flagged-smoke rule that followed.
