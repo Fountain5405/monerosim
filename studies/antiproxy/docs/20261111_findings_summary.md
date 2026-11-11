@@ -1,8 +1,8 @@
 # Antiproxy study: findings summary (2026-11-11)
 
 Supersedes `20261027_findings_summary.md` (Findings 1-8 stand; this adds 9-10 and
-the enforcement chapter). Evidence: experiment journal entries E1-E78, predictions
-P1-P76, 124 registered runs (`docs/SPY_EXPERIMENT_JOURNAL.md` is the source of
+the enforcement chapter). Evidence: experiment journal entries E1-E79, predictions
+P1-P77, 125 registered runs (`docs/SPY_EXPERIMENT_JOURNAL.md` is the source of
 truth; every number below cites its entry). Paths relative to the repository root.
 Figures live in `figures/` (regenerate: `venv/bin/python figures/make_figures.py`).
 
@@ -63,10 +63,17 @@ The ladder above is the study's sharpest result and its most cautionary one:
 **every slot-share defense leaves first-hop deanonymization between 0.10 and
 0.17 — the draw fix's best arm (uncapped + uniform, three seeds 0.146-0.173) is
 *worse* than stock (0.126) at the estimator's perfect precision — while
-id-consistency enforcement takes it to 0.021.** Fair share of outbound slots is
-a fairness property, not a privacy property: spreading the fleet's occupancy
-across more honest dials spreads the *first hops* across more spies. The
-combination cell (draw fix on top of enforcement) is the open arm.
+id-consistency enforcement takes it to 0.021, and enforcement *plus* the draw
+fix takes it to 0.000 (E79: 0 of 984 user transactions attributed).** Fair
+share of outbound slots is a fairness property, not a privacy property:
+spreading the fleet's occupancy across more honest dials spreads the *first
+hops* across more spies. And the two defenses compose with the trap inverted
+(E79, run 125): under enforcement the fleet exists as one standing address per
+observing node — the stock recency draw re-surfaces that address every churn
+cycle, the uniform draw gives it ~1/340 of candidate draws — so the rule that
+alone *raised* tracing, stacked on enforcement, starves the fleet's last
+address instead (light 0.3467 → 0.006, 58x; receipts 1,004 → 26; refusals 312
+all-spy/zero-honest).
 
 1. **The candidate-draw fix** (one rule, ready for upstream): draw candidates
    from the whole subnet-deduplicated white list instead of the 20 newest —
@@ -105,6 +112,13 @@ combination cell (draw fix on top of enforcement) is the open arm.
    ![the version ladder, one smoke cell](figures/f4_version_ladder.png)
 
    ![attribution and stem exposure under enforcement](figures/f5_fleet_losses.png)
+
+   **The composition closes the ladder (E79, P77, run 125):** the same cell
+   with the candidate-draw fix on every honest daemon takes light share to
+   **0.006** (58x below baseline; enforcement-only 0.0359), stem receipts to
+   **26**, hop-1 user transactions to **0**, and sp recall to **0.000 — 0 of
+   984** — still 312 refusals, all spy, zero honest. Every filed band missed
+   below: the fairness trap inverts under enforcement (see the ladder).
 
    **The design lessons cost four patch versions, each caught by a
    pre-registered check:** v1 observed ids only on inbound handshakes and was

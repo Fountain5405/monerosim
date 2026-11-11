@@ -3,7 +3,7 @@
 A narrative manuscript for the antiproxy study, 2026-11-11. Everything here is
 measured: each number cites an entry (En) or filing (Pn) in
 `SPY_EXPERIMENT_JOURNAL.md`, where every prediction was filed before its
-experiment ran and scored blind against the outcome afterwards — 124 registered
+experiment ran and scored blind against the outcome afterwards — 125 registered
 runs so far. The technical summary with full citations is
 `20261111_findings_summary.md`; this document is the story for a reader who
 wants to understand it without reading the journal.
@@ -31,7 +31,9 @@ peer id presenting two different addresses simply refuses the second address a
 place in its white list, for as long as the contradiction stands. That rule
 collapses a shared-id fleet's position 9.7-fold, cuts origin attribution from
 11.9% to 2.1% of user transactions, provably costs honest peers nothing — and
-needs no protocol change, no new message, no coordination.
+needs no protocol change, no new message, no coordination. And the two
+defenses stack: with both in force, the fleet's origin tracing in the lab goes
+to **zero** — not one of 984 user transactions attributed (E79).
 
 ![first-hop deanonymization by defense](figures/f3_deanonymization_ladder.png)
 
@@ -199,10 +201,15 @@ Both lessons generalize well past Monero.
 - Sophisticated fleets — per-endpoint ids, or per-identity proof work — are
   out of this rule's scope by design. It prices the design the crawl actually
   observed, which is the design that exists.
-- The open arm is composition: the draw fix (fairness) on top of enforcement
-  (privacy) is running now (P77). The two address different properties of the
-  same slots, and the honest prediction is that we do not know which way the
-  interaction lands; the filing bands cover both.
+- The composition question is closed (E79, run 125): the draw fix stacked on
+  enforcement takes the fleet's tracing to **zero** — 0 of 984 user
+  transactions attributed, light share 0.006 (58x below baseline), stem
+  receipts 1,004 → 26, refusals still all-spy/zero-honest. The fairness trap
+  inverts: under enforcement the fleet survives as one standing address per
+  observing node, and the uniform draw that alone *spread* first-hops to more
+  spies now spreads honest dials away from that last address (~1/340 of
+  candidate draws instead of riding the 20-newest window). The two defenses
+  are complements — each fixes what the other cannot.
 
 ## How to read the evidence
 

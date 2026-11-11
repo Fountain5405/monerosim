@@ -1,0 +1,2 @@
+P77 refusals=312 hosts=23 spy=312 HONEST=0
+spy_ips_found=294

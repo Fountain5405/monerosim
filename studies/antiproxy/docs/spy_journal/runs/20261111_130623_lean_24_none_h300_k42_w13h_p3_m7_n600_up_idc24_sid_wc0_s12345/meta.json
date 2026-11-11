@@ -1,0 +1,30 @@
+{
+ "run_id": "20261111_130623_lean_24_none_h300_k42_w13h_p3_m7_n600_up_idc24_sid_wc0_s12345",
+ "box": "zenith2alpha",
+ "cell": "lean_24_none_h300_k42_w13h_p3_m7_n600_up_idc24_sid_wc0_s12345",
+ "archived_at": "2026-11-11T13:07:04Z",
+ "monerod_sim_sha": "0133bf033c08",
+ "wall": "2h 52m",
+ "exit_code": 0,
+ "min_avail_mb": 6503,
+ "txs_created": 1042,
+ "txs_in_blocks": 1036,
+ "note": "P77 the combo arm: draw fix (up+wc0) on top of enforcement v3.2 (idc24) + shared spy id (sid), k42-m7, s12345, binary c2ec2b01; smoke c08a4a9d passed 49m clean",
+ "scored_cell": "24/none",
+ "spies": 294,
+ "spy_24s": 42,
+ "honest_reachable": 300,
+ "honest_reachable_24s": 242,
+ "light_out": 0.006,
+ "light_out_quarters": [
+  0.0075,
+  0.0065,
+  0.0055,
+  0.0046
+ ],
+ "model_out": 0.1531,
+ "fluff_per_hop": 0.195,
+ "stem_txs": 1047,
+ "stem_hops_implied": 5.13,
+ "embargo_rate": 0.0
+}

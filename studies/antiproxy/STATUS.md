@@ -2,9 +2,12 @@
 
 Status as of 2026-11-11. The study is active and its history is public
 (`origin/main` through the latest commit). The full write-up is
-`studies/antiproxy/docs/20261111_findings_summary.md` (Findings 1-10). The
-experiment journal, `studies/antiproxy/docs/SPY_EXPERIMENT_JOURNAL.md`, holds
-entries E1-E78, predictions P1-P76 and 124 registered runs.
+`studies/antiproxy/docs/20261111_findings_summary.md` (Findings 1-10 and the
+E79 composition result); the human-readable narrative is
+`studies/antiproxy/docs/20261111_manuscript.md`; figures live in
+`studies/antiproxy/docs/figures/`. The experiment journal,
+`studies/antiproxy/docs/SPY_EXPERIMENT_JOURNAL.md`, holds entries E1-E79,
+predictions P1-P77 and 125 registered runs.
 
 The study measures how spy fleets infiltrate Monero's peer lists and trace
 transaction origins (Dandelion++ first-hop attribution), and tests defences at
@@ -57,6 +60,16 @@ the P2P layer.
     and observation must cover both connection directions (v1 was blind to
     relay-dialed fleets; v3's ephemeral-port keying manufactured honest
     collateral).
+11. **The two defenses compose, and the composition is total** (E79, P77,
+    run 125): the candidate-draw fix stacked on enforcement takes light share
+    to 0.006 (58x below baseline), stem receipts to 26, and sp recall to
+    **0.000 — 0 of 984 user transactions attributed** — refusals still
+    312/zero-honest. The fairness trap inverts: under enforcement the fleet
+    is one standing address per observing node; the uniform draw that alone
+    *raised* tracing (0.126 → 0.146-0.173) now gives that address ~1/340 of
+    honest candidate draws instead of the 20-newest window. Slot-share
+    fairness and id-consistency enforcement are complements — each fixes what
+    the other cannot.
 
 What stays live is observational: the monthly mainnet dump read (the fleet's
 weekly address rotation and the candidate cut's freshness) and the observatory
@@ -64,9 +77,11 @@ daily pulls.
 
 ## Unfinished work
 
-- The upstream note (candidate-draw fix + cap mapping + enforcement) is ready
-  to draft on complete lab evidence; venue and timing are the owner's call.
-- The E78 trio's second seeds (~8 h of lab time) — hardening, not blocking.
+- The upstream note (candidate-draw fix + cap mapping + enforcement +
+  composition) is ready to draft on complete lab evidence; venue and timing
+  are the owner's call.
+- Second seeds for the E78 trio and the E79 combo arm (~11 h of lab time) —
+  hardening, not blocking.
 - The port-front generator (same-IP daemons) is designed but unwritten
   (journal correction `3560f58a`); it unblocks the R8 cap's real test.
 - Mainnet monitor deployment on the owner's three nodes — approved, unbuilt.

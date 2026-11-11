@@ -27,7 +27,7 @@ plt.rcParams.update({
 
 def style(ax, ylab, title, sub, wrap=100):
     ax.set_ylabel(ylab)
-    ax.set_title(title, loc="left", fontsize=12, fontweight="bold", color=INK, pad=34)
+    ax.set_title(title, loc="left", fontsize=12, fontweight="bold", color=INK, pad=40)
     ax.text(0, 1.022, textwrap.fill(sub, wrap), transform=ax.transAxes,
             fontsize=9, color=MUTED, va="bottom", linespacing=1.3)
 
@@ -68,23 +68,28 @@ slot_vals = [0.126, 0.101, 0.139, 0.158, 0.135, 0.144]   # uncapped+uniform = me
 ax.bar(range(6), slot_vals, width=0.58, color=BLUE, label="slot-share defenses", zorder=3)
 seeds = [0.173, 0.154, 0.146]                            # the 3 seeds of uncapped+uniform
 ax.scatter([3] * 3, seeds, s=30, color=INK, zorder=4)
-ax.bar([6.7], [0.021], width=0.58, color=ORANGE, label="enforcement v3.2", zorder=3)
-ax.bar([7.8], [0.119], width=0.58, color="#c9c9c9", label="stock baseline (m7)", zorder=3)
+ax.bar([6.7], [0.021], width=0.58, color=ORANGE, label="id-consistency enforcement", zorder=3)
+ax.bar([7.8], [0.000], width=0.58, color=ORANGE, zorder=3)   # E79: 0 of 984 — the bar is zero
+ax.bar([8.9], [0.119], width=0.58, color="#c9c9c9", label="stock, that fleet's baseline", zorder=3)
 ax.text(6.7, 0.031, "0.021", ha="center", fontsize=9.5)
-ax.text(7.8, 0.129, "0.119", ha="center", fontsize=9.5)
-ax.set_xticks(list(range(6)) + [6.7, 7.8], slot_defs + ["Enforcement\nv3.2", "Stock\n(m7)"], fontsize=9)
+ax.text(7.8, 0.014, "0.000", ha="center", fontsize=9.5, fontweight="bold", color=ORANGE,
+        bbox=dict(facecolor="white", edgecolor="none", pad=1.5), zorder=5)
+ax.text(8.9, 0.129, "0.119", ha="center", fontsize=9.5)
+ax.set_xticks(list(range(6)) + [6.7, 7.8, 8.9],
+              slot_defs + ["Enforcement\nv3.2", "Enforcement\n+ draw fix", "Stock\n(m7 fleet)"], fontsize=9)
 top = 0.215
 for i, v in enumerate(slot_vals):
     dy = 0.021 if i == 3 else top * 0.018   # clear the seed dots on the mean bar
     ax.text(i, v + dy, f"{v:.3f}", ha="center", fontsize=9)
 ax.set_ylim(0, top)
-ax.set_xlim(-0.7, 8.5)
+ax.set_xlim(-0.7, 9.6)
 ax.grid(axis="x", visible=False)
 ax.legend(frameon=False, fontsize=9, loc="upper center", ncol=3)
 style(ax, "User transactions deanonymized at first hop",
       "Slot-share fairness is not sender privacy; enforcement is",
-      "sp-estimator recall at precision 1.000. Slot-share arms (k42-m1): stock E27, uniform pick E35, uncapped E37, "
-      "uncapped+uniform E36/E38/E41 (three seeds, dots; bar = mean), trims E45/E50. Enforcement (k42-m7): E78.")
+      "sp recall at precision 1.000. Slot-share arms (k42-m1): stock E27, uniform E35, uncapped E37, "
+      "uncapped+uniform E36/E38/E41 (seeds dotted; bar = mean), trims E45/E50. "
+      "Enforcement (k42-m7): v3.2 E78; + draw fix E79 - 0 of 984.", wrap=95)
 fig.tight_layout(); fig.savefig(OUT / "f3_deanonymization_ladder.png"); plt.close(fig)
 
 # F4 — the version ladder: same smoke cell, only the defense varies.
