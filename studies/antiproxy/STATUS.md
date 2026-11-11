@@ -1,19 +1,66 @@
 # Antiproxy study: status
 
-Status as of 2026-11-11. The study is active and its history is public
-(`origin/main` through the latest commit). The full write-up is
-`studies/antiproxy/docs/20261111_findings_summary.md` (Findings 1-10 and the
-E79 composition result); the human-readable narrative is
-`studies/antiproxy/docs/20261111_manuscript.md`; figures live in
-`studies/antiproxy/docs/figures/`. The experiment journal,
-`studies/antiproxy/docs/SPY_EXPERIMENT_JOURNAL.md`, holds entries E1-E79,
-predictions P1-P77 and 125 registered runs.
+Status as of 2026-11-11 (through E79). The study is active and its history is
+public (`origin/main`). Documents: the one-page current state **below**; the
+cited findings underneath it; the full write-up
+`docs/20261111_findings_summary.md`; the human-readable narrative
+`docs/20261111_manuscript.md`; figures in `docs/figures/`. The experiment
+journal, `docs/SPY_EXPERIMENT_JOURNAL.md`, holds entries E1-E79, predictions
+P1-P77 and 125 registered runs — the source of truth for every number.
 
 The study measures how spy fleets infiltrate Monero's peer lists and trace
 transaction origins (Dandelion++ first-hop attribution), and tests defences at
 the P2P layer.
 
-## Current findings
+## The study in one page
+
+**What we know, in order of importance:**
+
+1. **A shared-id proxy fleet passively takes 2.2x its fair share of honest
+   outbound slots and traces 11.9 % of user transactions to origin at perfect
+   precision.** The mechanism is one rule: monerod draws outbound candidates
+   from the 20 *newest* white-list entries, and a port-multiplied fleet is
+   always newest. The real fleet exists: 12,368 of 18,026 crawl endpoints
+   carry the fingerprint.
+2. **Fixing that draw rule makes the fleet's share fair but does not reduce
+   its tracing** — 0.10-0.17 across every slot-share arm, and the best
+   fairness arm is the *worst* for privacy (0.146-0.173 vs stock 0.126).
+   Fairness is a property of honest connection budgets; privacy is a property
+   of who holds first-hop slots.
+3. **Observational id-consistency enforcement collapses the fleet 9.7x and
+   cuts tracing to 2.1 %** — a local rule (refuse a second address a
+   white-list slot when the same peer id was directly observed at two
+   addresses), no wire changes, zero honest refusals, structural flag-off
+   null, and a priced evasion bound (per-endpoint ids pay nothing).
+4. **The two stacked take tracing to zero** (E79): share 0.006, receipts 26,
+   **0 of 984 user transactions attributed**. The trap inverts — under
+   enforcement the fleet is one standing address per node, and the uniform
+   draw that alone raised tracing now gives that address ~1/340 of honest
+   dials. The defenses are complements.
+5. **The rest of the map:** one slot per /24 governs the whole passive
+   surface (the real fleet's shape can buy no more); an active refresher
+   eclipses untrimmed lists (96.7 % attribution) and a 70-entry trim kills it
+   (2.5 %); stemmable-inbound (MRL #160) never buys hop 1; churn is
+   neutral-to-favourable for the fixes; mainnet lists sit in the flat
+   (saturated) regime the lab measures.
+
+**What's left to do:**
+
+- Second seeds for the E78 trio + the E79 combo (~11 h of tr) — hardening;
+  the only lab work that could move a published number.
+- The upstream note (draw fix + cap mapping + enforcement + composition) —
+  evidence complete; **venue and timing are the owner's call**.
+- Variant-P proxy fleet (`agents/spy_proxy.py`, the real front/back split —
+  unused so far) — **owner's go**; also the fleet model for scale-up.
+- Scale ladder: 1k honest, then 2k (fleet at the real ~1.5 % ratio) —
+  feasible on tr; wall-time and ratio faithfulness are the open questions —
+  **owner's go**.
+- Mainnet monitor on the owner's three nodes — approved, unbuilt.
+- Same-IP generator feature — unblocks the R8 per-host cap's real test.
+- Standing observational work: monthly mainnet dump read; observatory daily
+  pulls.
+
+## Current findings (cited detail)
 
 1. **Passive exposure is a multiplier of the subnet share, and the candidate
    cap is the multiplier.** Stock monerod draws outbound candidates from the 20
@@ -74,17 +121,6 @@ the P2P layer.
 What stays live is observational: the monthly mainnet dump read (the fleet's
 weekly address rotation and the candidate cut's freshness) and the observatory
 daily pulls.
-
-## Unfinished work
-
-- The upstream note (candidate-draw fix + cap mapping + enforcement +
-  composition) is ready to draft on complete lab evidence; venue and timing
-  are the owner's call.
-- Second seeds for the E78 trio and the E79 combo arm (~11 h of lab time) —
-  hardening, not blocking.
-- The port-front generator (same-IP daemons) is designed but unwritten
-  (journal correction `3560f58a`); it unblocks the R8 cap's real test.
-- Mainnet monitor deployment on the owner's three nodes — approved, unbuilt.
 
 ## Corrections in force
 

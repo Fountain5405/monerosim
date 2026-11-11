@@ -214,7 +214,7 @@ Both lessons generalize well past Monero.
 ## How to read the evidence
 
 Everything is reproducible from this repository: the journal
-(`SPY_EXPERIMENT_JOURNAL.md`) with its 124 registered runs and pre-registered
+(`SPY_EXPERIMENT_JOURNAL.md`) with its 125 registered runs and pre-registered
 predictions; the flag-gated patches (`studies/antiproxy/patches/`, applied via
 `patches/series`); the generators and analysis tools; and per-run artifacts
 (`docs/spy_journal/runs/`). Figures regenerate from journal-cited values with
