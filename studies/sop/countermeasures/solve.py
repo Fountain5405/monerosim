@@ -12,6 +12,7 @@ networkx and pymdptoolbox-roi, which the repo venv lacks.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import sys
 import time
@@ -40,7 +41,9 @@ def solve(model, solver: str, horizon: int, epsilon: float, max_iter: int):
         s = OSMSolver(model)
     else:
         raise ValueError(f"unknown solver {solver}")
-    policy, value, iterations, _ = s.calc_opt_policy(epsilon=epsilon, max_iter=max_iter)
+    # mdptoolbox prints its convergence warning on stdout, which carries the JSON
+    with contextlib.redirect_stdout(sys.stderr):
+        policy, value, iterations, _ = s.calc_opt_policy(epsilon=epsilon, max_iter=max_iter)
     return tuple(int(x) for x in policy), float(value), int(iterations)
 
 

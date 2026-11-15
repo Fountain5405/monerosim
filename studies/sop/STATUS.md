@@ -1,9 +1,11 @@
 # SoP study: status
 
-Status as of 2026-11-01; paths are relative to the repository root. The study is
-active, but the owner paused new
-experiments on 2026-10-31 until the repository reorganization lands. Nothing
-runs or is queued on any machine.
+Status as of 2026-11-15; paths are relative to the repository root. The study is
+active and works on main. Since 2026-11-13 it follows Rucknium's research
+directions (one MDP framework for all countermeasures, revenue and disruption
+objectives, reorg-depth output): plan and results in
+`studies/sop/docs/20261113_countermeasure_mdp_plan.md`. Nothing runs or is
+queued on any machine.
 
 The question: does Share-or-Perish (MRL #146) raise the hashrate a selfish
 miner needs to profit, and what does it cost honest miners? The full write-up,
@@ -30,6 +32,13 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
   step tested (alpha 0.30 and 0.45). Stock nodes ban their SoP peers for 24 h.
   With the bans removed (`--sim-no-drop-score`) there is no partition, but the
   attacker takes 0.991 of the single chain. SoP needs a flag day.
+
+- **Nakamoto disruption baseline** (countermeasure MDPs, step 1). Under plain
+  Nakamoto, an attacker maximising reorgs of 11+ blocks gets one per 886
+  main-chain blocks at alpha 0.25, per 228 at 0.30, per 84 at 0.35 and per 22
+  at 0.45 (gamma 0; gamma 0.5 adds at most 12 %). Low gamma does not protect
+  against it. A revenue-maximiser at gamma 0 causes 1.7e-3 such reorgs per
+  block at alpha 0.35.
 
 ## Limits
 

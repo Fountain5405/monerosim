@@ -116,8 +116,9 @@ def stationary_distribution(model: BlockchainModel, policy) -> Tuple[SparseBlock
     chain[mdp.final_state_index, mdp.final_state_index] = 0
     chain = chain.tocsr()
     pi = np.real(np.asarray(mdp.calc_steady_distribution(chain))).flatten()
-    pi[np.abs(pi) < 1e-15] = 0.0
-    return mdp, pi
+    # eigs leaves round-off of either sign on unreachable states
+    pi[pi < 1e-13 * pi.max()] = 0.0
+    return mdp, pi / pi.sum()
 
 
 def reorg_profile(model: TaggedModel, policy, max_report_depth: Optional[int] = None) -> dict:
@@ -198,8 +199,8 @@ def _summarise(revenue: float, rates: Dict[str, Dict[int, float]], min_depth: in
         hist = rates.get(kind, {})
         out[f"{kind}_reorgs_per_block"] = sum(hist.values())
         out[f"{kind}_deep_reorgs_per_block"] = sum(v for d, v in hist.items() if d >= min_depth)
-        out[f"{kind}_mean_depth"] = (sum(d * v for d, v in hist.items()) / sum(hist.values())
-                                     if hist else 0.0)
+        total = sum(hist.values())
+        out[f"{kind}_mean_depth"] = sum(d * v for d, v in hist.items()) / total if total > 0 else 0.0
         top = max(hist) if hist else 0
         if max_report_depth is not None:
             top = min(top, max_report_depth)

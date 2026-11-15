@@ -94,3 +94,49 @@ solve took all 32 cores; every solver job now runs with `OMP_NUM_THREADS=4`.
   honest miners. A lost match race removes a blocks for the miners who
   followed the attacker.
 - **Disruption** = expected reorgs deeper than 10 per main-chain block.
+
+## Step 1 result: Nakamoto, revenue and disruption (2026-11-15)
+
+Code: `studies/sop/countermeasures/` (commit `56c7346f` and the next one).
+Data: `studies/sop/data/countermeasures/nakamoto_grid_20261115.jsonl`
+(lithium, PTO, cap 80, horizon 10^5, 4 BLAS threads, 32 solves in 25 min).
+Disruption counts majority reorgs of 11 blocks or more (deeper than the
+10-block lock). Caps 40, 80 and 120 give the same disruption values at
+alpha 0.40, gamma 0.05.
+
+Deep reorgs (11+ blocks) per main-chain block, and the attacker's chain share:
+
+| alpha | disruption-optimal, gamma 0 | gamma 0.05 | gamma 0.5 | its chain share (gamma 0) | revenue-optimal, gamma 0 | gamma 0.5 |
+|---|---|---|---|---|---|---|
+| 0.25 | 1.13e-3 (1 per 886 blocks, ~30 h) | 1.15e-3 | 1.36e-3 | 0.014 | 0 (honest) | 0 (honest) |
+| 0.30 | 4.39e-3 (1 per 228, ~7.6 h) | 4.44e-3 | 5.00e-3 | 0.055 | 0 (honest) | 1.4e-6 |
+| 0.35 | 1.19e-2 (1 per 84, ~2.8 h) | 1.20e-2 | 1.32e-2 | 0.147 | 1.68e-3 | 1.4e-5 |
+| 0.40 | 2.51e-2 (1 per 40, ~1.3 h) | 2.52e-2 | 2.76e-2 | 0.311 | 4.49e-3 | 8.7e-5 |
+| 0.45 | 4.47e-2 (1 per 22, ~45 min) | 4.48e-2 | 5.00e-2 | 0.549 | 1.08e-2 | 3.6e-4 |
+
+Hours assume Monero's 2-minute blocks. Mean depth of the disruption-optimal
+attacker's reorgs: 11.3-12.0 blocks.
+
+Reading:
+- **Gamma hardly matters for disruption.** Deep races are won by length, not
+  ties: going from gamma 0 to 0.5 adds at most 12 % to the deep-reorg rate.
+  Keeping gamma low (the Qubic lesson) protects against revenue attacks, not
+  against an attacker who wants deep reorgs.
+- **Disruption is cheap at Qubic's scale.** At alpha 0.30-0.35 under plain
+  Nakamoto, an attacker who wants reorgs past the 10-block lock gets one every
+  3-8 hours. It pays for that with 80-60 % of its mining income (chain share
+  0.055 and 0.147 against 0.30 and 0.35 honest). At alpha 0.45 the
+  disruption-optimal attacker still earns more than honest mining (0.549).
+- **A revenue-maximiser already causes deep reorgs at alpha 0.35 and up when
+  gamma is low** (1 per 600 blocks at 0.35), because its races run long. With
+  gamma 0.5 it wins short races instead and deep reorgs fall 100-fold.
+- **Independent check.** A hand-written rule (mine privately from the fork,
+  publish all when a > h >= 11, give up when h - a >= D, best D;
+  `studies/sop/countermeasures/giveup_check.py`, 3 M blocks per alpha) reaches
+  0.72-0.77 of the MDP rate at every alpha (8.2e-4 at 0.25, 9.3e-3 at 0.35,
+  3.2e-2 at 0.45), below the optimum as it must be. The MDP does better by
+  publishing only h + 1 blocks and keeping the rest of its lead.
+
+These are the Nakamoto baseline the countermeasures are measured against.
+Model limits: instant propagation inside each side, constant attacker
+hashrate, one attacker, no difficulty adjustment inside a race.
