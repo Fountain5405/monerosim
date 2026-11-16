@@ -196,3 +196,13 @@ def test_cli_emits_one_json_line(capsys):
     out = json.loads(capsys.readouterr().out)
     assert out["policy"] == "sm1" and out["states"] == 3 * 11 ** 2 + 1
     assert "mc" in out and "profile" in out
+
+
+def test_direct_and_eigs_stationary_agree_on_nakamoto():
+    model = NakamotoModel(0.35, 0.5, 40)
+    policy, _ = pto(model)
+    direct = reorg_profile(model, policy, method="direct")
+    eigs = reorg_profile(model, policy, method="eigs")
+    assert direct["revenue"] == pytest.approx(eigs["revenue"], abs=1e-9)
+    for kind in (MAJORITY, MINORITY):
+        assert direct[f"{kind}_reorgs_per_block"] == pytest.approx(eigs[f"{kind}_reorgs_per_block"], rel=1e-6)

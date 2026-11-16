@@ -22,6 +22,8 @@ import json
 import sys
 import time
 
+import numpy as np
+
 from .nakamoto import NakamotoModel
 from .reorgs import OBJECTIVES, WEIGHTS, reorg_profile, simulate_profile
 from .sop_walk import SoPWalkModel, exact_rate
@@ -82,6 +84,10 @@ def main(argv=None) -> int:
     p.add_argument("--mc-steps", type=int, default=0, help="also estimate the profile by Monte Carlo")
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--max-report-depth", type=int, default=40)
+    p.add_argument("--stationary", choices=("direct", "eigs"), default="direct",
+                   help="how the reorg profile computes the stationary distribution")
+    p.add_argument("--save-policy", help="write the policy (and the arguments) to this .npz")
+    p.add_argument("--load-policy", help="skip the solve: read the policy from this .npz")
     args = p.parse_args(argv)
 
     model = build_model(args)
@@ -91,7 +97,12 @@ def main(argv=None) -> int:
            "unit": "block interval" if args.protocol == "sop" or args.normalization == "time"
            else "main-chain block"}
     t0 = time.time()
-    if args.policy == "optimal":
+    if args.load_policy:
+        policy = tuple(int(x) for x in np.load(args.load_policy)["policy"])
+        if len(policy) != model.state_space.size:
+            raise ValueError("the saved policy does not fit this model")
+        out["loaded_policy"] = args.load_policy
+    elif args.policy == "optimal":
         policy, value, iterations = solve(model, args.solver, args.horizon, args.epsilon, args.max_iter)
         out.update({"solver": args.solver, "horizon": args.horizon, "value": value,
                     "iterations": iterations})
@@ -102,9 +113,14 @@ def main(argv=None) -> int:
     else:
         policy = model.build_sm1_policy()
     out["solve_s"] = round(time.time() - t0, 1)
+    if args.save_policy:
+        np.savez_compressed(args.save_policy, policy=np.array(policy, dtype=np.int8), args=json.dumps(vars(args)))
+        out["saved_policy"] = args.save_policy
 
     t0 = time.time()
-    out["profile"] = reorg_profile(model, policy, max_report_depth=args.max_report_depth)
+    out["profile"] = reorg_profile(model, policy, max_report_depth=args.max_report_depth,
+                                   method=args.stationary)
+    out["stationary"] = args.stationary
     out["profile_s"] = round(time.time() - t0, 1)
     if args.mc_steps:
         t0 = time.time()

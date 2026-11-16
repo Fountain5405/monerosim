@@ -108,26 +108,56 @@ class TaggedModel(BlockchainModel):
         return self.alpha if self.objective == "revenue" else 0.0
 
 
-def stationary_distribution(model: BlockchainModel, policy) -> Tuple[SparseBlockchainMDP, np.ndarray]:
-    """Stationary distribution of the policy's chain, the way pto computes revenue."""
+def stationary_distribution(model: BlockchainModel, policy, method: str = "direct"
+                            ) -> Tuple[SparseBlockchainMDP, np.ndarray]:
+    """Stationary distribution of the policy's Markov chain.
+
+    "direct" (default): restrict the chain to the states reachable from the
+    initial state and solve pi (P - I) = 0, sum(pi) = 1 with a sparse LU
+    factorisation; exact to round-off, so rates far below 1e-13 survive.
+    "eigs": pto's way (ARPACK on the whole chain); its round-off of about
+    1e-13 of the largest probability swamps rare states (2026-11-16: a SoP
+    rate of 3e-13 came out as 1.3e-8).
+    """
+    from scipy.sparse import csr_matrix, identity
+    from scipy.sparse.csgraph import breadth_first_order
+    from scipy.sparse.linalg import spsolve
+
     mdp = SparseBlockchainMDP(model)
     mdp.build_mdp()
-    chain = mdp.get_policy_induced_chain(policy).tolil()
-    chain[mdp.final_state_index, mdp.final_state_index] = 0
-    chain = chain.tocsr()
-    pi = np.real(np.asarray(mdp.calc_steady_distribution(chain))).flatten()
-    # eigs leaves round-off of either sign on unreachable states
-    pi[pi < 1e-13 * pi.max()] = 0.0
+    chain = csr_matrix(mdp.get_policy_induced_chain(policy))
+    if method == "eigs":
+        chain = chain.tolil()
+        chain[mdp.final_state_index, mdp.final_state_index] = 0
+        pi = np.real(np.asarray(mdp.calc_steady_distribution(chain.tocsr()))).flatten()
+        pi[pi < 1e-13 * pi.max()] = 0.0
+        return mdp, pi / pi.sum()
+    if method != "direct":
+        raise ValueError("method must be direct or eigs")
+    reach = breadth_first_order(chain, mdp.initial_state_index, directed=True, return_predecessors=False)
+    if mdp.final_state_index in set(reach.tolist()):
+        raise ValueError("the policy reaches the final state (an illegal action)")
+    reach = np.sort(reach)
+    sub = chain[reach][:, reach]
+    n = len(reach)
+    a = (sub.T - identity(n, format="csr")).tolil()
+    a[n - 1, :] = np.ones(n)          # replace one balance row by the normalisation
+    b = np.zeros(n)
+    b[n - 1] = 1.0
+    sol = spsolve(a.tocsc(), b)
+    pi = np.zeros(chain.shape[0])
+    pi[reach] = np.clip(sol, 0.0, None)
     return mdp, pi / pi.sum()
 
 
-def reorg_profile(model: TaggedModel, policy, max_report_depth: Optional[int] = None) -> dict:
+def reorg_profile(model: TaggedModel, policy, max_report_depth: Optional[int] = None,
+                  method: str = "direct") -> dict:
     """Revenue and reorg rates per main-chain block under `policy`.
 
     The revenue is the attacker's share of main-chain blocks, whatever the
     model's objective. Depth histograms are keyed by kind, then depth.
     """
-    _, pi = stationary_distribution(model, policy)
+    _, pi = stationary_distribution(model, policy, method)
     revenue_model_objective = model.objective
     model.objective = "revenue"  # tags and revenue rewards, whatever was solved
     try:
