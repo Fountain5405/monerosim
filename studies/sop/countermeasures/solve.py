@@ -41,9 +41,13 @@ def build_model(args: argparse.Namespace):
     raise ValueError(f"unknown protocol {args.protocol}")
 
 
-def solve(model, solver: str, horizon: int, epsilon: float, max_iter: int):
+def solve(model, solver: str, horizon: int, epsilon: float, max_iter: int, policy0=None):
     from .vendor.blockchain_mdps import OSMSolver, PTOSolver
 
+    if solver == "howard":
+        from .howard import solve_average
+        policy, g, iterations = solve_average(model, policy0=policy0, verbose=True)
+        return policy, g, iterations
     if solver == "pto":
         s = PTOSolver(model, expected_horizon=horizon)
     elif solver == "osm":
@@ -77,7 +81,9 @@ def main(argv=None) -> int:
     p.add_argument("--exact-objects", type=int, default=0,
                    help="sop: simulate the optimal policy in the exact SoP game for this many objects")
     p.add_argument("--policy", choices=("optimal", "honest", "sm1"), default="optimal")
-    p.add_argument("--solver", choices=("pto", "osm"), default="pto")
+    p.add_argument("--solver", choices=("howard", "pto", "osm"), default="pto",
+                   help="howard: exact average-reward policy iteration (use it when rates are tiny)")
+    p.add_argument("--warm-start", help="howard: start from the policy in this .npz")
     p.add_argument("--horizon", type=int, default=10 ** 5, help="PTO expected horizon in blocks")
     p.add_argument("--epsilon", type=float, default=1e-6)
     p.add_argument("--max-iter", type=int, default=200000)
@@ -103,7 +109,10 @@ def main(argv=None) -> int:
             raise ValueError("the saved policy does not fit this model")
         out["loaded_policy"] = args.load_policy
     elif args.policy == "optimal":
-        policy, value, iterations = solve(model, args.solver, args.horizon, args.epsilon, args.max_iter)
+        policy0 = (tuple(int(x) for x in np.load(args.warm_start)["policy"]) if args.warm_start else None)
+        with contextlib.redirect_stdout(sys.stderr):
+            policy, value, iterations = solve(model, args.solver, args.horizon, args.epsilon, args.max_iter,
+                                              policy0=policy0)
         out.update({"solver": args.solver, "horizon": args.horizon, "value": value,
                     "iterations": iterations})
     elif args.protocol != "nakamoto":
