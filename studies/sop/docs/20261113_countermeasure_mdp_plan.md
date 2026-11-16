@@ -140,3 +140,56 @@ Reading:
 These are the Nakamoto baseline the countermeasures are measured against.
 Model limits: instant propagation inside each side, constant attacker
 hashrate, one attacker, no difficulty adjustment inside a race.
+
+## Step 2, first findings (2026-11-16)
+
+**Sources.** Zhang & Preneel 2019 (the "Lay Down the Common Metrics" PDF
+shipped in Aumayr's repo) describes the reward-splitting MDP in full
+(Appendix D), so RS can be built from published text. It gives PoP only as
+a figure, plus two exact values: PoP's profitable threshold 0.2500 (k = 3,
+race length 30) and Q(0.3901) = 0.5372 for both PoP and NC (gamma 0), the
+point where PoP starts to beat NC. The PoP paper itself (CT-RSA 2017) is not
+freely available (Springer paywall; the institutional copy is embargoed).
+The only full PoP model text is the GPL-3 MATLAB code.
+
+**RS and PRS do not change fork choice.** Aumayr et al. say so for FairChain
+and PRS ("work objects play no role in chain selection, only in reward
+allocation"); RS is the same. Against an attacker who maximises deep reorgs
+and ignores income, their transition dynamics are Nakamoto's, so their
+disruption numbers equal the Nakamoto baseline above by construction. They
+can only change the revenue side. Of the gist's list, PoP and SoP are the
+countermeasures that can change disruption.
+
+**Aumayr's Bitcoin baseline overstates Nakamoto at alpha 0.41 and above.**
+Their `incentive_compatibility/Bitcoin/SolveMDP.m` is a script, so its
+`global lowRou` binds `Init.m`'s return value. It runs two bisections: a
+lower bound on the cap-30 MDP (lines 8-21), then an SSZ-style upper-bound
+bisection that pays a truncation award at the cap and searches only up to
+`min(rou + 0.1, 1)` (lines 24-56). `Init` returns `lowRou` after the second
+one. Their RS and PRS solvers run the lower-bound bisection only (the PRS
+upper-bound pass is commented out). `plot.py` plots these `output.json` values.
+
+Review (all 45 shipped Bitcoin points against our cap-30 lower bound, pto,
+and cap-30 upper bound, `sop_mdp_crosscheck.py btc --bound upper`; data
+`studies/sop/data/countermeasures/aumayr_bitcoin_review_20261116.jsonl`,
+script `studies/sop/countermeasures/aumayr_btc_review.py`):
+
+| alpha | their value | reading |
+|---|---|---|
+| 0.25-0.40 (30 points) | inside our cap-30 [lower, upper], at most 0.0032 above the lower bound | a valid upper bound, close to the optimum |
+| 0.41-0.43 (5 of 9 points) | 0.002-0.04 above our cap-30 upper bound | a looser upper bound (their truncation award is larger) |
+| 0.44-0.45 (5 of 6 points) | our cap-30 lower bound + 0.1000 exactly | the second bisection hit its ceiling `rou + 0.1`: a search-range artefact, not a computed bound |
+
+Their model is the same as ours: at the saturated points their value minus
+0.1 is their own lower bound, and it equals ours to 2e-5 (0.75891 against
+0.75893 at alpha 0.45, gamma 0.5). The other gamma-1 points: 0.41-0.43 sit
+inside our bracket; 0.44 is 0.075 above our upper bound (0.092 above the
+lower bound, short of the ceiling).
+
+At alpha 0.45, gamma 0.5 the Nakamoto optimum lies in [0.7596, 0.7647]
+(lower bound 0.75964 at pto caps 80 and 160; upper bound 0.7871 at cap 30,
+0.7647 at cap 80). The value their `plot.py` draws for Fig. 2 is 0.8589, about 0.1 too high. Like
+for like (cap-30 lower bounds), Bitcoin 0.7589 against PRS 0.6901 (R 6, k 6)
+is a gap of 0.069, not the plotted 0.169. PRS still beats Nakamoto there;
+the margin is smaller. Below alpha 0.41 their Bitcoin curve is accurate to
+0.003.
