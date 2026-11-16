@@ -125,7 +125,12 @@ class TightSoP:
 
 
 def profile(P, r, d, policy, start):
-    """Rate (reward per block interval) of a policy from its stationary distribution (sparse LU)."""
+    """Rate (reward per block interval) of a policy from its stationary distribution.
+
+    pi(start) is pinned to 1 and the other balance equations are solved by
+    sparse LU (no dense normalisation row: that one filled in past 13 GB at
+    1.2 M states, 2026-11-16), then pi is normalised.
+    """
     from scipy.sparse import diags, identity
     from scipy.sparse.csgraph import breadth_first_order
     from scipy.sparse.linalg import splu
@@ -134,13 +139,18 @@ def profile(P, r, d, policy, start):
     rows = np.arange(n)
     P_pi = sum(diags((policy == a).astype(float)) @ P[a] for a in range(len(P))).tocsr()
     reach = np.sort(breadth_first_order(P_pi, start, directed=True, return_predecessors=False))
-    sub = P_pi[reach][:, reach]
+    sub = P_pi[reach][:, reach].tocsr()
     m = len(reach)
-    A = (sub.T - identity(m, format="csr")).tolil()
-    A[m - 1, :] = np.ones(m)
-    b = np.zeros(m)
-    b[m - 1] = 1.0
-    pi = np.clip(splu(A.tocsc()).solve(b), 0.0, None)
+    s0 = int(np.searchsorted(reach, start))
+    keep = np.r_[0:s0, s0 + 1:m]
+    # pi_j = sum_i pi_i P_ij for j != start, with pi_start = 1
+    A = (identity(m, format="csr") - sub).T.tocsr()[keep][:, keep]
+    b = sub[s0, :].toarray().ravel()[keep]
+    rest = splu(A.tocsc()).solve(b)
+    pi = np.zeros(m)
+    pi[s0] = 1.0
+    pi[keep] = rest
+    pi = np.clip(pi, 0.0, None)
     pi /= pi.sum()
     rr, dd = r[policy, rows][reach], d[policy, rows][reach]
     return {"rate": float(pi @ rr / (pi @ dd)), "reachable": int(m),
@@ -200,6 +210,7 @@ def main(argv=None) -> int:
     p.add_argument("--p-max", type=int, default=32)
     p.add_argument("--q-max", type=int, default=32)
     p.add_argument("--save-policy")
+    p.add_argument("--no-profile", action="store_true", help="skip the stationary-distribution check of g")
     p.add_argument("--exact-objects", type=int, default=0, help="also run the policy in the exact game")
     p.add_argument("--seed", type=int, default=1)
     args = p.parse_args(argv)
@@ -211,11 +222,12 @@ def main(argv=None) -> int:
     t0 = time.time()
     policy, g, it = solve_tables(P, r, d, legal, m.start, cur=m.initial_policy(), verbose=True)
     out.update({"g": g, "iterations": it, "solve_s": round(time.time() - t0, 1)})
-    t0 = time.time()
-    out["profile"] = profile(P, r, d, policy, m.start)
-    out["profile_s"] = round(time.time() - t0, 1)
     if args.save_policy:
         np.savez_compressed(args.save_policy, policy=policy.astype(np.int8), args=json.dumps(vars(args)))
+    if not args.no_profile:
+        t0 = time.time()
+        out["profile"] = profile(P, r, d, policy, m.start)
+        out["profile_s"] = round(time.time() - t0, 1)
     if args.exact_objects:
         for window in (False, True):
             t0 = time.time()
