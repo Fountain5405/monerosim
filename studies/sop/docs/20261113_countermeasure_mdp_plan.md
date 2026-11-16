@@ -1,6 +1,8 @@
 # Countermeasure MDPs: survey of the reference code and plan (2026-11-13)
 
-Status: current plan. It follows Rucknium's "Research directions for selfish
+Status: current plan. 2026-11-16: the code moved to
+<https://github.com/Fountain5405/pow-countermeasure-mdp> (GPL-3.0); code paths
+below (`studies/sop/countermeasures/...`) refer to monerosim at `e093a4d7`. It follows Rucknium's "Research directions for selfish
 mining countermeasures in Monero"
 (<https://gist.github.com/Rucknium/0b6e94811099bfab44e84562621d8fe1>,
 2026-11-12). The owner adopted that gist as the study's direction on 2026-11-13.

@@ -4,8 +4,8 @@ Status as of 2026-11-15; paths are relative to the repository root. The study is
 active and works on main. Since 2026-11-13 it follows Rucknium's research
 directions (one MDP framework for all countermeasures, revenue and disruption
 objectives, reorg-depth output): plan and results in
-`studies/sop/docs/20261113_countermeasure_mdp_plan.md`. Nothing runs or is
-queued on any machine.
+`studies/sop/docs/20261113_countermeasure_mdp_plan.md`. The MDP code lives in
+<https://github.com/Fountain5405/pow-countermeasure-mdp> since 2026-11-16.
 
 The question: does Share-or-Perish (MRL #146) raise the hashrate a selfish
 miner needs to profit, and what does it cost honest miners? The full write-up,
