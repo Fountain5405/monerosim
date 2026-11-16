@@ -179,8 +179,21 @@ script `studies/sop/countermeasures/aumayr_btc_review.py`):
 | alpha | their value | reading |
 |---|---|---|
 | 0.25-0.40 (30 points) | inside our cap-30 [lower, upper], at most 0.0032 above the lower bound | a valid upper bound, close to the optimum |
-| 0.41-0.43 (5 of 9 points) | 0.002-0.04 above our cap-30 upper bound | a looser upper bound (their truncation award is larger) |
+| 0.41-0.43 (5 of 9 points) | 0.002-0.028 above our cap-30 upper bound | a looser upper bound (their truncation award is weighted twice) |
 | 0.44-0.45 (5 of 6 points) | our cap-30 lower bound + 0.1000 exactly | the second bisection hit its ceiling `rou + 0.1`: a search-range artefact, not a computed bound |
+
+Corrected 2026-11-16 after an independent review: the table said "0.002-0.04
+above our upper bound"; 0.04 (0.043 at alpha 0.43, gamma 0) is the gap to our
+*lower* bound, and the largest excess over the upper bound is 0.028 (alpha
+0.43, gamma 0.5). It also said their truncation award is "larger". The cause
+is that the award is weighted twice: in `SolveMDP.m` lines 29-44 the cap
+awards `mid1` and `mid3` already carry rou (SSZ's form), and
+`Wrou = (1-rou).*RsOut - rou.*RhOut` (line 46, `RhOut = 0` there) multiplies
+them by (1 - rou) again, which shrinks the penalty at the honest cap and
+loosens the bound. The review ran their code unmodified in Octave and got
+their `output.json` values to the printed digits, with the alpha 0.45 points
+at the ceiling. Zhang & Preneel's own `Results.xlsx` (NC, gamma 0.5, lmax 160)
+gives attacker share 0.7596 at alpha 0.45, inside our [0.7596, 0.7647].
 
 Their model is the same as ours: at the saturated points their value minus
 0.1 is their own lower bound, and it equals ours to 2e-5 (0.75891 against
