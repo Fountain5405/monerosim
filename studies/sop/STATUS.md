@@ -40,6 +40,15 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
   against it. A revenue-maximiser at gamma 0 causes 1.7e-3 such reorgs per
   block at alpha 0.35.
 
+- **SoP against a disruption attacker** (countermeasure MDPs, step 2). Reorgs
+  of 11+ blocks per block interval, attacker maximising them: at alpha 0.30 /
+  0.33 / 0.35, Nakamoto 3.1e-3 / 5.6e-3 / 7.8e-3 (one every 11 / 6 / 4.3 h),
+  SoP at most 3.3e-7 / 2.2e-6 / 8.3e-6 (one every 11 years / 1.7 years /
+  168 days) in a model that overstates the attack. At 0.45 the cut shrinks to
+  4-9x (SoP 2.9e-3 to 5.8e-3, Nakamoto 2.6e-2). For 3-block reorgs the model
+  is too loose (it ignores SoP's 32-object window): SoP 5.0e-5 to 3.5e-3
+  against Nakamoto 4.3e-2 at 0.33.
+
 ## Limits
 
 - The d-sweep cells are one seed each; the attacker-side ones sit inside the

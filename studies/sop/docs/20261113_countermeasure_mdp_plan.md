@@ -193,3 +193,76 @@ for like (cap-30 lower bounds), Bitcoin 0.7589 against PRS 0.6901 (R 6, k 6)
 is a gap of 0.069, not the plotted 0.169. PRS still beats Nakamoto there;
 the margin is smaller. Below alpha 0.41 their Bitcoin curve is accurate to
 0.003.
+
+## Step 2: SoP against Nakamoto, disruption (2026-11-16)
+
+Code: `studies/sop/countermeasures/sop_walk.py` (the SoP model),
+`howard.py` (the solver). Data:
+`studies/sop/data/countermeasures/disruption_howard_20261116/` (lithium,
+exact average-reward policy iteration, 4 BLAS threads).
+
+**The SoP walk model.** The exact SoP MDP (`sop_mdp.py`) stops at 4 blocks
+a side. On its own rules the attacker's object lead x = D + pa - ph moves +1
+per attacker object and -1 per honest object, and past the window a reveal is
+accepted iff x - pa > 0 (checked over 200k random events). For disruption the
+state (h up to the threshold, a >= 1, x, pa) is enough: 251k states. Three
+departures: the window is ignored and the honest pending shares are dropped
+when a race restarts (both favour the attacker); shares past 64 pending and
+objects past a lead of 80 are discarded (against it). So the walk optimum
+overstates the attack; running its policy through `sop_mdp.py`'s exact rules
+gives the rate of a policy that is legal in the exact game.
+
+**Solver.** PTO through mdptoolbox-roi misreports tiny rates: its sparse
+policy evaluation runs Krylov solvers at rtol 1e-7 on an ill-conditioned
+system, and policy iteration stops once values change by less than epsilon.
+At alpha 0.25 PTO reported 3.4e-13 for a policy whose exact rate is 1.34e-8
+(stationary distribution by sparse LU, and a renewal-reward check by LU and by
+monotone iteration, all three 1.3386e-8). `howard.py` solves each policy's
+equations exactly and stops only when the policy stops changing. It matches
+SSZ (0.370754) and PTO wherever PTO's values are large; warm-started from
+PTO's policies it changed no rate, so PTO's policies were optimal and only
+its low-rate values were wrong.
+
+**Results.** Reorgs of 11+ blocks (deeper than the 10-block lock) per block
+interval, at the network's full hashrate (2 minutes per interval at Monero's
+target). Nakamoto at cap 80; SoP with w = 16 (MRL #146's parameters).
+
+| alpha | Nakamoto, gamma 0 | Nakamoto, gamma 0.5 | SoP walk (overstates) | SoP exact game, walk policy (legal) | Nakamoto / SoP walk |
+|---|---|---|---|---|---|
+| 0.25 | 8.48e-4 (1 per 39 h) | 1.02e-3 | 1.34e-8 (1 per 280 years) | - | 63,000 |
+| 0.30 | 3.08e-3 (1 per 11 h) | 3.51e-3 | 3.30e-7 (1 per 11 years) | - | 9,300 |
+| 0.33 | 5.58e-3 (1 per 6 h) | 6.22e-3 | 2.24e-6 (1 per 1.7 years) | - | 2,500 |
+| 0.35 | 7.82e-3 (1 per 4.3 h) | 8.63e-3 | 8.26e-6 (1 per 168 days) | - | 950 |
+| 0.40 | 1.55e-2 (1 per 2.2 h) | 1.68e-2 | 2.51e-4 (1 per 5.5 days) | 3.2e-5 (40 events) | 62 |
+| 0.45 | 2.57e-2 (1 per 78 min) | 2.79e-2 | 5.82e-3 (1 per 5.7 h) | 2.91e-3 (3,643 events) | 4.4 |
+
+Exact-game rates come from 20 M objects (1.25 M block intervals) each; at
+alpha 0.35 and below the expected count is below one, so none was run.
+
+Reading:
+- **SoP cuts deep reorgs by orders of magnitude at Qubic's scale.** At alpha
+  0.30-0.35, against an attacker who wants nothing but reorgs past the lock,
+  SoP moves the rate from one every 4-11 hours to one every half-year to
+  decade, even in the model that overstates the attack. The reason is the
+  finer work unit: a reorg of 11 blocks is a race of about 350 objects instead
+  of 22 blocks, and a minority's chance of leading such a race falls
+  exponentially with its length.
+- **The protection shrinks fast as alpha nears 0.5.** At 0.45 SoP leaves one
+  deep reorg every 6-11 hours (between the exact-game policy and the walk
+  optimum), 4-9 times fewer than Nakamoto. The object walk's drift is
+  1 - 2 alpha per object, so long races stop being rare.
+- **The two SoP columns still differ by 2-8x at 0.40-0.45.** The walk model's
+  favours (no window, no honest pending at a restart) are worth that much. A
+  tighter model needs the honest pending at restart; the window matters
+  little at 11+ blocks.
+
+**MRL #146's own example, a 3-block reorg at alpha 0.33.** Nakamoto: 4.33e-2
+per block interval (one every 23 intervals, about 46 minutes: the issue's
+"hourly"). SoP: between 5.0e-5 (the walk policy in the exact game, 63 events;
+one every 28 days) and 3.54e-3 (the walk optimum). The 70-fold gap is the
+32-object window, which the walk model ignores and which binds for short
+races, so for shallow reorgs the walk model is too loose to test the issue's
+"~0.06% per attack". It needs the window first.
+
+Model limits: one attacker, instant propagation within each side, constant
+hashrates, no difficulty adjustment, no ties under SoP (Model B).

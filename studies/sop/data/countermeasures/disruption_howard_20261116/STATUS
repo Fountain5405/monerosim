@@ -1,0 +1,21 @@
+nak_a0.25_g0_d11 exit 0
+nak_a0.25_g0.5_d11 exit 0
+nak_a0.30_g0_d11 exit 0
+nak_a0.30_g0.5_d11 exit 0
+nak_a0.33_g0_d11 exit 0
+nak_a0.33_g0.5_d11 exit 0
+nak_a0.35_g0_d11 exit 0
+nak_a0.35_g0.5_d11 exit 0
+nak_a0.40_g0_d11 exit 0
+nak_a0.40_g0.5_d11 exit 0
+nak_a0.45_g0_d11 exit 0
+nak_a0.45_g0.5_d11 exit 0
+nak_a0.33_g0_d3 exit 0
+sop_a033_d3 exit 0
+sop_a035_d11 exit 0
+sop_a040_d11 exit 0
+sop_a045_d11 exit 0
+sop_a030_d11 exit 0
+sop_a033_d11 exit 0
+sop_a025_d11 exit 0
+DONE
