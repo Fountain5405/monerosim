@@ -70,16 +70,16 @@ def evaluate(P_pi, r_pi, d_pi, start) -> Tuple[float, np.ndarray]:
     return g, h
 
 
-def solve_average(model, policy0: Optional[tuple] = None, max_iter: int = 200, verbose: bool = False):
-    """Optimal policy (a tuple over all states, final included), its g, and the iterations."""
+def solve_tables(P, r, d, legal, start, cur=None, max_iter: int = 200, verbose: bool = False):
+    """Howard on explicit tables: P[a] (n x n csr), r[a], d[a], legal[a] (length n), start index.
+
+    Returns (policy as an int array over the n states, g, iterations). `cur`
+    is the initial policy (an int array); default the first legal action.
+    Every policy visited must be unichain.
+    """
     t0 = time.time()
-    mdp, keep, P, r, d, legal, start = _tables(model)
     na, n = r.shape
-    if policy0 is None:
-        # start from the first legal action (Hold/Wait-like actions come first in the enums)
-        cur = np.argmax(legal, axis=0)
-    else:
-        cur = np.asarray(policy0)[keep]
+    cur = np.argmax(legal, axis=0) if cur is None else np.asarray(cur).copy()
     if not legal[cur, np.arange(n)].all():
         raise ValueError("the initial policy takes an illegal action")
     rows = np.arange(n)
@@ -100,6 +100,14 @@ def solve_average(model, policy0: Optional[tuple] = None, max_iter: int = 200, v
         if not improve.any():
             break
         cur = np.where(improve, Q.argmax(axis=0), cur)
+    return cur, g, it
+
+
+def solve_average(model, policy0: Optional[tuple] = None, max_iter: int = 200, verbose: bool = False):
+    """Optimal policy of a pto model (a tuple over all states, final included), its g, and the iterations."""
+    mdp, keep, P, r, d, legal, start = _tables(model)
+    cur = None if policy0 is None else np.asarray(policy0)[keep]
+    cur, g, it = solve_tables(P, r, d, legal, start, cur=cur, max_iter=max_iter, verbose=verbose)
     full = np.zeros(mdp.num_of_states, dtype=int)
     full[keep] = cur
     full[mdp.final_state_index] = 0
