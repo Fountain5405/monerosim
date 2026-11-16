@@ -8,6 +8,11 @@ networkx and pymdptoolbox-roi, which the repo venv lacks.
   python -m studies.sop.countermeasures.solve nakamoto --alpha 0.35 --gamma 0.5 --max-fork 60 \
       --objective disruption --min-depth 11
   python -m studies.sop.countermeasures.solve nakamoto --alpha 0.35 --gamma 0 --policy sm1 --mc-steps 2000000
+  python -m studies.sop.countermeasures.solve sop --alpha 0.40 --objective disruption --exact-objects 20000000
+
+`sop` is the SoP walk model (sop_walk.py): disruption only, rates per block
+interval; --exact-objects also runs the optimal policy through the exact SoP
+game (sop_mdp.py's rules) for a rate that is legal there.
 """
 from __future__ import annotations
 
@@ -19,14 +24,18 @@ import time
 
 from .nakamoto import NakamotoModel
 from .reorgs import OBJECTIVES, WEIGHTS, reorg_profile, simulate_profile
+from .sop_walk import SoPWalkModel, exact_rate
 
-PROTOCOLS = {"nakamoto": NakamotoModel}
+PROTOCOLS = {"nakamoto": NakamotoModel, "sop": SoPWalkModel}
 
 
 def build_model(args: argparse.Namespace):
     if args.protocol == "nakamoto":
         return NakamotoModel(args.alpha, args.gamma, args.max_fork, objective=args.objective,
-                             min_depth=args.min_depth, weight=args.weight)
+                             min_depth=args.min_depth, weight=args.weight, normalization=args.normalization)
+    if args.protocol == "sop":
+        return SoPWalkModel(args.alpha, w=args.w, min_depth=args.min_depth, x_min=args.x_min, x_max=args.x_max,
+                            p_max=args.p_max, objective=args.objective)
     raise ValueError(f"unknown protocol {args.protocol}")
 
 
@@ -57,6 +66,14 @@ def main(argv=None) -> int:
     p.add_argument("--min-depth", type=int, default=11,
                    help="shallowest reorg the disruption objective counts (default 11: deeper than the 10-block lock)")
     p.add_argument("--weight", choices=WEIGHTS, default="count")
+    p.add_argument("--normalization", choices=("main_chain", "time"), default="main_chain",
+                   help="nakamoto: rates per main-chain block or per block interval")
+    p.add_argument("--w", type=int, default=16, help="sop: objects per block")
+    p.add_argument("--x-min", type=int, default=-80, help="sop: walk floor")
+    p.add_argument("--x-max", type=int, default=80, help="sop: walk ceiling")
+    p.add_argument("--p-max", type=int, default=64, help="sop: attacker pending-share cap")
+    p.add_argument("--exact-objects", type=int, default=0,
+                   help="sop: simulate the optimal policy in the exact SoP game for this many objects")
     p.add_argument("--policy", choices=("optimal", "honest", "sm1"), default="optimal")
     p.add_argument("--solver", choices=("pto", "osm"), default="pto")
     p.add_argument("--horizon", type=int, default=10 ** 5, help="PTO expected horizon in blocks")
@@ -68,14 +85,18 @@ def main(argv=None) -> int:
     args = p.parse_args(argv)
 
     model = build_model(args)
-    out = {"protocol": args.protocol, "alpha": args.alpha, "gamma": args.gamma,
+    out = {"protocol": args.protocol, "model": repr(model), "alpha": args.alpha, "gamma": args.gamma,
            "max_fork": args.max_fork, "objective": args.objective, "min_depth": args.min_depth,
-           "weight": args.weight, "policy": args.policy, "states": model.state_space.size}
+           "weight": args.weight, "policy": args.policy, "states": model.state_space.size,
+           "unit": "block interval" if args.protocol == "sop" or args.normalization == "time"
+           else "main-chain block"}
     t0 = time.time()
     if args.policy == "optimal":
         policy, value, iterations = solve(model, args.solver, args.horizon, args.epsilon, args.max_iter)
         out.update({"solver": args.solver, "horizon": args.horizon, "value": value,
                     "iterations": iterations})
+    elif args.protocol != "nakamoto":
+        raise ValueError("only the optimal policy is defined for this protocol")
     elif args.policy == "honest":
         policy = model.build_honest_policy()
     else:
@@ -90,6 +111,12 @@ def main(argv=None) -> int:
         out["mc"] = simulate_profile(model, policy, args.mc_steps, seed=args.seed,
                                      max_report_depth=args.max_report_depth)
         out["mc_s"] = round(time.time() - t0, 1)
+    if args.exact_objects:
+        if args.protocol != "sop":
+            raise ValueError("--exact-objects applies to sop")
+        t0 = time.time()
+        out["exact"] = exact_rate(model, policy, args.exact_objects, seed=args.seed)
+        out["exact_s"] = round(time.time() - t0, 1)
     out["honest_value"] = model.get_honest_revenue()
     json.dump(out, sys.stdout)
     sys.stdout.write("\n")

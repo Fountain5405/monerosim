@@ -13,6 +13,11 @@ Reorgs:
 - Active fork, an honest miner on the honest branch (prob. (1-gamma)(1-alpha)):
   the gamma share that followed the attacker's h published blocks drops them
   (minority, depth h; none when gamma is 0).
+
+normalization "main_chain" (pto's): the difficulty contribution is the
+blocks a transition adds to the main chain, so rates are per main-chain block.
+normalization "time": every mined block contributes 1, so rates are per block
+interval (comparable with the SoP walk model, which counts objects / w).
 """
 from __future__ import annotations
 
@@ -25,17 +30,20 @@ from .vendor.blockchain_mdps.base.blockchain_model import BlockchainModel
 
 class NakamotoModel(TaggedModel, BitcoinModel):
     def __init__(self, alpha: float, gamma: float, max_fork: int, objective: str = "revenue",
-                 min_depth: int = 11, weight: str = "count"):
+                 min_depth: int = 11, weight: str = "count", normalization: str = "main_chain"):
+        if normalization not in ("main_chain", "time"):
+            raise ValueError("normalization must be main_chain or time")
+        self.normalization = normalization
         self.init_objective(objective, min_depth, weight)
         BitcoinModel.__init__(self, alpha, gamma, max_fork)
 
     def __repr__(self) -> str:
         return (f"{self.__class__.__name__}({self.alpha}, {self.gamma}, {self.max_fork}, "
-                f"{self.objective}, {self.min_depth}, {self.weight})")
+                f"{self.objective}, {self.min_depth}, {self.weight}, {self.normalization})")
 
     def __reduce__(self) -> Tuple[type, tuple]:
         return self.__class__, (self.alpha, self.gamma, self.max_fork, self.objective,
-                                self.min_depth, self.weight)
+                                self.min_depth, self.weight, self.normalization)
 
     # The body follows BitcoinModel.get_state_transitions line for line.
     def get_tagged_transitions(self, state: BlockchainModel.State, action: BlockchainModel.Action,
@@ -85,4 +93,9 @@ class NakamotoModel(TaggedModel, BitcoinModel):
             else:
                 transitions.add(self.final_state, probability=1, reward=self.error_penalty)
 
+        if self.normalization == "time":
+            mined = action is self.Action.Wait
+            for next_state in transitions.difficulty_contributions:
+                transitions.difficulty_contributions[next_state] = (
+                    1.0 if mined and next_state != self.final_state else 0.0)
         return transitions
