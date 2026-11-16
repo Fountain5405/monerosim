@@ -268,3 +268,50 @@ races, so for shallow reorgs the walk model is too loose to test the issue's
 
 Model limits: one attacker, instant propagation within each side, constant
 hashrates, no difficulty adjustment, no ties under SoP (Model B).
+
+## Step 2b: the tight SoP model (2026-11-16)
+
+Code: `sop_tight.py` (now in pow-countermeasure-mdp, `pcmdp/sop_tight.py`).
+Data: `studies/sop/data/countermeasures/tight_20261116/` (lithium, Howard,
+one solve at a time, about 14 GB peak; the `.json` files carry Howard's
+iteration log before the result line).
+
+**Why.** Running the walk-optimal policy in the exact SoP game with each of the
+walk model's favours switched off in turn (same events per variant): at alpha
+0.45 exact 2.875e-3, without the window 2.875e-3, without carrying the honest
+pending shares into the next race 6.27e-3; at 0.40 (100 M objects) 3.34e-5 /
+3.36e-5 / 2.66e-4. At 11+ blocks the window does not bind; restarting at
+x = -ph is the whole gap. The tight model keeps ph (state h, a1, x, pa, ph;
+restarts as in the exact game) and leaves out only the window. Caps: x in
+[-40, 40], pending 24 (1.2 M states); 2.5 M states ran out of memory.
+
+**Check.** Each policy run in the exact, uncapped SoP game (`sop_rules`, with
+and without the window: identical counts at every point): alpha 0.45, 3.865e-3
+against the model's 3.836e-3 (4,831 events, 20 M objects); 0.40, 6.19e-5
+against 6.33e-5 (387 events, 100 M objects); 0.35, 6.4e-7 against 4.0e-7 (4
+events). At 0.45 the stationary profile equals g to 1e-14; at 0.30 the profile
+check ran out of memory after Howard had converged (38 iterations, the last
+with no change).
+
+**Results.** Reorgs of 11+ blocks per block interval (2 minutes at Monero's
+target):
+
+| alpha | Nakamoto, gamma 0 | SoP, tight model | Nakamoto / SoP |
+|---|---|---|---|
+| 0.25 | 8.48e-4 (1 per 39 h) | 1.12e-11 (1 per ~340,000 years) | 7.6e7 |
+| 0.30 | 3.08e-3 (1 per 11 h) | 2.13e-9 (1 per ~1,800 years) | 1.4e6 |
+| 0.33 | 5.58e-3 (1 per 6 h) | 4.95e-8 (1 per ~77 years) | 1.1e5 |
+| 0.35 | 7.82e-3 (1 per 4.3 h) | 4.02e-7 (1 per ~9.5 years) | 1.9e4 |
+| 0.40 | 1.55e-2 (1 per 2.2 h) | 6.33e-5 (1 per ~22 days) | 245 |
+| 0.45 | 2.57e-2 (1 per 78 min) | 3.84e-3 (1 per 8.7 h) | 6.7 |
+
+These supersede the walk-model column of the step 2 table, which overstated
+the attack 1,200-fold at 0.25, 45-fold at 0.33, 4-fold at 0.40 and 1.5-fold
+at 0.45. At 0.35 and below the rates cannot be checked by simulation; the
+model's departures (no window, pending caps that mostly favour the attacker)
+make them upper estimates.
+
+Reading: against an attacker who wants reorgs past the 10-block lock, SoP
+turns Nakamoto's every-few-hours into decades or more at Qubic's 0.25-0.38,
+and still gives a 6.7-fold cut at 0.45. The 3-block case of MRL #146's own
+example still needs the window model.

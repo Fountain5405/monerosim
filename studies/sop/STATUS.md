@@ -40,14 +40,14 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
   against it. A revenue-maximiser at gamma 0 causes 1.7e-3 such reorgs per
   block at alpha 0.35.
 
-- **SoP against a disruption attacker** (countermeasure MDPs, step 2). Reorgs
-  of 11+ blocks per block interval, attacker maximising them: at alpha 0.30 /
-  0.33 / 0.35, Nakamoto 3.1e-3 / 5.6e-3 / 7.8e-3 (one every 11 / 6 / 4.3 h),
-  SoP at most 3.3e-7 / 2.2e-6 / 8.3e-6 (one every 11 years / 1.7 years /
-  168 days) in a model that overstates the attack. At 0.45 the cut shrinks to
-  4-9x (SoP 2.9e-3 to 5.8e-3, Nakamoto 2.6e-2). For 3-block reorgs the model
-  is too loose (it ignores SoP's 32-object window): SoP 5.0e-5 to 3.5e-3
-  against Nakamoto 4.3e-2 at 0.33.
+- **SoP against a disruption attacker** (countermeasure MDPs, step 2b, tight
+  model; its policies agree with the exact SoP game within noise at 0.40 and
+  0.45). Reorgs of 11+ blocks per block interval, attacker maximising them:
+  Nakamoto (gamma 0) 8.5e-4 / 3.1e-3 / 5.6e-3 / 7.8e-3 / 1.5e-2 / 2.6e-2 at
+  alpha 0.25 / 0.30 / 0.33 / 0.35 / 0.40 / 0.45 (one every 39 h ... 78 min);
+  SoP 1.1e-11 / 2.1e-9 / 4.95e-8 / 4.0e-7 / 6.3e-5 / 3.8e-3 (one every
+  ~340,000 years / 1,800 years / 77 years / 9.5 years / 22 days / 8.7 h).
+  The 3-block case (MRL #146's example) needs the window model.
 
 ## Limits
 
