@@ -49,6 +49,18 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
   ~340,000 years / 1,800 years / 77 years / 9.5 years / 22 days / 8.7 h).
   The 3-block case (MRL #146's example) needs the window model.
 
+- **Published baselines (2026-11-17, two independent reviews).** Run
+  unmodified, the authors' own code shows three errors. Aumayr et al.'s
+  Bitcoin baseline is a capped upper bound: it stores 0.8589 at alpha 0.45,
+  gamma 0.5, where the optimum is 0.7596. PRS still beats Bitcoin there, by
+  0.07 rather than 0.17. Zhang & Preneel's PoP threshold is 0.2640 in their
+  own model, not the 0.2500 in their paper. Their SHTB threshold is 0.0580,
+  not 0.0652; 0.0652 is where their script's tolerance first detects a
+  profit. pto's PTOSolver is unusable for rates below about 1e-6 per block,
+  so every disruption result here uses exact policy iteration (howard).
+  Details are under "Independent reviews" in
+  `studies/sop/docs/20261113_countermeasure_mdp_plan.md`.
+
 ## Limits
 
 - The d-sweep cells are one seed each; the attacker-side ones sit inside the

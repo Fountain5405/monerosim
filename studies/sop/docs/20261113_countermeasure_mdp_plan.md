@@ -148,7 +148,8 @@ hashrate, one attacker, no difficulty adjustment inside a race.
 **Sources.** Zhang & Preneel 2019 (the "Lay Down the Common Metrics" PDF
 shipped in Aumayr's repo) describes the reward-splitting MDP in full
 (Appendix D), so RS can be built from published text. It gives PoP only as
-a figure, plus two exact values: PoP's profitable threshold 0.2500 (k = 3,
+a figure, plus two exact values: PoP's profitable threshold 0.2500 [2026-11-17: 0.2640 in their own
+model, see "Independent reviews" at the end] (k = 3,
 race length 30) and Q(0.3901) = 0.5372 for both PoP and NC (gamma 0), the
 point where PoP starts to beat NC. The PoP paper itself (CT-RSA 2017) is not
 freely available (Springer paywall; the institutional copy is embargoed).
@@ -339,3 +340,81 @@ Reading: against an attacker who wants reorgs past the 10-block lock, SoP
 turns Nakamoto's every-few-hours into decades or more at Qubic's 0.25-0.38,
 and still gives a 6.7-fold cut at 0.45. The 3-block case of MRL #146's own
 example still needs the window model.
+
+## Independent reviews of the disagreements with published work (2026-11-17)
+
+Two reviews ran the authors' MATLAB unmodified in Octave on box90. Their
+artefacts are in `studies/sop/data/countermeasures/reviews_20261117/`.
+
+- **`adversarial/`** was given our four claims and asked to break them.
+- **`blind/`** (see `REPORT.md`) was given only the papers, the reference code
+  and a copy of pcmdp. Our docs, git history, conclusions and the first
+  review's files were left out. It was asked three neutral questions.
+
+The two reviews agree on every point.
+
+**Aumayr et al.'s Bitcoin baseline** (their Fig. 2,
+`incentive_compatibility/Bitcoin/output.json`). The stored value is the
+result of the upper-bound bisection, capped at lower bound + 0.1. Their
+`Init.m` returns `lowRou`, which `SolveMDP.m`'s second loop overwrites.
+Zhang & Preneel's original kept the two bounds apart. RS, PRS and Fruitchains
+return lower bounds, so the figure compares a capped upper bound for Bitcoin
+with lower bounds for everything else.
+
+At alpha 0.45 the cap is hit for every gamma. At gamma 0.5 the optimum is
+0.5725 (alpha 0.40) and 0.7596 (0.45), against 0.8589 stored. These match
+Zhang & Preneel's `Results.xlsx` (lmax 160) and our Howard solve (max_fork 80).
+Bitcoin is overstated by 0.03-0.10 for alpha >= 0.42, and the kink at
+0.43-0.44 is an artefact. The ordering PRS < RS < Bitcoin survives (0.690,
+0.701, 0.760 at 0.45); the Bitcoin-PRS gap there is 0.07, not 0.17.
+
+**Zhang & Preneel Table II, PoP (k = 3).** The paper gives PT 0.2500. In their
+own model the attacker's optimal revenue first exceeds alpha at 0.2640
+(maxB 12-20, exact ratio policy iteration on their exported matrices). Their
+shipped `Threshold.m` outputs 0.2642 and cannot output 0.25: its first probe,
+0.2625, is not profitable. Their other PoP numbers do reproduce: the excess is
+0.0160 / 0.0442 / 0.0808 at alpha 0.30 / 0.35 / 0.40, against 0.016 / 0.0443 /
+0.082 in the paper. The most likely source of 0.25 is the last point of their
+0.05 alpha grid with ideal chain quality, but that cannot be proven. Our
+`pop.py` gives PT in (0.2640, 0.2641] and agrees with their model to 4e-6.
+
+**Zhang & Preneel Table II, SHTB (15 regions).** The paper gives 0.0652 and
+labels it an upper bound. Their threshold script reproduces it to within its
+noise (0.0652 in the first review, 0.0653-0.0654 in the blind one). The exact
+PT of their model is 0.0580: lmax 10 and 20 agree to 7 digits, and at alpha
+0.10 the excess is 5.5e-4 at lmax 10, 20 and 40. The script's test needs the
+excess to clear about 1e-4 of bisection noise, but the excess at 0.065 is only
+4.8e-5. PT scales about as 1/regions (10 regions 0.0818, 5 regions 0.1387).
+Our SHTB port agrees with their model to 1e-12.
+
+**pto's PTOSolver on mdptoolbox-roi** is not usable for rates below about 1e-6
+per block. It returns policies that take illegal actions, or values near zero
+(1.67e-16 against a true 6.30e-10; 3.4e-13 against 1.34e-8 in our SoP case).
+There are three mechanisms:
+
+- `pto_solver.py` zeroes transitions into the final state, so an illegal
+  action looks like a reward-0 termination;
+- policy iteration stops once span(V - Vprev) < epsilon, which holds as soon
+  as g*H < epsilon;
+- the sparse policy evaluation's Krylov solvers (rtol 1e-7) accept V near 0,
+  and three of the four break down silently before gmres "converges".
+
+Above that range PTO's policies were optimal, but its values run low by about
+10/H relative: 2e-5 to 9e-5 absolute in revenue at H = 1e5. Our `howard.py`
+values are exact to round-off (1e-13 in revenue, 5e-7 relative at a rate of
+6.5e-12), and a Bellman-residual check certifies its policies optimal.
+
+What this changes here:
+
+- **The 0.04 / "larger award" wording** above was corrected on 2026-11-16.
+- **The PoP threshold quoted from the paper** (0.2500) is 0.2640 in their
+  model.
+- **PTO values in this doc** (the Step 1 grid, the pto lower bounds in the
+  Aumayr review) carry the ~1e-4 relative low bias; no conclusion here
+  depends on that digit. Step 1's rates and shares are the stationary values
+  of PTO's policies, which the review found optimal at those rates.
+- **Not checked:** the other Table II entries (NC, UTB, UDTB), and the
+  subversion-gain and censorship numbers.
+
+During the blind review its SHTB job was killed twice by a loose `pkill -f`
+from another of our agents on the same account. It resumed from its bracket.
