@@ -48,6 +48,19 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
   SoP 1.1e-11 / 2.1e-9 / 4.95e-8 / 4.0e-7 / 6.3e-5 / 3.8e-3 (one every
   ~340,000 years / 1,800 years / 77 years / 9.5 years / 22 days / 8.7 h).
   The 3-block case (MRL #146's example) needs the window model.
+  Corrected 2026-11-17: these SoP rates use our patched daemon's acceptance
+  rule: a reveal that needs the attacker's own pending tip shares is
+  rejected. MRL #146's current text (2026-10-20) counts those shares. Under
+  the text's rule the tight model gives 7.6e-7 at alpha 0.33 (one every ~5
+  years, 15x more) and 5.2e-4 at 0.40 (one every ~2.7 days, 8x more). For
+  that 0.40 policy the exact game gives 3.3e-4 with the window and 6.7e-4
+  without it. The model's count variant is off by up to 27 % there, not yet
+  explained. tevador's own simulator (fixed stubborn attacker, gamma 0.5)
+  gives 3.9e-7 per block interval at depth 11, alpha 1/3: below our optimal
+  attacker, as it should be. Against Nakamoto, SoP still cuts these reorgs
+  ~7,000-fold at 0.33 and ~30-fold at 0.40, less than stated above. Details:
+  "SoP acceptance convention" in
+  `studies/sop/docs/20261113_countermeasure_mdp_plan.md`.
 
 - **Published baselines (2026-11-17, two independent reviews).** Run
   unmodified, the authors' own code shows three errors. Aumayr et al.'s

@@ -418,3 +418,61 @@ What this changes here:
 
 During the blind review its SHTB job was killed twice by a loose `pkill -f`
 from another of our agents on the same account. It resumed from its bracket.
+
+## SoP acceptance convention (2026-11-17)
+
+Our SoP models accept a reveal iff D > ph past the window. Here D is the
+attacker's object lead in blocks and shares and ph the honest pending tip
+shares; the attacker's own pending tip shares pa do not count. This is
+monerosim's `--own-pending ignore`, chosen because our patched daemon in the
+12-daemon sims rejects reveals that need them. MRL #146's text since
+2026-10-20 counts pool shares that extend a chain's tip under sop_objective,
+the attacker's pending shares included (`--own-pending count`, accept iff
+D + pa > ph). tevador's appendix simulator does the same (COUNT_TIP_SHARES).
+Every SoP rate above (Step 2, Step 2b, STATUS until 2026-11-17) is for
+"ignore", and the docs did not say so.
+
+pow-countermeasure-mdp's `sop_tight.py` now takes `--own-pending`. Results
+are reorgs of 11+ blocks per block interval, caps x +-40, pending 24; the
+"ignore" runs reproduce the published values:
+
+| alpha | ignore | count | count / ignore |
+|---|---|---|---|
+| 0.33 | 4.95e-8 (one per ~77 y) | 7.57e-7 (one per ~5 y) | 15.3 |
+| 0.40 | 6.33e-5 (one per ~22 d) | 5.23e-4 (one per ~2.7 d) | 8.3 |
+
+At alpha 0.40 we ran the "count" policy through the exact game (20 M
+objects). It gave 6.65e-4 without the window (831 events, 27 % above the
+model's g) and 3.26e-4 with it (408 events). Under "ignore" the model matched
+the exact game within noise. The 27 % gap under "count" is not explained yet:
+for the same policy, model and game should agree without the window.
+
+tevador's simulator, run verbatim (MIT, from the #146 appendix): alpha 1/3,
+fixed attacker with stubbornness 10, gamma 0.5 (his GAMMA is the honest
+chain's chance of winning a tie), 80 s blocks. Rates per block interval:
+
+| setting | events | rate | one per |
+|---|---|---|---|
+| his defaults (depth 10+) | 42 | 1.48e-6 | 1.7 y |
+| depth 11+ | 22 | 3.87e-7 | 6.5 y |
+| depth 11+, his ties go to the attacker | 38 | 6.69e-7 | 3.8 y |
+
+His time unit is an 80 s block. He leaves the attacker out of difficulty, so
+his "one per" values are not in 120 s Monero blocks.
+
+Most of the 17-fold gap between his published figure and ours comes from
+two things. The depth threshold, 10 against 11, accounts for about 4x in his
+simulator. Counting the attacker's own pending shares accounts for about 15x
+in our model. With both aligned, our optimal attacker (7.6e-7) sits about
+2x above his fixed one (3.9e-7) at depth 11.
+
+Still open:
+- the 27 % model-game gap under "count";
+- the window's effect at alpha 0.33, which is too rare to simulate;
+- which convention SoP should be scored by. The rule text says "count"; our
+  daemon patch implements "ignore", and changing the patch is a separate
+  question.
+
+Neither our models nor tevador's include propagation delay. An independent
+event simulator on #146 shows delay multiplies SoP's 10+ rate 4.5-fold at
+1 s and 81-fold at 3 s (`pow-countermeasure-mdp/docs/references/monero.md`).
