@@ -216,6 +216,17 @@ Code: `studies/sop/countermeasures/sop_walk.py` (the SoP model),
 `studies/sop/data/countermeasures/disruption_howard_20261116/` (lithium,
 exact average-reward policy iteration, 4 BLAS threads).
 
+Note 2026-11-17: in these files `profile.revenue` is not the attacker's
+share. The profile divided the attacker's main-chain blocks by the model's
+difficulty, which under normalization "time" is block intervals, so for the
+`nak_*` files it is attacker main-chain blocks per block interval (0.069 at
+alpha 0.33, gamma 0). The `sop_*` files come from the walk model, which has no
+revenue objective, and the field means nothing there. Nothing in this doc
+quotes it; the reorg rates are per block interval as stated. The Step 1
+"chain share" column comes from the per-main-chain-block grid, where the
+field is the share. pow-countermeasure-mdp's profile reports the share for
+every model from 2026-11-17.
+
 **The SoP walk model.** The exact SoP MDP (`sop_mdp.py`) stops at 4 blocks
 a side. On its own rules the attacker's object lead x = D + pa - ph moves +1
 per attacker object and -1 per honest object, and past the window a reveal is
