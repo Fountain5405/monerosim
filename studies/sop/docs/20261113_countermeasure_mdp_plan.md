@@ -469,9 +469,13 @@ in our model. With both aligned, our optimal attacker (7.6e-7) sits about
 Still open:
 - the 27 % model-game gap under "count";
 - the window's effect at alpha 0.33, which is too rare to simulate;
-- which convention SoP should be scored by. The rule text says "count"; our
-  daemon patch implements "ignore", and changing the patch is a separate
-  question.
+- ~~which convention SoP should be scored by~~ Decided 2026-11-17 by the
+  owner: Monero behaviour follows canonical monerod (monero-project/monero),
+  selfish-mining conventions follow the published literature, and SoP follows
+  tevador's MRL #146 text. SoP is therefore scored with "count"; "ignore" (our
+  daemon patch) is reported only as a labelled variant. Canonical monerod's
+  spend lock is 10 blocks (`CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE`, master and
+  release-v0.18), so the disruption threshold stays at 11+ blocks.
 
 Neither our models nor tevador's include propagation delay. An independent
 event simulator on #146 shows delay multiplies SoP's 10+ rate 4.5-fold at

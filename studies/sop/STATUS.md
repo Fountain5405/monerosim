@@ -58,7 +58,9 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
   explained. tevador's own simulator (fixed stubborn attacker, gamma 0.5)
   gives 3.9e-7 per block interval at depth 11, alpha 1/3: below our optimal
   attacker, as it should be. Against Nakamoto, SoP still cuts these reorgs
-  ~7,000-fold at 0.33 and ~30-fold at 0.40, less than stated above. Details:
+  ~7,000-fold at 0.33 and ~30-fold at 0.40, less than stated above. From
+  2026-11-17 SoP is scored by #146's text ("count"; owner: canonical monerod,
+  the published literature and #146 are the references). Details:
   "SoP acceptance convention" in
   `studies/sop/docs/20261113_countermeasure_mdp_plan.md`.
 
