@@ -98,7 +98,8 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
   - Subchains is profitable at every alpha and Fruitchains from alpha 0.10.
   - The tie-breaking rules (UTB, UDTB, SHTB) raise deep reorgs over
     Nakamoto at gamma 0, by 49-52 % at alpha 0.25, 26-29 % at 0.33 and
-    8-14 % at 0.45; they are within 10 % of Nakamoto at gamma 1. (Corrected
+    8-14 % at 0.45; at alpha 0.25-0.45 they are within 10 % of Nakamoto at
+    gamma 1. (Corrected
     2026-11-18: this said 17-52 %, which holds only for alpha 0.25-0.38.)
   - Subchains and PoP cut deep reorgs 2.4-7x at alpha 0.25-0.33.
 - **The revenue-optimal attacker's deep reorgs (second stage, 2026-11-18).**
