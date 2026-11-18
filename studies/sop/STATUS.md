@@ -134,8 +134,8 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
   "SoP acceptance convention" in
   `studies/sop/docs/20261113_countermeasure_mdp_plan.md`.
 
-- **Published baselines (2026-11-17, two separate re-checks on our side,
-  one blind; not external reviews).** Three published numbers differ from
+- **Published baselines (2026-11-17, two separate re-checks run by AI
+  agents (Claude) on our side, one blind; not external reviews).** Three published numbers differ from
   what the authors' own models give when solved exactly. Aumayr et al.'s
   Bitcoin baseline is a capped upper bound: their code stores 0.8589 at
   alpha 0.45, gamma 0.5, where the exact value is 0.7596. PRS still beats

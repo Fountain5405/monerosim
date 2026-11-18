@@ -357,8 +357,8 @@ artefacts are in `studies/sop/data/countermeasures/reviews_20261117/`.
 
 The two reviews agree on every point.
 
-[2026-11-18: both reviews were run on our side, by our own agents; they are
-"independent" of the work they check, not external reviews. The blind one
+[2026-11-18: both reviews were done by AI agents (Claude) that we ran on our
+side; they are "independent" of the work they check, not external reviews. The blind one
 added print statements and changed the toolbox path, nothing else. Two of
 the three numbers below do come out of the authors' code as published
 (Aumayr's 0.8589, Zhang & Preneel's SHTB 0.0652); what differs is the exact

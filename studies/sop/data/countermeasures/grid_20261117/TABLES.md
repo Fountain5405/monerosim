@@ -120,7 +120,7 @@ A share above alpha is profitable. `=` marks the honest policy (share = alpha wi
 
 ## Disruption: reorgs of 11+ blocks per block interval, disruption-optimal policy
 
-Each cell: rate (mean time between them at 120 s blocks; the attacker's share of main-chain blocks while doing so).
+Each cell: rate (mean time between them at 120 s blocks; the attacker's share of block rewards while doing so: of main-chain blocks, except under RS, PRS and Fruitchains, which also pay orphaned work).
 
 ### gamma 0
 
