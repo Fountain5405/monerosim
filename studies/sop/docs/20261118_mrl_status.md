@@ -3,9 +3,9 @@ Status (2026-11-18): current: the status report for the MRL meeting of 2026-11-1
 # Selfish-mining countermeasures for Monero: status for MRL (2026-11-18)
 
 **AI/LLM statement:** This report was drafted by an AI agent (Claude) from
-our results. A second AI agent fact-checked it against the data in two
-passes; a third pass, on the later rewording of sections 4, 5 and 7, is in
-progress, and the checklist in section 8 has not been fact-checked yet.
+our results. A second AI agent fact-checked it against the data in three
+passes, and its findings are applied. The checklist in section 8 has not
+been fact-checked yet.
 Fountain5405 reviewed it and approved its publication.
 
 Fountain5405. Code: <https://github.com/Fountain5405/pow-countermeasure-mdp>
@@ -135,10 +135,14 @@ Our earlier SoP models departed from #146's text in two places that matter
 at 11+ blocks.
 
 1. **The attacker's own pending tip shares.** Our earlier models did not
-   count them when the attacker reveals (a rule we had taken from our own
-   test implementation). #146's text and tevador's appendix simulator count
-   them.
-2. **Honest shares on the fork point.** Our attacker did not use them.
+   count them at the reveal. That followed our test daemon, whose fork
+   choice runs only when a block arrives: the timing tevador confirmed at
+   the 2026-10-21 MRL meeting. Shares published with the revealing block
+   arrive after it, so they cannot count for it. #146's scoring text and
+   tevador's appendix simulator count them. We now follow the text; which
+   reading is intended is worth settling.
+2. **Honest shares on the fork point.** Our MDP attacker did not use them
+   (the race-model search did).
    - Under #146's slot rule, an honest share mined on the fork point also
      fits the attacker's competing first block, if its slot there is free.
    - After giving up, the attacker adopts the honest tip together with that
@@ -147,8 +151,9 @@ at 11+ blocks.
 
 The corrected model is still a simplification of #146: ties go to the
 honest chain (the text picks at random), there is no propagation delay, and
-the window is left out. The first two make our SoP rates lower than #146 as
-written would give. The window has no effect at 11+ blocks where we could
+the window is left out. Ties to the honest chain make our rates lower
+than the text's random ties would. Zero delay likely makes them lower than
+a real network would give (section 7). The window has no effect at 11+ blocks where we could
 check it (alpha 0.38-0.48, below).
 
 Effect, in reorgs of 11+ blocks per block interval:
@@ -257,9 +262,10 @@ We have not contacted the authors yet.
   0.15, ..., 0.30, 0.33, 0.35, 0.38, 0.40, ....
 - **Not covered here:** our earlier network simulations of SoP (costs to
   slow honest miners, partial adoption) are in `studies/sop/STATUS.md`. They
-  ran our modified monerod, which does not match #146's text: its fork
-  choice does not count a revealing chain's own pending shares. Those
-  results are for that variant, not for #146.
+  ran our modified monerod, whose fork choice runs only when a block arrives
+  (section 4, first difference), so a revealing chain's own pending shares
+  never count. #146's scoring text counts them. Those results are for that
+  reading, not for the text as our models score it.
 
 ## 8. Checklist against Rucknium's research directions
 

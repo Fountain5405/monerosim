@@ -14,9 +14,12 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
 ## Current findings
 
 The Shadow results below (the 0.4635 threshold, network advantage, slow
-honest miners, partial adoption) ran our modified monerod, which does not
-match MRL #146's text: its fork choice does not count a revealing chain's
-own pending shares. They describe that variant, not #146. The MDP and
+honest miners, partial adoption) ran our modified monerod. Its fork choice
+runs only when a block arrives (the timing tevador confirmed at the
+2026-10-21 MRL meeting), so the pending shares a revealing chain publishes
+with its block never count for that decision. MRL #146's scoring text and
+tevador's simulator count them. These results describe that reading, not
+the text as our models now score it. The MDP and
 race-model results under #146's rules are marked as such.
 
 - **Threshold.** SoP raises the profitability threshold from 0.369 to 0.4635
@@ -87,8 +90,11 @@ race-model results under #146's rules are marked as such.
     - tevador's own attacker, evaluated in our model and in a per-object
       port of his simulator, agrees to 0.1-0.9 %.
     - The caps do not bind (2e-6).
-  - Our 12-daemon sims' attacker uses no honest shares, which is a weaker
-    attacker (2.4e-7 at 0.33, 1.4e-4 at 0.40).
+  - The model without the honest shares on the fork point (race-model
+    "Model B") is a weaker attacker (2.4e-7 at 0.33, 1.4e-4 at 0.40).
+    (Corrected 2026-11-18: this said our 12-daemon sims' attacker uses no
+    honest shares; the October threshold cells' attacker did,
+    `use_honest_shares: 'true'`.)
   - Details: "SoP: the attacker uses the honest shares on the fork point" in
     `studies/sop/docs/20261113_countermeasure_mdp_plan.md`.
 - **Every countermeasure, revenue and disruption (2026-11-18 grid, 804
@@ -164,12 +170,14 @@ race-model results under #146's rules are marked as such.
 - The adoption cells are 14-node networks.
 - How often real Monero nodes sit behind a run of late relays is not measured.
 - **The SoP revenue threshold under #146's rule is a race-model number
-  only** (0.456, 2026-11-18). Shadow cannot measure it until the daemon
-  implements #146's counting rule and an attacker that uses gossiped honest
-  shares.
+  only** (0.456, 2026-11-18). Shadow cannot measure it with our daemon:
+  its fork choice runs only when a block arrives, so the attacker's own
+  pending shares never count at a reveal.
   - The race-model search already gave the attacker the honest shares on
     the fork point (`equal_start`, `early_honest_shares`,
-    `positional_shares`); the Shadow sims' attacker had none.
+    `positional_shares`), and so did the October Shadow threshold cells'
+    attacker (`use_honest_shares: 'true'`). (Corrected 2026-11-18: this
+    said the Shadow attacker had none.)
   - Preset `20261020_146` fixes the race model's double counting of the
     published pending shares (as pcmdp 08fb4b4 did in the MDP). Preset
     `20261020` keeps it so that earlier results reproduce.
