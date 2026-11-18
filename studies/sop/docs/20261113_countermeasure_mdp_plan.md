@@ -318,8 +318,12 @@ events). At 0.45 the stationary profile equals g to 1e-14; at 0.30 the profile
 check ran out of memory after Howard had converged (38 iterations, the last
 with no change).
 
-**Results.** Reorgs of 11+ blocks per block interval (2 minutes at Monero's
-target):
+**Results.** [2026-11-18: SUPERSEDED for SoP as MRL #146 specifies it. These
+rates are for our patched daemon's rule with an attacker that cannot use the
+honest shares on the fork point. Under #146's rules SoP gives 3.7e-8 /
+8.9e-7 / 5.7e-6 / 2.0e-5 / 5.4e-4 / 9.3e-3 at the alphas below. See "SoP:
+the attacker uses the honest shares on the fork point" at the end.] Reorgs
+of 11+ blocks per block interval (2 minutes at Monero's target):
 
 | alpha | Nakamoto, gamma 0 | SoP, tight model | Nakamoto / SoP |
 |---|---|---|---|
@@ -441,6 +445,15 @@ are reorgs of 11+ blocks per block interval, caps x +-40, pending 24; the
 | 0.33 | 4.95e-8 (one per ~77 y) | 7.57e-7 (one per ~5 y) | 15.3 |
 | 0.40 | 6.33e-5 (one per ~22 d) | 5.23e-4 (one per ~2.7 d) | 8.3 |
 
+[2026-11-18: the "count" column double-counted the published pending shares
+(pending cap 24). Corrected and uncapped (x +-64, pending 64, pcmdp
+08fb4b4), "count" gives 2.384e-7 at 0.33, 1.4408e-4 at 0.40 and 5.5928e-3
+at 0.45, and "ignore" gives 6.676e-5 at 0.40, so the published 6.33e-5 was
+held down by its caps. All of these still leave out the honest shares on the
+fork point. Under #146's rules SoP gives 5.74e-6 at 0.33 and 5.40e-4 at
+0.40; see the last section. tevador's attacker, compared like for like, is
+there too.]
+
 At alpha 0.40 we ran the "count" policy through the exact game (20 M
 objects). It gave 6.65e-4 without the window (831 events, 27 % above the
 model's g) and 3.26e-4 with it (408 events). Under "ignore" the model matched
@@ -467,8 +480,14 @@ in our model. With both aligned, our optimal attacker (7.6e-7) sits about
 2x above his fixed one (3.9e-7) at depth 11.
 
 Still open:
-- the 27 % model-game gap under "count";
+- the 27 % model-game gap under "count"; [2026-11-17, resolved: both the
+  exact game and the model carried the published pending shares into the
+  next race and counted them twice. With that fixed (pcmdp 08fb4b4) the model
+  matches the game.]
 - the window's effect at alpha 0.33, which is too rare to simulate;
+  [2026-11-18: in the exact-game runs at alpha 0.38-0.48 under #146's rules
+  the window changed no decision (identical counts with and without it);
+  0.33 itself is still not simulated.]
 - ~~which convention SoP should be scored by~~ Decided 2026-11-17 by the
   owner: Monero behaviour follows canonical monerod (monero-project/monero),
   selfish-mining conventions follow the published literature, and SoP follows
@@ -480,3 +499,276 @@ Still open:
 Neither our models nor tevador's include propagation delay. An independent
 event simulator on #146 shows delay multiplies SoP's 10+ rate 4.5-fold at
 1 s and 81-fold at 3 s (`pow-countermeasure-mdp/docs/references/monero.md`).
+
+## Step 3: every protocol, revenue and disruption (2026-11-18)
+
+**Code and data.**
+- Code: pow-countermeasure-mdp `scripts/grid/` (`gen_20261117.sh`,
+  `run1.sh`, `tables.py`).
+- Data: `studies/sop/data/countermeasures/grid_20261117/`. `grid.jsonl` holds
+  one record per solve with its reorg-depth profile, `TABLES.md` every table,
+  and `README.md` the provenance and units.
+
+All 804 solves ran on a 1 TB box with Howard (exact policy iteration).
+
+**Grid.**
+- Protocols: Nakamoto, RS, PRS, Subchains, Fruitchains, UTB, UDTB, SHTB, PoP
+  and SoP.
+- Alpha 0.10-0.48 (12 points).
+- Gamma 0, 0.05, 0.5 and 1 where the protocol has one. Fruitchains' reference
+  model has only 0 and 1; UTB, UDTB, SHTB and PoP set ties by their own rule.
+- Three objectives:
+  - revenue, the attacker's share of main-chain blocks;
+  - disruption, majority reorgs of 11+ blocks per block interval;
+  - depth-weighted disruption, their summed depth.
+- Caps are the reference implementations': RS, PRS, Fruitchains and PoP 30,
+  Subchains 20, SHTB 40, UTB 80, Nakamoto and UDTB 160.
+- SoP is the tight model under MRL #146's rules (last section).
+
+**Checks.**
+- Revenue matches Zhang & Preneel at all 71 published points, to 8e-5
+  (their four-digit rounding):
+  - one minus their `Results.xlsx` chain quality (Fig. 2) for Nakamoto at
+    gamma 0, 0.5 and 1, and for UTB, UDTB, SHTB and PoP;
+  - their Table V for Subchains (ratio 2) at gamma 0, 0.5 and 1.
+- RS, PRS and Fruitchains match Aumayr et al.'s `output.json` (8e-6, 8e-6
+  and 2e-6).
+- Every job's solver value matches the stationary profile of its policy:
+  revenue to 4e-11 and the deep-reorg rate to 8e-8 relative (264 jobs each).
+- Caps (11+ rate at gamma 0):
+
+  | protocol | alpha 0.33 | alpha 0.40 | alpha 0.45 |
+  |---|---|---|---|
+  | Subchains, cap 15 / 20 (grid) / 25 / 30 | 2.01e-3 / 2.23e-3 / 2.243e-3 / 2.244e-3 | 8.83e-3 / 1.05e-2 / 1.071e-2 / 1.072e-2 | 1.61e-2 / 2.01e-2 / 2.087e-2 / 2.094e-2 |
+  | PoP, maxB 20 / 25 / 30 (grid) | 2.27e-3 / 2.33e-3 / 2.34e-3 | 8.14e-3 / 8.58e-3 / 8.63e-3 | |
+
+  Raising the caps moves these rates by 4 % (Subchains, at 0.45) and 1 %
+  (PoP) at most. RS and PRS have Nakamoto's fork choice: they equal its
+  column to 3 digits at gamma 0 up to alpha 0.42, so their cap of 30 binds
+  only above that.
+
+### Revenue
+
+First grid alpha where the revenue-optimal attacker beats honest mining by
+more than 1e-4. The exact thresholds lie between grid points.
+
+| protocol | gamma 0 | gamma 0.05 | gamma 0.5 | gamma 1 | published threshold |
+|---|---|---|---|---|---|
+| Nakamoto | 0.33 | 0.33 | 0.30 | 0.10 | 0.329 (gamma 0, SSZ); 0.25 (gamma 0.5, ZP Table II); 0 (gamma 1) |
+| RS (R 6, k 6) | 0.38 | 0.38 | 0.38 | 0.35 | |
+| PRS (R 6, k 6) | 0.40 | 0.40 | 0.38 | 0.38 | |
+| Subchains (ratio 2) | 0.10 | 0.10 | 0.10 | 0.10 | ZP Table V: profitable at 0.10 |
+| Fruitchains | 0.10 | | | 0.10 | |
+| UTB | 0.25 | | | | 0.2321 |
+| UDTB | 0.25 | | | | 0.2321 |
+| SHTB (15 regions) | 0.10 | | | | 0.0580 (exact; paper 0.0652) |
+| PoP (k 3) | 0.30 | | | | 0.2640 (exact; paper 0.2500) |
+
+The attacker's share at alpha 0.33 and 0.40:
+
+| protocol | 0.33, gamma 0 | 0.33, gamma 0.5 | 0.40, gamma 0 | 0.40, gamma 0.5 |
+|---|---|---|---|---|
+| Nakamoto | 0.3306 | 0.3846 | 0.4887 | 0.5725 |
+| RS | honest | honest | 0.4656 | 0.4908 |
+| PRS | honest | honest | 0.4331 | 0.4569 |
+| Subchains | 0.3703 | 0.3938 | 0.4992 | 0.5729 |
+| Fruitchains | 0.4034 | | 0.5742 | |
+| UTB / UDTB / SHTB / PoP | 0.4024 / 0.4069 / 0.4096 / 0.3621 | (own tie rule) | 0.5956 / 0.5965 / 0.5895 / 0.4820 | |
+
+Reading:
+- **RS and PRS are the countermeasures here that raise the threshold.** At
+  gamma 0 it moves from 0.33 to 0.38 (RS) and 0.40 (PRS). At gamma 1 it moves
+  from 0 to 0.35 and 0.38.
+- **Subchains and Fruitchains lower it.**
+  - Subchains' attacker gains at every alpha: 0.1010 at alpha 0.10, gamma 0,
+    as in Zhang & Preneel's Table V.
+  - Fruitchains' gain is 1e-4 at 0.10, 0.006 at 0.20 and 0.019 at 0.25.
+  - At gamma 0 both pay the attacker more than Nakamoto at every alpha up
+    to 0.42 (Fruitchains to 0.45).
+- **The tie rules set the low end.** UTB and UDTB are profitable from 0.25,
+  SHTB from 0.10 and PoP from 0.30 (0.264 exactly).
+- The revenue side of SoP is not part of this grid; its revenue findings are
+  in `STATUS.md`.
+
+### Disruption
+
+Reorgs of 11+ blocks per block interval under the policy that maximises them,
+at gamma 0 where the protocol has one. In brackets, one per, at 120 s blocks.
+RS and PRS have Nakamoto's column (see the checks).
+
+| alpha | Nakamoto | Fruitchains | Subchains | UTB | UDTB | SHTB | PoP | SoP (#146) |
+|---|---|---|---|---|---|---|---|---|
+| 0.25 | 8.48e-4 (1.6 d) | 8.43e-4 | 1.17e-4 (12 d) | 1.29e-3 | 1.29e-3 | 1.26e-3 | 2.09e-4 (6.6 d) | 3.69e-8 (~100 y) |
+| 0.30 | 3.08e-3 (11 h) | 3.02e-3 | 8.70e-4 (1.6 d) | 4.16e-3 | 4.18e-3 | 4.09e-3 | 1.09e-3 (1.3 d) | 8.93e-7 (4.3 y) |
+| 0.33 | 5.58e-3 (6 h) | 5.36e-3 | 2.23e-3 (15 h) | 7.15e-3 | 7.19e-3 | 7.01e-3 | 2.34e-3 (14 h) | 5.74e-6 (242 d) |
+| 0.35 | 7.82e-3 (4.3 h) | 7.38e-3 | 3.79e-3 (8.8 h) | 9.71e-3 | 9.78e-3 | 9.51e-3 | 3.60e-3 (9.3 h) | 2.02e-5 (69 d) |
+| 0.40 | 1.55e-2 (2.2 h) | 1.37e-2 | 1.05e-2 (3.2 h) | 1.81e-2 | 1.83e-2 | 1.76e-2 | 8.63e-3 (3.9 h) | 5.40e-4 (2.6 d) |
+| 0.45 | 2.57e-2 (1.3 h) | 2.07e-2 | 2.01e-2 (1.7 h) | 2.89e-2 | 2.92e-2 | 2.77e-2 | 1.63e-2 (2 h) | 9.26e-3 (3.6 h) |
+
+The attacker's share of the main chain while maximising these reorgs, at
+alpha 0.33:
+- Nakamoto 0.102, Subchains 0.034, PoP 0.051;
+- RS 0.247, PRS 0.187, Fruitchains 0.312;
+- UTB 0.129, UDTB 0.128, SHTB 0.125.
+
+Reading:
+- **Reward-only countermeasures do not cut deep reorgs, and they make them
+  cheaper.**
+  - RS and PRS keep Nakamoto's fork choice and its deep-reorg rate. Because
+    orphaned blocks still pay, their disruption-optimal attacker keeps 0.247
+    and 0.187 of the chain at alpha 0.33, against 0.102 under Nakamoto.
+  - Fruitchains also has Nakamoto's fork choice. Its reference model lets the
+    attacker publish only its whole branch, which lowers its rate at high
+    alpha, and its attacker keeps 0.312 at alpha 0.33, nearly its whole
+    alpha.
+- **The tie-breaking rules (UTB, UDTB, SHTB) add to deep reorgs**: 17-52 %
+  over Nakamoto at gamma 0 (28 % at alpha 0.33), close to Nakamoto at
+  gamma 1.
+- **Subchains and PoP cut deep reorgs**, by 7x and 4x at alpha 0.25, 2.5x and
+  2.4x at 0.33, and 1.3x and 1.6x at 0.45. The cap checks above show the cuts
+  are not cap artefacts. Subchains pays for its cut on the revenue side.
+- **SoP cuts them the most**: 23,000x at alpha 0.25, 970x at 0.33, 29x at
+  0.40 and 2.8x at 0.45. Above about 0.45 it converges with the rest (1.3x at
+  0.48).
+- **Gamma matters little.** From gamma 0 to 1 Nakamoto's rate rises 24 % at
+  alpha 0.33 (three-fold at 0.10, from one per 24 years to one per 8).
+- **Depth.** The count-optimal attacker's deep reorgs average 11.0-12.0
+  blocks: it publishes as soon as it passes the lock. The depth-weighted
+  attacker goes deeper: under Nakamoto up to 39.5 blocks on average at alpha
+  0.48 (cap 160); elsewhere the caps bound it (`TABLES.md`).
+
+## Step 4: deep reorgs of the revenue-optimal attacker (2026-11-18)
+
+Many policies reach the optimal revenue, and they can differ by orders of
+magnitude in the deep reorgs they cause. At alpha 0.30, gamma 0.5, PTO's
+optimal policy (Step 1) caused 1.4e-6 per main-chain block and the grid's
+Howard policy 5.2e-4, at the same revenue.
+
+`pcmdp.second_stage` (pow-countermeasure-mdp 5c93be0) reports the least and
+the most. It rests on one fact. A policy is revenue-optimal if and only if,
+in every state it visits, it uses only actions whose
+Q = r - g* d + P h* is within eps (1e-9) of the best: for any policy,
+mu (r - g* d) = -sum mu * deficit. Over those actions it runs Howard on the
+11+ reorg rate per block interval, maximising and minimising.
+
+Checks:
+- A brute force over every tied-state combination (7 tied states, a 2x
+  spread) reproduces both ends.
+- In all 246 records the three policies' revenues agree to 1.5e-9.
+
+Data: `grid_20261117/second_stage.jsonl` (246 of 264; the 18 Fruitchains and
+PoP records are still running).
+
+| alpha | Nakamoto gamma 0 | Nakamoto gamma 0.5 | Nakamoto gamma 1 | RS gamma 0 | Subchains gamma 0 | UTB | UDTB | SHTB |
+|---|---|---|---|---|---|---|---|---|
+| 0.25 | 0 | 0 - 8.3e-5 | 0 - 3.5e-4 | 0 | 5.2e-6 | 1.6e-7 - 7.8e-5 | 1.8e-7 - 9.0e-5 | 5.3e-5 |
+| 0.30 | 0 | 1.1e-6 - 4.4e-4 | 0 - 1.5e-3 | 0 | 5.8e-5 | 1.6e-6 - 3.4e-4 | 1.2e-6 - 4.8e-4 | 4.0e-4 |
+| 0.33 | 8.0e-4 | 4.1e-6 - 8.7e-4 | 0 - 2.9e-3 | 0 | 2.0e-4 | 5.3e-6 - 5.1e-4 | 4.2e-6 - 8.7e-4 | 1.1e-3 |
+| 0.40 | 3.1e-3 | 5.3e-5 - 1.3e-3 | 0 - 1.1e-2 | 5.2e-3 | 2.4e-3 | 8.7e-5 - 6.2e-4 | 4.7e-5 - 2.7e-3 | 4.9e-3 |
+| 0.45 | 6.0e-3 | 2.0e-4 - 2.5e-3 | 0 - 2.4e-2 | 1.1e-2 | 6.6e-3 | 2.8e-4 - 1.7e-3 | 2.1e-4 - 4.2e-3 | 1.0e-2 |
+
+A single value means the ties do not change the rate; 0 means below 1e-14.
+
+Reading:
+- **At gamma 0 the answer is unique.** A revenue-maximiser at alpha 0.33
+  causes 8.0e-4 reorgs of 11+ per block interval, about one per 42 hours.
+  That is 14 % of what an attacker who wants them gets (5.58e-3).
+- **At higher gamma the revenue optimum does not decide it.**
+  - At gamma 1 a revenue-optimal attacker can cause none at all, or up to
+    half the disruption optimum.
+  - At gamma 0.5 the spread is 2-3 orders of magnitude.
+  - A revenue-maximiser's deep reorgs are then a choice it makes at no cost.
+    They should be quoted as a range, not one number.
+- **RS and PRS cause none below their thresholds.** Above them they cause
+  more than Nakamoto (5.2e-3 against 3.1e-3 at 0.40, gamma 0).
+
+## SoP: the attacker uses the honest shares on the fork point (2026-11-18)
+
+**The finding.** tevador's own fixed stubborn attacker, run in his #146
+appendix simulator, gives 2.89e-7 +- 1.1e-8 reorgs of 11+ per block
+interval at alpha 1/3 (GAMMA 1 = ties to the honest chain, as in our rule;
+656 events). That
+is above the count-rule "optimum" of our tight model, 2.384e-7. An optimum
+cannot be beaten in the same game, so the games differed.
+
+They did. Our exact game and tight model are race-model "Model B as built",
+our daemon attacker, which sees no gossiped shares:
+- its first block carries only its own shares;
+- after a give-up it restarts behind by the honest pending shares.
+
+Under #146's slot rule an honest share mined on the fork point, before either
+side's first block, fits the attacker's rival first block too, in its slot.
+After a give-up the attacker adopts the honest tip with its pending shares.
+tevador's simulator plays both (`UNIQUE_SHARES`, `adopt_shares`). Campaign 8
+found the same in October (`20261019_sop_campaign8_results.md`, section
+6.1), for the race model; the MDPs had not taken it over.
+
+**The fix.**
+- pow-countermeasure-mdp c7f468f adds `--honest-shares` to `sop_tight` and
+  to the exact game `sop_rules`.
+- With no block since the fork D = 0, so x = pa - ph, and "slot free" is
+  x <= 0. Testing the capped pa and ph instead let both sit at their cap,
+  which made every honest share look free. The optimal policy exploited
+  that: 0.096 against 0.077 in the exact game at alpha 0.45, depth 3.
+- After a publish, the old fork point's honest shares drop.
+- Under #146's count rule the honest pending count then no longer matters
+  (q_max 0, 8 and 24 agree to 2e-15), so the state is about 30x smaller.
+
+**Checks.**
+- Stepping the exact game and the model through 200,000 events side by side
+  finds no mismatch.
+- At alpha 0.45, depth 3, the model gives 0.08741 against the exact game's
+  0.08771 +- 0.00084. Model B gives 0.0546 there.
+- tevador's stubborn attacker, evaluated exactly in the model, against a
+  per-object port of his script's logic
+  (`pow-countermeasure-mdp/validation/sop_honest_shares_20261118/`):
+
+  | alpha | his logic, per object | model | his script (tests once per second) |
+  |---|---|---|---|
+  | 0.45 | 4.324e-3 +- 6.6e-6 | 4.327e-3 | 4.37e-3 |
+  | 0.40 | 1.251e-4 +- 4e-7 | 1.240e-4 | 1.16e-4 |
+  | 1/3 | 3.284e-7 +- 6.4e-9 | 3.289e-7 | 2.89e-7 |
+
+  The 0.9 % (2.6 sigma) at 0.40 is not investigated. His script tests once
+  per simulated second, which lowers its rates at low alpha (12 % at 1/3).
+- The optimal policies were run in the exact game at alpha 0.38-0.48 (20 M
+  objects each). They agree with the model within 1.2 sigma: 1.36e-4 / 5.55e-4
+  / 1.96e-3 / 9.33e-3 / 2.60e-2. With and without the window the counts are
+  identical.
+- Caps x +-64 and x +-128 give the same rates to 2e-6.
+
+**Results** (data: `studies/sop/data/countermeasures/sop_hs_20261118/`).
+Reorgs of 11+ blocks per block interval under MRL #146's rules:
+
+| alpha | SoP (#146) | one per | Nakamoto gamma 0 | cut | daemon attacker (no honest shares) | patched daemon |
+|---|---|---|---|---|---|---|
+| 0.10 | 8.6e-18 | | 1.61e-7 | | | 8.5e-20 |
+| 0.20 | 1.06e-9 | ~3,600 y | 1.37e-4 | 1.3e5 | | 3.1e-14 |
+| 0.25 | 3.69e-8 | ~100 y | 8.48e-4 | 23,000 | | 1.1e-11 |
+| 0.30 | 8.93e-7 | 4.3 y | 3.08e-3 | 3,400 | | 2.1e-9 |
+| 0.33 | 5.74e-6 | 242 d | 5.58e-3 | 970 | 2.384e-7 | 4.95e-8 |
+| 0.35 | 2.02e-5 | 69 d | 7.82e-3 | 390 | | 4.0e-7 |
+| 0.38 | 1.43e-4 | 9.7 d | 1.21e-2 | 85 | | 8.8e-6 |
+| 0.40 | 5.40e-4 | 2.6 d | 1.55e-2 | 29 | 1.4408e-4 | 6.33e-5 (x +-64: 6.68e-5) |
+| 0.42 | 1.91e-3 | 17 h | 1.93e-2 | 10 | | 3.9e-4 |
+| 0.45 | 9.26e-3 | 3.6 h | 2.57e-2 | 2.8 | 5.5928e-3 | 3.84e-3 |
+| 0.48 | 2.59e-2 | 1.3 h | 3.28e-2 | 1.3 | | 1.8e-2 |
+
+The "patched daemon" column is the Step 2b one (caps x +-40, pending 24). The
+daemon-attacker column is count without honest shares, at x +-64 and
+pending 64; its other alphas are still running.
+
+Reading:
+- **Against #146's attacker SoP still cuts reorgs past the 10-block lock**,
+  by 970x at alpha 0.33 and 29x at 0.40. At Qubic's scale (0.25-0.35) the
+  every-few-hours of Nakamoto becomes one every 69 days to 100 years.
+- **But it is far less than this doc said before.** At alpha 0.33 the cut is
+  one per 8 months, not one per 77 years, and at 0.40 one per 2.6 days, not
+  22 days. The two corrections compound at alpha 0.33: counting the attacker's
+  own pending shares (4.95e-8 to 2.384e-7, about 5x; the first value had caps
+  x +-40) and its use of the honest shares on the fork point (2.384e-7 to
+  5.74e-6, 24x).
+- **Our daemon runs measure the weaker attacker.** The 12-daemon sims' SoP
+  attacker uses no honest shares, so it is the "daemon attacker" column.
+- Neither model includes propagation delay, which raises SoP's rates further
+  (previous section).

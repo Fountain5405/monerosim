@@ -1,6 +1,6 @@
 # SoP study: status
 
-Status as of 2026-11-15; paths are relative to the repository root. The study is
+Status as of 2026-11-18; paths are relative to the repository root. The study is
 active and works on main. Since 2026-11-13 it follows Rucknium's research
 directions (one MDP framework for all countermeasures, revenue and disruption
 objectives, reorg-depth output): plan and results in
@@ -40,9 +40,53 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
   against it. A revenue-maximiser at gamma 0 causes 1.7e-3 such reorgs per
   block at alpha 0.35.
 
+- **SoP against a disruption attacker, under MRL #146's rules (2026-11-18).**
+  The attacker counts its own pending tip shares and uses the honest shares
+  on the fork point (#146's slot rule, as tevador's simulator plays it).
+  Reorgs of 11+ blocks per block interval, attacker maximising them:
+
+  | alpha | 0.25 | 0.30 | 0.33 | 0.35 | 0.40 | 0.45 |
+  |---|---|---|---|---|---|---|
+  | SoP | 3.7e-8 | 8.9e-7 | 5.7e-6 | 2.0e-5 | 5.4e-4 | 9.3e-3 |
+  | one per | ~100 y | 4.3 y | 8 months | 69 days | 2.6 days | 3.6 h |
+  | Nakamoto, gamma 0 | 8.5e-4 | 3.1e-3 | 5.6e-3 | 7.8e-3 | 1.5e-2 | 2.6e-2 |
+
+  - SoP cuts these reorgs 23,000x at alpha 0.25, 970x at 0.33, 29x at 0.40
+    and 2.8x at 0.45, still the largest cut of any countermeasure here.
+  - It cuts much less than the bullet below said: at 0.33, one per 8 months
+    instead of one per 77 years.
+  - Checks:
+    - The optimal policies run in the exact SoP game at 0.38-0.48 agree
+      within 1.2 sigma, with and without the window.
+    - tevador's own attacker, evaluated in our model and in a per-object
+      port of his simulator, agrees to 0.1-0.9 %.
+    - The caps do not bind (2e-6).
+  - Our 12-daemon sims' attacker uses no honest shares, which is a weaker
+    attacker (2.4e-7 at 0.33, 1.4e-4 at 0.40).
+  - Details: "SoP: the attacker uses the honest shares on the fork point" in
+    `studies/sop/docs/20261113_countermeasure_mdp_plan.md`.
+- **Every countermeasure, revenue and disruption (2026-11-18 grid, 804
+  exact solves).** Same plan doc, Steps 3 and 4.
+  - Revenue matches Zhang & Preneel's published values at all 71 points to
+    8e-5.
+  - RS and PRS raise the revenue threshold (gamma 0: 0.33 to 0.38 and 0.40),
+    but leave deep reorgs where Nakamoto has them, and make them cheaper: the
+    attacker keeps 0.25 / 0.19 of the chain while causing them at alpha 0.33,
+    against 0.10.
+  - Subchains is profitable at every alpha and Fruitchains from alpha 0.10.
+  - The tie-breaking rules (UTB, UDTB, SHTB) raise deep reorgs 17-52 %.
+  - Subchains and PoP cut deep reorgs 2.4-7x at alpha 0.25-0.33.
+- **The revenue-optimal attacker's deep reorgs (second stage, 2026-11-18).**
+  - At gamma 0 the value is unique: 8.0e-4 per block interval at alpha 0.33,
+    one per 42 hours, 14 % of the disruption optimum.
+  - At gamma 0.5 and 1, policies with the same optimal revenue span from
+    none or almost none to most of the disruption optimum. There the number
+    is a free choice of the attacker and has to be quoted as a range.
 - **SoP against a disruption attacker** (countermeasure MDPs, step 2b, tight
-  model; its policies agree with the exact SoP game within noise at 0.40 and
-  0.45). Reorgs of 11+ blocks per block interval, attacker maximising them:
+  model). [SUPERSEDED 2026-11-18 by the first bullet above: these rates leave
+  out the attacker's use of the honest shares on the fork point.] Its
+  policies agree with the exact SoP game within noise at 0.40 and 0.45.
+  Reorgs of 11+ blocks per block interval, attacker maximising them:
   Nakamoto (gamma 0) 8.5e-4 / 3.1e-3 / 5.6e-3 / 7.8e-3 / 1.5e-2 / 2.6e-2 at
   alpha 0.25 / 0.30 / 0.33 / 0.35 / 0.40 / 0.45 (one every 39 h ... 78 min);
   SoP 1.1e-11 / 2.1e-9 / 4.95e-8 / 4.0e-7 / 6.3e-5 / 3.8e-3 (one every
@@ -82,6 +126,12 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
   d = 5 seed spread.
 - The adoption cells are 14-node networks.
 - How often real Monero nodes sit behind a run of late relays is not measured.
+- The SoP revenue findings above (threshold 0.4635, MDP bounds) predate the
+  2026-11-18 honest-shares correction. Whether their attackers used the
+  honest shares on the fork point has not been checked.
+- The countermeasure MDPs have no propagation delay. An independent simulator
+  on #146 finds that delay multiplies SoP's rate of 10+ reorgs 4.5-fold at
+  1 s and 81-fold at 3 s.
 
 ## Superseded docs
 
