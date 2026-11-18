@@ -89,12 +89,17 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
   exact solves).** Same plan doc, Steps 3 and 4.
   - Revenue matches Zhang & Preneel's published values at all 71 points to
     8e-5.
-  - RS and PRS raise the revenue threshold (gamma 0: 0.33 to 0.38 and 0.40),
-    but leave deep reorgs where Nakamoto has them, and make them cheaper: the
-    attacker keeps 0.25 / 0.19 of the chain while causing them at alpha 0.33,
-    against 0.10.
+  - RS and PRS raise the revenue threshold (first profitable grid alpha at
+    gamma 0: 0.33 to 0.38 and 0.40), but leave deep reorgs where Nakamoto has
+    them, and make them cheaper: the attacker keeps 0.25 / 0.19 of the block
+    rewards while causing them at alpha 0.33, against 0.10. (Corrected
+    2026-11-18: this said "of the chain"; under RS and PRS orphaned work is
+    paid, so their revenue is a share of rewards, not of main-chain blocks.)
   - Subchains is profitable at every alpha and Fruitchains from alpha 0.10.
-  - The tie-breaking rules (UTB, UDTB, SHTB) raise deep reorgs 17-52 %.
+  - The tie-breaking rules (UTB, UDTB, SHTB) raise deep reorgs over
+    Nakamoto at gamma 0, by 49-52 % at alpha 0.25, 26-29 % at 0.33 and
+    8-14 % at 0.45; they are within 10 % of Nakamoto at gamma 1. (Corrected
+    2026-11-18: this said 17-52 %, which holds only for alpha 0.25-0.38.)
   - Subchains and PoP cut deep reorgs 2.4-7x at alpha 0.25-0.33.
 - **The revenue-optimal attacker's deep reorgs (second stage, 2026-11-18).**
   - At gamma 0 the value is unique: 8.0e-4 per block interval at alpha 0.33,
@@ -128,15 +133,20 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
   "SoP acceptance convention" in
   `studies/sop/docs/20261113_countermeasure_mdp_plan.md`.
 
-- **Published baselines (2026-11-17, two independent reviews).** Run
-  unmodified, the authors' own code shows three errors. Aumayr et al.'s
-  Bitcoin baseline is a capped upper bound: it stores 0.8589 at alpha 0.45,
-  gamma 0.5, where the optimum is 0.7596. PRS still beats Bitcoin there, by
-  0.07 rather than 0.17. Zhang & Preneel's PoP threshold is 0.2640 in their
-  own model, not the 0.2500 in their paper. Their SHTB threshold is 0.0580,
-  not 0.0652; 0.0652 is where their script's tolerance first detects a
-  profit. pto's PTOSolver is unusable for rates below about 1e-6 per block,
-  so every disruption result here uses exact policy iteration (howard).
+- **Published baselines (2026-11-17, two separate re-checks on our side,
+  one blind; not external reviews).** Three published numbers differ from
+  what the authors' own models give when solved exactly. Aumayr et al.'s
+  Bitcoin baseline is a capped upper bound: their code stores 0.8589 at
+  alpha 0.45, gamma 0.5, where the exact value is 0.7596. PRS still beats
+  Bitcoin there, by 0.07 rather than 0.17. Zhang & Preneel's PoP threshold
+  is 0.2640 in their own model, not the 0.2500 in their paper. Their SHTB
+  value 0.0652 is labelled an upper bound and holds, but loosely: the exact
+  threshold is 0.0580, and 0.0652 is where their script's tolerance first
+  detects a profit. pto's PTOSolver is unusable for rates below about 1e-6
+  per block (a regime its authors did not target; part of the cause is the
+  2025 mdptoolbox-roi release), so every disruption result here uses exact
+  policy iteration (howard). (Corrected 2026-11-18: this said "two
+  independent reviews" and "three errors".)
   Details are under "Independent reviews" in
   `studies/sop/docs/20261113_countermeasure_mdp_plan.md`.
 

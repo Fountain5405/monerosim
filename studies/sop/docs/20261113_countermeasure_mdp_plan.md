@@ -357,6 +357,14 @@ artefacts are in `studies/sop/data/countermeasures/reviews_20261117/`.
 
 The two reviews agree on every point.
 
+[2026-11-18: both reviews were run on our side, by our own agents; they are
+"independent" of the work they check, not external reviews. The blind one
+added print statements and changed the toolbox path, nothing else. Two of
+the three numbers below do come out of the authors' code as published
+(Aumayr's 0.8589, Zhang & Preneel's SHTB 0.0652); what differs is the exact
+value of their models. SHTB's 0.0652 is labelled an upper bound in the paper
+and holds, loosely.]
+
 **Aumayr et al.'s Bitcoin baseline** (their Fig. 2,
 `incentive_compatibility/Bitcoin/output.json`). The stored value is the
 result of the upper-bound bisection, capped at lower bound + 0.1. Their
