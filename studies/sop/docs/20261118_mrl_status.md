@@ -170,6 +170,9 @@ How we found the second difference:
   its rate.
 - That was above our model's optimum of 2.384e-7 with only the first fix.
 - An optimum cannot be beaten in the same game, so the games differed.
+- The effect itself is not new: tevador described it in his first comment
+  on #146 (2025-09-25), where the attacker uses the honest workshares in the
+  first block of its private chain. Our MDPs had left it out.
 
 Checks of the corrected model:
 - **Exact SoP game.** We ran the model's optimal policies in an exact

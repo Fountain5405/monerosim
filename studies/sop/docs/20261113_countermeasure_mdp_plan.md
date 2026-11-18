@@ -712,7 +712,10 @@ side's first block, fits the attacker's rival first block too, in its slot.
 After a give-up the attacker adopts the honest tip with its pending shares.
 tevador's simulator plays both (`UNIQUE_SHARES`, `adopt_shares`). Campaign 8
 found the same in October (`20261019_sop_campaign8_results.md`, section
-6.1), for the race model; the MDPs had not taken it over.
+6.1), for the race model; the MDPs had not taken it over. [2026-11-18:
+tevador described the effect in his first comment on #146, 2025-09-25: the
+attacker can use the honest workshares in the first block of its private
+chain, the honest chain cannot use the attacker's withheld shares.]
 
 **The fix.**
 - pow-countermeasure-mdp c7f468f adds `--honest-shares` to `sop_tight` and
