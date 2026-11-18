@@ -13,6 +13,12 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
 
 ## Current findings
 
+The Shadow results below (the 0.4635 threshold, network advantage, slow
+honest miners, partial adoption) ran our modified monerod, which does not
+match MRL #146's text: its fork choice does not count a revealing chain's
+own pending shares. They describe that variant, not #146. The MDP and
+race-model results under #146's rules are marked as such.
+
 - **Threshold.** SoP raises the profitability threshold from 0.369 to 0.4635
   of hashrate, with two honest miners, K=3 and w=16, against the strongest
   attacker the search found. The race model agrees within 0.01. Under SoP the

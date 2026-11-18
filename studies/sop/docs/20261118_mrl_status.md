@@ -250,6 +250,7 @@ We have not contacted the authors yet.
 - **Revenue thresholds in the grid are at grid resolution**, alpha 0.10,
   0.15, ..., 0.30, 0.33, 0.35, 0.38, 0.40, ....
 - **Not covered here:** our earlier network simulations of SoP (costs to
-  slow honest miners, partial adoption) are in `studies/sop/STATUS.md`. Their
-  fork choice does not count a revealing chain's own pending shares, which
-  #146's text does.
+  slow honest miners, partial adoption) are in `studies/sop/STATUS.md`. They
+  ran our modified monerod, which does not match #146's text: its fork
+  choice does not count a revealing chain's own pending shares. Those
+  results are for that variant, not for #146.
