@@ -292,6 +292,12 @@ class SimConfig:
     count_attacker_pending: bool = False  # MRL #146 2026-10-20: the attacker's own shares on its
                                           # tip count for it under the objective score (it publishes
                                           # them at the reveal)
+    reveal_publishes_needed: bool = False  # 2026-11-18: with count_attacker_pending a reveal publishes
+                                          # only the k pending shares it needs (k = honest weight -
+                                          # attacker objects + 1, at most pa; all pa after a won tie);
+                                          # they are public on the new tip, so the attacker carries
+                                          # pa - k. False (every earlier result) carries all pa, which
+                                          # counts the published ones twice (pcmdp 08fb4b4's fix)
     cap_blocks: int = 0                   # studies/sop/scripts/sop_mdp.py truncation (2026-10-25): once either
                                           # side holds this many blocks since the fork the attacker is
                                           # forced to act: publish if honest has none, reveal if the
@@ -313,6 +319,10 @@ RULE_PRESETS = {
     # block or chain" they reach the network only after the switch). Matches
     # the count_own_tip_shares "false" attacker (2026-10-22 follow-up cell).
     "20261020_noown": {"either_window": True, "count_honest_pending": True},
+    # 20261020 as #146's text plays it (2026-11-18): own tip shares count, and a reveal
+    # publishes only the ones it needs (the rest stay private for the next race)
+    "20261020_146": {"either_window": True, "count_honest_pending": True,
+                     "count_attacker_pending": True, "reveal_publishes_needed": True},
 }
 
 
@@ -549,6 +559,10 @@ class SopEnv:
 
     def _reveal(self) -> Tuple[int, int]:
         a, h = self._a_h()
+        cfg = self.cfg
+        if cfg.reveal_publishes_needed and cfg.count_attacker_pending and cfg.rule == "sop":
+            hon_weight = self.hon_w + (self.hon_pending if cfg.count_honest_pending else 0)
+            self.att_pending -= min(max(0, hon_weight - self.att_w + 1), self.att_pending)
         self.stats.reveals += 1
         self.stats.reorg_depths.append(h)
         self.stats.att_final_blocks += a

@@ -90,7 +90,8 @@ class MdpEnv:
 
 
 def race_env(alpha: float, days: float, seed: int, cap_blocks: int = 0,
-             K: Optional[int] = None, w: Optional[int] = None, perish: bool = False) -> SopEnv:
+             K: Optional[int] = None, w: Optional[int] = None, perish: bool = False,
+             rule: str = "20261020_noown") -> SopEnv:
     """The training environment: the sims' noown attacker settings
     (rule 20261020_noown, honest shares via the slot rule, o5 give-up for
     stubborn_policy only), far-capped on the objects deficit. The |D| cap is
@@ -99,8 +100,9 @@ def race_env(alpha: float, days: float, seed: int, cap_blocks: int = 0,
     the Q-table key clips D instead. K and w are the countermeasure's
     window depth (blocks) and shares per block (defaults 3 and 16: the
     window is (K - 1) * w = 32 objects). perish: honest pending shares perish
-    when the attacker publishes (SimConfig.honest_perish_on_publish). Returned already
-    reset with `seed`."""
+    when the attacker publishes (SimConfig.honest_perish_on_publish). rule: the
+    RULE_PRESETS entry (2026-11-18; "20261020_146" is MRL #146's text, the
+    default the sims' noown rule). Returned already reset with `seed`."""
     from studies.sop.scripts.sop_race_model import K_DEFAULT, W_DEFAULT
     K = K_DEFAULT if K is None else int(K)
     w = W_DEFAULT if w is None else int(w)
@@ -108,7 +110,7 @@ def race_env(alpha: float, days: float, seed: int, cap_blocks: int = 0,
                     give_up_objects=5, equal_start=True, early_honest_shares=True,
                     positional_shares=True, cap_blocks=cap_blocks, deficit_cap=FAR_CAP,
                     w=w, K_objects=K * w, honest_perish_on_publish=perish,
-                    **RULE_PRESETS["20261020_noown"])
+                    **RULE_PRESETS[rule])
     env = SopEnv(cfg)
     env.reset(seed)
     return env

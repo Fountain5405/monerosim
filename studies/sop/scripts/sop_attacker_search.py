@@ -18,6 +18,11 @@ Appends one JSON line per finished run (resumable: runs already in the file
 are skipped), then prints the best combos per alpha and, for every combo run
 at three or more alphas, the crossing where its share passes alpha. Each
 worker is one race-model rollout (~80 MB); never run this on the control box.
+
+MRL #146's text (2026-11-18): --rule 20261020_146 counts the attacker's own
+pending tip shares at a reveal (and publishes only the ones it needs), and the
+seventh knob O=1 lets the attacker's reveal test count them too (reveal when
+D + pa - ph >= M instead of D - ph >= M; param_stubborn itself is unchanged).
 """
 from __future__ import annotations
 
@@ -35,10 +40,24 @@ if __name__ == "__main__":   # run as `python studies/sop/scripts/sop_attacker_s
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from scripts.sop_policy import param_stubborn
-from studies.sop.scripts.sop_race_model import K_DEFAULT, W_DEFAULT
+from studies.sop.scripts.sop_race_model import HOLD, K_DEFAULT, REVEAL, W_DEFAULT
 from studies.sop.scripts.sop_rl import legal_fallback, race_env, rollout
 
-KNOBS = ("G", "L", "M", "R", "B", "Z")
+KNOBS = ("G", "L", "M", "R", "B", "Z", "O")
+DEFAULT_RULE = "20261020_noown"
+
+
+def counting_stubborn(obs, W: int, O: int = 0, **knobs) -> int:
+    """param_stubborn, and with O=1 its reveal test also counts the attacker's own pending
+    shares (MRL #146's text): where param_stubborn holds, reveal once D + pa - ph >= M past
+    the window with the honest branch at R blocks. param_stubborn checks every give-up
+    before its reveal test, so this only widens that test."""
+    act = param_stubborn(obs, W=W, **knobs)
+    if O and act == HOLD:
+        a, D, xa, pa, h, xh, ph = obs
+        if h > 0 and max(xa, xh) >= W and D + pa - ph >= knobs.get("M", 1) and h >= knobs.get("R", 1):
+            return REVEAL
+    return act
 
 
 def parse_grid(spec: str) -> List[Dict[str, int]]:
@@ -54,28 +73,30 @@ def parse_grid(spec: str) -> List[Dict[str, int]]:
 
 
 def run_key(knobs: Dict[str, int], alpha: float, seed: int, K: int = K_DEFAULT, w: int = W_DEFAULT,
-            perish: bool = False) -> str:
+            perish: bool = False, rule: str = DEFAULT_RULE) -> str:
     k = {"knobs": {k: knobs[k] for k in sorted(knobs)}, "alpha": alpha, "seed": seed, "K": K, "w": w}
     if perish:          # only when set, so result lines written before 2026-10-27 keep their keys
         k["perish"] = True
+    if rule != DEFAULT_RULE:   # likewise for lines written before 2026-11-18
+        k["rule"] = rule
     return json.dumps(k, sort_keys=True)
 
 
 def evaluate(knobs: Dict[str, int], alpha: float, days: float, seed: int,
-             K: int = K_DEFAULT, w: int = W_DEFAULT, perish: bool = False) -> dict:
-    """One rollout of param_stubborn(**knobs) on race_env(alpha, days, seed,
-    K, w), the policy's window following the network's ((K - 1) * w): share,
-    reveals, reorg depths and the orphan rates the sims' cell JSONs report
+             K: int = K_DEFAULT, w: int = W_DEFAULT, perish: bool = False, rule: str = DEFAULT_RULE) -> dict:
+    """One rollout of counting_stubborn(**knobs) on race_env(alpha, days, seed,
+    K, w, perish, rule), the policy's window following the network's ((K - 1) * w):
+    share, reveals, reorg depths and the orphan rates the sims' cell JSONs report
     (attacker_orphan_rate, network_orphan_rate). perish: honest pending shares
     perish when the attacker publishes (SimConfig.honest_perish_on_publish)."""
-    env = race_env(alpha, days, seed, K=K, w=w, perish=perish)
+    env = race_env(alpha, days, seed, K=K, w=w, perish=perish, rule=rule)
     W = env.window_obs
-    r = rollout(env, lambda o, legal: legal_fallback(param_stubborn(o, W=W, **knobs), legal), env.n_objects)
+    r = rollout(env, lambda o, legal: legal_fallback(counting_stubborn(o, W=W, **knobs), legal), env.n_objects)
     st = env.stats
     hon_orphaned = sum(st.reorg_depths)
     found = st.att_final_blocks + st.att_orphaned_blocks + st.hon_final_blocks + hon_orphaned
     return {"knobs": dict(knobs), "alpha": alpha, "seed": seed, "days": days, "K": K, "w": w, "perish": bool(perish),
-            "share": r["share"],
+            "rule": rule, "share": r["share"],
             "reveals": r["reveals"], "mean_reorg": r["mean_reorg"], "max_reorg": r["max_reorg"],
             "att_final": st.att_final_blocks, "att_orphaned": st.att_orphaned_blocks,
             "hon_final": st.hon_final_blocks, "hon_orphaned": hon_orphaned,
@@ -157,6 +178,8 @@ def main(argv=None) -> int:
     ap.add_argument("--K", type=int, default=K_DEFAULT, help="the countermeasure's window depth in blocks")
     ap.add_argument("--w", type=int, default=W_DEFAULT, help="the countermeasure's shares per block")
     ap.add_argument("--perish", action="store_true", help="honest pending shares perish on an attacker publish")
+    ap.add_argument("--rule", default=DEFAULT_RULE,
+                    help="race-model rule preset (20261020_146: MRL #146's text; use with the knob O=1)")
     args = ap.parse_args(argv)
     fixed = parse_grid(args.fixed)
     if len(fixed) != 1:
@@ -172,9 +195,10 @@ def main(argv=None) -> int:
                 r = json.loads(line)
                 rows.append(r)
                 done.add(run_key(r["knobs"], r["alpha"], r["seed"], r.get("K", K_DEFAULT), r.get("w", W_DEFAULT),
-                                 r.get("perish", False)))
-    tasks = [(c, a, args.days, s, args.K, args.w, args.perish) for c in combos for a in args.alphas for s in args.seeds
-             if run_key(c, a, s, args.K, args.w, args.perish) not in done]
+                                 r.get("perish", False), r.get("rule", DEFAULT_RULE)))
+    tasks = [(c, a, args.days, s, args.K, args.w, args.perish, args.rule)
+             for c in combos for a in args.alphas for s in args.seeds
+             if run_key(c, a, s, args.K, args.w, args.perish, args.rule) not in done]
     print(f"{len(combos)} combos x {len(args.alphas)} alphas x {len(args.seeds)} seeds at {args.days:g} d "
           f"(K {args.K}, w {args.w}): {len(tasks)} runs to do, {len(done)} already in {out}",
           file=sys.stderr, flush=True)
