@@ -22,9 +22,11 @@ Fountain5405. Code: <https://github.com/Fountain5405/pow-countermeasure-mdp>
   about 120x: our model differed from #146's text in two places that matter
   at this depth (section 4). A small part of the 120x comes from the old
   run's tighter state caps.
-- Under #146's rule the SoP revenue threshold in our race model is 0.456 of
-  hashrate, against 0.469 under our patched daemon's rule. It comes from a
-  search, so a stronger attacker could profit below it (section 5).
+- Under #146's rule the strongest attacker our search found against SoP
+  profits from 0.456 of hashrate (race model). This replaces our October
+  figure (0.468 in the same model), which did not count the attacker's own
+  pending shares as #146 does. A stronger attacker could profit below it
+  (section 5).
 - Reward splitting raises the revenue threshold at gamma 0, from 0.329 to
   between 0.35 and 0.38 (RS) and between 0.38 and 0.40 (PRS). It leaves deep
   reorgs at Nakamoto's rate and makes them cheaper for the attacker.
@@ -126,9 +128,10 @@ fewest and the most 11+ reorgs per block interval.
 Our earlier SoP models departed from #146's text in two places that matter
 at 11+ blocks.
 
-1. **The attacker's own pending tip shares.** Our patched daemon does not
-   count them when the attacker reveals. #146's text and tevador's appendix
-   simulator count them.
+1. **The attacker's own pending tip shares.** Our earlier models did not
+   count them when the attacker reveals (a rule we had taken from our own
+   test implementation). #146's text and tevador's appendix simulator count
+   them.
 2. **Honest shares on the fork point.** Our attacker did not use them.
    - Under #146's slot rule, an honest share mined on the fork point also
      fits the attacker's competing first block, if its slot there is free.
@@ -136,9 +139,11 @@ at 11+ blocks.
      tip's pending shares.
    - tevador's simulator plays both.
 
-The corrected model still differs from the text in three ways: ties go to
-the honest chain (the text picks at random), there is no lateness delay, and
-the window is left out (checked below).
+The corrected model is still a simplification of #146: ties go to the
+honest chain (the text picks at random), there is no propagation delay, and
+the window is left out. The first two make our SoP rates lower than #146 as
+written would give. The window has no effect at 11+ blocks where we could
+check it (alpha 0.38-0.48, below).
 
 Effect, in reorgs of 11+ blocks per block interval:
 - At alpha 0.33: 4.95e-8 under the old model, 2.4e-7 with the first fix
@@ -169,33 +174,31 @@ Checks of the corrected model:
 - **Caps.** Doubling the caps (x +-64 to +-128) changes the rates by less
   than 2e-6 relative.
 
-Our Shadow simulations (12-14 real daemons) used our daemon's rule and an
-attacker without honest shares. They measure a weaker attacker than #146
-allows.
+## 5. SoP revenue threshold (race model)
 
-## 5. SoP revenue threshold
-
-- **Under #146's rule (new today, race model, K=3, w=16).** The strongest
-  attacker our search found profits from 0.456 of hashrate. Under our
-  daemon's rule, on the same grid and seeds, it is 0.469.
-  - The 0.012 comes from the attacker's reveal decision. #146 counts the
-    attacker's own pending tip shares when it reveals. An attacker that also
-    counts them when deciding whether to reveal gains the 0.012; one that
-    does not gets exactly the daemon rule's threshold.
+- **Under #146's rule the strongest attacker our search found profits from
+  0.456 of hashrate** (K=3, w=16).
+  - For comparison, in the same model a hand-written stubborn attacker under
+    the stock rule needs 0.365. The optimal stock attacker needs 0.329
+    (exact MDP, gamma 0).
   - The search is over a hand-written attacker family (give-up, publish and
     reveal settings): 2,184 runs of 2,000 simulated days each. The best four
     settings were then rerun at 0.0025 steps with six new seeds. A share's
     standard error is about 0.0003.
-  - The race model's honest side is one miner.
-- **Shadow (real daemons) has not been run under #146's rule**, because our
-  daemon does not implement it. Under the daemon's rule Shadow gave:
-  - 0.4635 with two honest miners (race model 0.469);
-  - about 0.45 with four equal honest pools (one seed per point, about
-    +-0.01);
-  - 0.369 for the stock rule with two honest miners.
-- **These are upper bounds on the threshold.** They are against the best
-  attacker found; a better attacker could profit below them. There is no
-  exact SoP revenue MDP under #146's rules yet.
+  - The attacker that sets 0.456 counts its own pending tip shares when it
+    decides to reveal, as #146 allows.
+- **This replaces the October figure** (MRL, 2026-10-28: 0.4635 in network
+  simulations, 0.468 in this model). That figure did not count the
+  attacker's own pending shares at a reveal (section 4, first difference).
+  Rerun today without counting them, the same search gives 0.468-0.469
+  again, so in this model the whole change comes from that rule.
+- **It is an upper bound on the threshold.** It is set by the best attacker
+  found; a better attacker could profit below it. There is no exact SoP
+  revenue MDP under #146's rules yet.
+- **The race model's honest side is one miner.** Splitting the honest
+  hashrate over more pools lowers the threshold: in our October network
+  simulations, under the old rule, four equal pools gave about 0.013 less
+  than two.
 
 ## 6. Published numbers that differ from the authors' own models
 
@@ -242,14 +245,11 @@ We have not contacted the authors yet.
   - Our zero-delay SoP rates are therefore likely low for a real network. We
     have not built a delay-aware SoP model.
 - **SoP revenue under #146's rules has no exact MDP yet.** Our earlier MDP
-  upper bound (0.7265 at alpha 0.45) covers only the weaker attacker.
+  upper bound (0.7265 at alpha 0.45) covers only an attacker without the two
+  corrections of section 4.
 - **Revenue thresholds in the grid are at grid resolution**, alpha 0.10,
   0.15, ..., 0.30, 0.33, 0.35, 0.38, 0.40, ....
-- **SoP's costs to honest miners** (Shadow, with our patched daemon;
-  `studies/sop/docs/20261026_sop_attacker_search.md`, items 3, 5, 9 and 10):
-  - Slow honest miners lose about twice what they lose under the stock rule:
-    10.7-14.7 % against 5.0-5.8 % on a 6 s path. The cause is that monerod
-    relays only main-chain blocks, so lateness compounds along relay chains.
-  - At every partial-adoption step tested (alpha 0.30 and 0.45), some party
-    does worse than under either rule alone, so SoP needs a flag day. These
-    are 14-node networks, one seed per cell: preliminary.
+- **Not covered here:** our earlier network simulations of SoP (costs to
+  slow honest miners, partial adoption) are in `studies/sop/STATUS.md`. Their
+  fork choice does not count a revealing chain's own pending shares, which
+  #146's text does.
