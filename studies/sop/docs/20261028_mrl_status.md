@@ -16,6 +16,8 @@ We are measuring whether Share-or-Perish (MRL issue #146) raises the hashrate a 
 
 SoP raises the selfish-mining profitability threshold from 0.369 to 0.4635 of network hashrate at the MRL defaults (K=3, w=16) with two honest miners, against the strongest attacker we could find. The race model agrees within 0.01 at every point, and the window parameter behaves as predicted.
 
+[2026-11-18: these thresholds use our patched daemon's rule, under which the attacker's own pending tip shares do not count. Under MRL #146's text they count, and the race model's threshold at K=3 falls from 0.469 to 0.456 (studies/sop/docs/20261026_sop_attacker_search.md, "The re-search under MRL #146's rule"). Shadow has not been run under #146's rule.]
+
 | Rule | Threshold, sims | Threshold, model | Attacker |
 |---|---|---|---|
 | Stock (longest chain) | 0.369 | 0.365 | stubborn, depth 2 |

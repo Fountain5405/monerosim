@@ -1,4 +1,4 @@
-Status (2026-11-01): current: the study's findings document (items 1-11, through 2026-11-01).
+Status (2026-11-01): current: the study's findings document (items 1-11, through 2026-11-01); 2026-11-18: the re-search under MRL #146's rule follows "The perish re-search".
 
 # The strongest hand-written attacker against Share-or-Perish (2026-10-26)
 
@@ -670,6 +670,53 @@ itself does not move. The withholding family that wins at 0.49-0.50
 never publishes, so its results (0.617, 0.725) stand. The model's
 default stays off so that every archived number reproduces; every new
 model run passes the option (`--perish`, `race_env(perish=True)`).
+
+### The re-search under MRL #146's rule (2026-11-18)
+
+Everything above scores reveals with our patched daemon's rule
+(`20261020_noown`): the attacker's own pending tip shares do not count.
+#146's text (2026-10-20) counts them. Commit 06f83f48 adds the race-model
+preset `20261020_146`. It counts them and publishes only the ones a reveal
+needs, carrying the rest, as pcmdp 08fb4b4 fixed in the MDP. It also adds a
+seventh knob, O: with O=1 the attacker's reveal test counts them too
+(D + pa - ph >= M).
+
+The search used the same family with perish: M=1, Z=1, G 3-12, R 1-2,
+L 0-1 and O 0-1, alpha 0.36-0.48 by 0.01, 2000 d x 3 seeds. Beside it ran
+the daemon's rule on the same grid and seeds. Data:
+`data/sop_search/rule146_stage1.jsonl` and `rule146_noown_same.jsonl`.
+Best mean share per alpha:
+
+| alpha | #146 rule | best combo | daemon rule | best combo |
+|---|---|---|---|---|
+| 0.42 | 0.339 | G=3 L=1 O=1 | 0.320 | G=3 L=1 |
+| 0.43 | 0.362 | G=3 L=1 O=1 | 0.339 | G=3 L=1 |
+| 0.44 | 0.391 | G=3 L=1 O=1 | 0.363 | G=3 L=1 |
+| 0.45 | 0.426 | G=5 L=1 O=1 | 0.393 | G=3 L=1 |
+| 0.46 | 0.477 | G=8 L=1 O=1 | 0.429 | G=3 L=1 |
+| 0.47 | 0.540 | G=8 L=1 R=2 O=1 | 0.477 | G=6 L=1 |
+| 0.48 | 0.611 | G=10 L=1 R=2 O=1 | 0.540 | G=8 L=1 |
+
+The best four give-ups were then rerun at 0.0025 steps with six new seeds
+(4-9; `rule146_refine.jsonl`, `rule146_refine_noown.jsonl`):
+
+| rule | crossing (G=6) | G=4 / 5 / 8 |
+|---|---|---|
+| #146 | 0.4563 | 0.4575 / 0.4567 / 0.4566 |
+| daemon | 0.4687 | 0.4691 / 0.4688 / 0.4693 |
+
+The standard error of a share at these points is 0.0002-0.0003.
+
+- **Under #146's rule the threshold falls by 0.012, from 0.469 to 0.456.**
+  The daemon-rule crossing reproduces the perish re-search above (0.4684).
+- **It is the attacker's reveal decision that gains.** With O=0 the #146
+  rule's best crossing is the daemon rule's, 0.4684, to four digits. Counting
+  the shares at the reveal helps only an attacker that also counts them when
+  it decides to reveal.
+- **Not measured in Shadow.** Our daemon does not implement #146's rule.
+  Under the daemon's rule Shadow ran 0.006 below the race model, and four
+  honest pools another 0.013 below two (10-29 above).
+- **It is still a search result.** A stronger attacker could profit below it.
 
 ## Fidelity audit: sims vs race model
 

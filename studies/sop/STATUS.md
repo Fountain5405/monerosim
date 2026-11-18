@@ -16,7 +16,27 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
 - **Threshold.** SoP raises the profitability threshold from 0.369 to 0.4635
   of hashrate, with two honest miners, K=3 and w=16, against the strongest
   attacker the search found. The race model agrees within 0.01. Under SoP the
-  classic Eyal-Sirer miner never earns more than its hashrate.
+  classic Eyal-Sirer miner never earns more than its hashrate. These use our
+  patched daemon's rule; under MRL #146's rule see the next bullet.
+- **Threshold under MRL #146's rule (2026-11-18, race model).** The strongest
+  attacker found profits from 0.456 of hashrate, against 0.469 under our
+  daemon's rule on the same grid and seeds.
+  - Under #146 a reveal counts the attacker's own pending tip shares. The
+    0.012 comes from an attacker whose reveal test counts them too (search
+    knob O=1). With O=0 the #146 rule gives exactly the daemon rule's
+    crossing (0.4684 both).
+  - At alpha 0.45 the best attacker's share is 0.426 under #146 and 0.393
+    under the daemon's rule.
+  - Search: the same family with perish, M=1, Z=1, G 3-12, R 1-2, L 0-1,
+    O 0-1, alpha 0.36-0.48, 2000 d x 3 seeds. Then the best four give-ups
+    at 0.0025 steps with six new seeds: 0.4563 (G=6; G 4-8 within 0.0012)
+    against 0.4687. The share's standard error is about 0.0003.
+  - Code: commit 06f83f48 (preset `20261020_146`). Data:
+    `studies/sop/data/sop_search/rule146_*.jsonl`.
+  - Not measured in Shadow: our daemon does not implement #146's rule.
+    Under the daemon's rule Shadow ran 0.006 below the race model (0.4635
+    against 0.4693), and four honest pools another 0.013 below two.
+  - It is a search result: a stronger attacker could profit below it.
 - **MDP bounds.** At alpha 0.45 the optimal attack lies between 0.45 (lower)
   and 0.7265 (upper, 4/4 caps). The solver matches pymdptoolbox and the HiGHS
   LP, and it reproduces the epsilon-OPT column of SSZ's Bitcoin table
@@ -126,20 +146,16 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
   d = 5 seed spread.
 - The adoption cells are 14-node networks.
 - How often real Monero nodes sit behind a run of late relays is not measured.
-- **The SoP revenue threshold under #146's rule is not yet computed**
-  (checked 2026-11-18).
-  - Honest shares are not the issue. The threshold's race-model search
-    (`sop_attacker_search.py` through `sop_rl.race_env`) already gave the
-    attacker the honest shares on the fork point (`equal_start`,
-    `early_honest_shares`, `positional_shares`). The Shadow sims' attacker
-    had none, and the two still agree (0.4693 against 0.4635).
-  - The rule is. Both scored reveals with the patched daemon's rule
-    (`20261020_noown`: the attacker's own pending shares do not count), not
-    #146's.
-  - The race model's counting path (`20261020`) also carries every pending
-    share through a reveal (`_reveal`). That is the double counting fixed in
-    the MDP at pcmdp 08fb4b4, so it needs the same fix before a #146
-    re-search.
+- **The SoP revenue threshold under #146's rule is a race-model number
+  only** (0.456, 2026-11-18). Shadow cannot measure it until the daemon
+  implements #146's counting rule and an attacker that uses gossiped honest
+  shares.
+  - The race-model search already gave the attacker the honest shares on
+    the fork point (`equal_start`, `early_honest_shares`,
+    `positional_shares`); the Shadow sims' attacker had none.
+  - Preset `20261020_146` fixes the race model's double counting of the
+    published pending shares (as pcmdp 08fb4b4 did in the MDP). Preset
+    `20261020` keeps it so that earlier results reproduce.
   - The MDP bounds (`sop_mdp.py`) are the weaker Model B attacker on both
     counts. The lower bound (honest mining) stays valid; the upper bound
     0.7265 covers only that attacker.
