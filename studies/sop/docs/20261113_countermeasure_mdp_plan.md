@@ -654,10 +654,9 @@ mu (r - g* d) = -sum mu * deficit. Over those actions it runs Howard on the
 Checks:
 - A brute force over every tied-state combination (7 tied states, a 2x
   spread) reproduces both ends.
-- In all 246 records the three policies' revenues agree to 1.5e-9.
+- In all 264 records the three policies' revenues agree to 1.5e-9.
 
-Data: `grid_20261117/second_stage.jsonl` (246 of 264; the 18 Fruitchains and
-PoP records are still running).
+Data: `grid_20261117/second_stage.jsonl` (all 264 revenue jobs).
 
 | alpha | Nakamoto gamma 0 | Nakamoto gamma 0.5 | Nakamoto gamma 1 | RS gamma 0 | Subchains gamma 0 | UTB | UDTB | SHTB |
 |---|---|---|---|---|---|---|---|---|
@@ -679,6 +678,10 @@ Reading:
   - At gamma 0.5 the spread is 2-3 orders of magnitude.
   - A revenue-maximiser's deep reorgs are then a choice it makes at no cost.
     They should be quoted as a range, not one number.
+- **Fruitchains and PoP: unique values.** Fruitchains (gamma 0 / 1) causes
+  1.4e-3 / 3.1e-3 at alpha 0.33 and 4.9e-3 / 8.3e-3 at 0.40, more than
+  Nakamoto's revenue-maximiser (8.0e-4, 3.1e-3); PoP 1.3e-4 at 0.33, 9.3e-4
+  at 0.40 and 3.8e-3 at 0.45.
 - **RS and PRS cause none below their thresholds.** Above them they cause
   more than Nakamoto (5.2e-3 against 3.1e-3 at 0.40, gamma 0).
 

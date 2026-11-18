@@ -126,9 +126,23 @@ with evidence, is `studies/sop/docs/20261026_sop_attacker_search.md`, items 1-11
   d = 5 seed spread.
 - The adoption cells are 14-node networks.
 - How often real Monero nodes sit behind a run of late relays is not measured.
-- The SoP revenue findings above (threshold 0.4635, MDP bounds) predate the
-  2026-11-18 honest-shares correction. Whether their attackers used the
-  honest shares on the fork point has not been checked.
+- **The SoP revenue threshold under #146's rule is not yet computed**
+  (checked 2026-11-18).
+  - Honest shares are not the issue. The threshold's race-model search
+    (`sop_attacker_search.py` through `sop_rl.race_env`) already gave the
+    attacker the honest shares on the fork point (`equal_start`,
+    `early_honest_shares`, `positional_shares`). The Shadow sims' attacker
+    had none, and the two still agree (0.4693 against 0.4635).
+  - The rule is. Both scored reveals with the patched daemon's rule
+    (`20261020_noown`: the attacker's own pending shares do not count), not
+    #146's.
+  - The race model's counting path (`20261020`) also carries every pending
+    share through a reveal (`_reveal`). That is the double counting fixed in
+    the MDP at pcmdp 08fb4b4, so it needs the same fix before a #146
+    re-search.
+  - The MDP bounds (`sop_mdp.py`) are the weaker Model B attacker on both
+    counts. The lower bound (honest mining) stays valid; the upper bound
+    0.7265 covers only that attacker.
 - The countermeasure MDPs have no propagation delay. An independent simulator
   on #146 finds that delay multiplies SoP's rate of 10+ reorgs 4.5-fold at
   1 s and 81-fold at 3 s.
