@@ -1,6 +1,12 @@
-Status (2026-11-18): current: the status report for the MRL meeting of 2026-11-18, fact-checked twice by an AI agent (Claude) against the data. The findings of record are in `studies/sop/STATUS.md`.
+Status (2026-11-18): current: the status report for the MRL meeting of 2026-11-18. The findings of record are in `studies/sop/STATUS.md`.
 
 # Selfish-mining countermeasures for Monero: status for MRL (2026-11-18)
+
+**AI/LLM statement:** This report was drafted by an AI agent (Claude) from
+our results. A second AI agent fact-checked it against the data in two
+passes; a third pass, on the later rewording of sections 4, 5 and 7, is in
+progress, and the checklist in section 8 has not been fact-checked yet.
+Fountain5405 reviewed it and approved its publication.
 
 Fountain5405. Code: <https://github.com/Fountain5405/pow-countermeasure-mdp>
 (GPL-3, commit fa658b9). Data and write-up: <https://github.com/Fountain5405/monerosim>,
@@ -254,3 +260,25 @@ We have not contacted the authors yet.
   ran our modified monerod, which does not match #146's text: its fork
   choice does not count a revealing chain's own pending shares. Those
   results are for that variant, not for #146.
+
+## 8. Checklist against Rucknium's research directions
+
+Against the gist "Research directions for selfish mining countermeasures in
+Monero" (<https://gist.github.com/Rucknium/0b6e94811099bfab44e84562621d8fe1>,
+updated 2026-11-12): its three next steps and the lessons it draws from the
+Qubic episode.
+
+| Gist item | Status | What we did, what we changed and why | Brief finding |
+|---|---|---|---|
+| Next step 1: one MDP framework for the Zhang & Preneel (2019) countermeasures, Aumayr et al. (2026) and SoP | Done | pow-countermeasure-mdp (GPL-3) has all eight protocols in Zhang & Preneel's MDP code (Nakamoto, UTB, UDTB, SHTB, PoP, Fruitchains, RS, Subchains), PRS from Aumayr et al., and SoP. SoP has no reference MDP, so it is our own model of #146's text (section 4). | Revenue matches the published values (71 Zhang & Preneel points to 8e-5; Aumayr's `output.json` to 8e-6). Three published numbers differ from the authors' own models solved exactly (section 6). |
+| Next step 1: the reference code (Zhang & Preneel, Aumayr et al., Zur, Eyal & Tamar) | Changed | The models are rewritten in Python and checked against the reference code's values. pto's PTO solver is replaced by exact policy iteration: for rates below about 1e-6 per block, which many deep-reorg rates are, it returns wrong values. | Section 6. |
+| Next step 1: MDP + RL where an MDP is too large | Not needed so far | Every protocol is solved exactly, at up to 5 M states. SoP uses a reduced model, checked against an exact simulation of the SoP game at alpha 0.38-0.48. | None. |
+| Next step 2: revenue maximisation | Done, except SoP | Revenue-optimal policy for every protocol, alpha 0.10-0.48, every gamma. SoP's revenue comes from a strategy search in the race model: there is no SoP revenue MDP under #146's rules yet. | RS and PRS raise the gamma-0 threshold to 0.35-0.38 and 0.38-0.40; Subchains and Fruitchains lower it. SoP: 0.456 against the best attacker found (section 5). |
+| Next step 2: disruption maximisation, reorgs of depth k > 10 | Done | Majority reorgs of 11+ blocks per block interval. 11 because canonical monerod's spend lock is 10 blocks. | SoP cuts them 970x at alpha 0.33 (one per ~8 months against one per 6 hours); PoP and Subchains 2.4-2.5x. The tie rules raise them. RS, PRS and Fruitchains leave them and make them cheaper (section 2). |
+| Lesson 1: larger payoffs for deeper reorgs | Done, except SoP | A second disruption objective, the summed depth of the 11+ reorgs, for every protocol but SoP. | The attacker maximising the count stops at 11-12 blocks on average. The depth-weighted one goes deeper (Nakamoto: 39.5 blocks on average at alpha 0.48); for most protocols the state caps bound it. |
+| Next step 3: the MDP outputs reorg length and frequency | Done | Each transition is tagged with the depth of the reorg it causes. The solved policy's stationary distribution gives the rate at each depth (to 40) and the mean depth. A second stage finds the fewest and the most deep reorgs among all revenue-optimal policies. | At gamma 0 a revenue-maximiser's deep-reorg rate is unique (Nakamoto, alpha 0.33: one per 42 h). At gamma 0.5 and 1 the attacker can choose it freely over 2-3 orders of magnitude (section 3). |
+| Lesson 2: hashrate share up to 0.38 and beyond | Done to 0.48 | 12 points from 0.10 to 0.48. Not run at 0.5 and above, where a majority attacker outpaces every rule here. | Section 2. |
+| Lesson 3: low gamma (Qubic's below 0.05) | Done | Gamma 0, 0.05, 0.5 and 1, where the protocol has a gamma. | Gamma 0.05 gives the same thresholds as gamma 0 at grid resolution. Gamma moves revenue more than deep reorgs (+24 % from gamma 0 to 1 at alpha 0.33). |
+| Lesson 3: peer-to-peer de-prioritising of selfish blocks; detective mining (MRL #98) | Not covered | Outside this MDP work. | None. |
+| Lesson 4: discount small revenue differences; prefer the easier implementation | Not assessed | Implementation effort is not part of this work. | Against deep reorgs the differences are not small: at alpha 0.25-0.33 SoP's cut is 970x to 23,000x, the others' at most about 7x. |
+| Methodology: make the MDP horizon as long as the computing resources allow | Done | State caps as in the reference implementations (Nakamoto and UDTB 160, UTB 80, SHTB 40, RS, PRS, Fruitchains and PoP 30, Subchains 20); SoP x +-128. | Where checked, raising the caps moves the 11+ rates by at most 4 %. |
